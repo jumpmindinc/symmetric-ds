@@ -25,7 +25,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,33 +74,48 @@ class MySqlSymmetricDialectTest {
     }
 
     @Test
-    void doesTriggerExistOnPlatform_comparesTableNameCaseInsensitively_whenMetadataIgnoresCase() {
+    void doesTriggerExistOnPlatform_skipsCaseInsensitiveFallback_whenExactMatchFound() {
         IDatabasePlatform platform = createPlatform("8.0.30");
         ISqlTemplate sqlTemplate = platform.getSqlTemplate();
         when(platform.isMetadataIgnoreCase()).thenReturn(true);
-        when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(1);
+        when(sqlTemplate.queryForInt(contains("event_object_table = ?"), any(Object[].class))).thenReturn(1);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "test_all_caps", "SYM_ON_I_FOR_8000_TSTRTGRP");
+        assertTrue(exists);
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(sqlTemplate, times(1)).queryForInt(sqlCaptor.capture(), argsCaptor.capture());
+        assertTrue(sqlCaptor.getValue().contains("trigger_name = ? and event_object_table = ?"));
+        assertArrayEquals(new Object[] { "SYM_ON_I_FOR_8000_TSTRTGRP", "test_all_caps" }, argsCaptor.getValue());
+    }
+
+    @Test
+    void doesTriggerExistOnPlatform_fallsBackToCaseInsensitiveMatch_whenExactMatchMissesAndMetadataIgnoresCase() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(platform.isMetadataIgnoreCase()).thenReturn(true);
+        when(sqlTemplate.queryForInt(contains("event_object_table = ?"), any(Object[].class))).thenReturn(0);
+        when(sqlTemplate.queryForInt(contains("lower(event_object_table) = lower(?)"), any(Object[].class))).thenReturn(1);
         MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
         boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "TEST_ALL_CAPS", "SYM_ON_I_FOR_8000_TSTRTGRP");
         assertTrue(exists);
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
-        verify(sqlTemplate).queryForInt(sqlCaptor.capture(), argsCaptor.capture());
-        assertTrue(sqlCaptor.getValue().contains("lower(event_object_table) = lower(?)"));
-        assertArrayEquals(new Object[] { "SYM_ON_I_FOR_8000_TSTRTGRP", "TEST_ALL_CAPS" }, argsCaptor.getValue());
+        verify(sqlTemplate, times(2)).queryForInt(sqlCaptor.capture(), any(Object[].class));
+        assertTrue(sqlCaptor.getAllValues().get(0).contains("trigger_name = ? and event_object_table = ?"));
+        assertTrue(sqlCaptor.getAllValues().get(1).contains("trigger_name = ? and lower(event_object_table) = lower(?)"));
     }
 
     @Test
-    void doesTriggerExistOnPlatform_comparesTableNameWithLike_whenMetadataIsCaseSensitive() {
+    void doesTriggerExistOnPlatform_skipsCaseInsensitiveFallback_whenMetadataIsCaseSensitive() {
         IDatabasePlatform platform = createPlatform("8.0.30");
         ISqlTemplate sqlTemplate = platform.getSqlTemplate();
         when(platform.isMetadataIgnoreCase()).thenReturn(false);
         when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(0);
         MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
-        boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "test_all_caps", "SYM_ON_I_FOR_8000_TSTRTGRP");
+        boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "TEST_ALL_CAPS", "SYM_ON_I_FOR_8000_TSTRTGRP");
         assertFalse(exists);
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(sqlTemplate).queryForInt(sqlCaptor.capture(), any(Object[].class));
-        assertTrue(sqlCaptor.getValue().contains("event_object_table like ?"));
+        verify(sqlTemplate, times(1)).queryForInt(sqlCaptor.capture(), any(Object[].class));
         assertFalse(sqlCaptor.getValue().contains("lower(event_object_table)"));
     }
 
