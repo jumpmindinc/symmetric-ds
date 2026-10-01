@@ -15,7 +15,7 @@ While the open-source edition provides the robust foundation, the SymmetricDS Pr
 ---
 
 ## Developers
-Read the [Developer Overview](https://www.symmetricds.org/developer/overview) to get started.  You will need Java JDK 21 or later and Eclipse IDE.  To set up a development environment, run the following commands:
+Read the [Developer Overview](https://www.symmetricds.org/developer/overview) to get started.  You will need Java JDK 17 or later and Eclipse IDE.  To set up a development environment, run the following commands:
 
 ```
 cd symmetric-assemble
