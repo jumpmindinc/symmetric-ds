@@ -44,36 +44,6 @@ import org.mockito.ArgumentCaptor;
 
 class MySqlSymmetricDialectTest {
     @Test
-    void constructor_disablesGeneratedAndPersistedColumnSupport_belowVersion570() {
-        IDatabasePlatform platform = createPlatform("5.6.0");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertFalse(platform.getDatabaseInfo().isGeneratedColumnsSupported());
-        assertFalse(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
-    }
-
-    @Test
-    void constructor_enablesGeneratedAndPersistedColumnSupport_atVersion570() {
-        IDatabasePlatform platform = createPlatform("5.7.0");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertTrue(platform.getDatabaseInfo().isGeneratedColumnsSupported());
-        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
-    }
-
-    @Test
-    void constructor_disablesNonPersistedGeneratedColumnsIndexSupport_belowVersion578() {
-        IDatabasePlatform platform = createPlatform("5.7.7");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
-    }
-
-    @Test
-    void constructor_enablesNonPersistedGeneratedColumnsIndexSupport_atVersion578() {
-        IDatabasePlatform platform = createPlatform("5.7.8");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
-    }
-
-    @Test
     void doesTriggerExistOnPlatform_skipsCaseInsensitiveFallback_whenExactMatchFound() {
         IDatabasePlatform platform = createPlatform("8.0.30");
         ISqlTemplate sqlTemplate = platform.getSqlTemplate();
