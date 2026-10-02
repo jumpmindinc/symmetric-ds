@@ -200,11 +200,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public Set<String> getActiveServerIds() {
-        if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
-        }
         Set<String> active = new HashSet<>();
-        if (peerNetworkCoordinator == null) {
+        if (!isInitialized() || peerNetworkCoordinator == null) {
             return active;
         }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
@@ -334,10 +331,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerInState(String eventType) {
-        if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
-        }
-        if (peerNetworkCoordinator == null) {
+        if (!isInitialized() || peerNetworkCoordinator == null) {
             return false;
         }
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
@@ -351,10 +345,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerOnline() {
-        if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
-        }
-        if (peerNetworkCoordinator == null) {
+        if (!isInitialized() || peerNetworkCoordinator == null) {
             return false;
         }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
@@ -399,10 +390,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerWithEngineInState(String engineName, ClusteredEngineState engineState) {
-        if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
-        }
-        if (peerNetworkCoordinator == null) {
+        if (!isInitialized() || peerNetworkCoordinator == null) {
             return false;
         }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
