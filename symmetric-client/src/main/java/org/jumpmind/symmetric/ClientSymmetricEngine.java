@@ -359,6 +359,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 dataSource = BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
             }
         }
+        if (dataSource != null) {
+            logConnectionPoolSize(dataSource, properties);
+        }
         if (waitOnAvailableDatabase && dataSource != null) {
             waitForAvailableDatabase(dataSource);
         }
@@ -533,6 +536,20 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         } catch (Exception e) {
             log.warn("Error checking node group in auto-configure script, assuming group is present", e);
             return true;
+        }
+    }
+
+    private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
+        if (!(dataSource instanceof BasicDataSource)) {
+            return;
+        }
+        int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
+        int effectivePoolSize = ((BasicDataSource) dataSource).getMaxTotal();
+        if ((concurrentWorkersMax * 2) > effectivePoolSize) {
+            log.warn("Configured {} is {}, the effective connection pool size of the database is {}", ParameterConstants.CONCURRENT_WORKERS,
+                    concurrentWorkersMax, effectivePoolSize);
+        } else {
+            log.info("DB connection pool size = {}", effectivePoolSize);
         }
     }
 }
