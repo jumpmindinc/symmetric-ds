@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,15 +84,18 @@ class HttpOutgoingTransportTest {
     private static final int HTTP_TIMEOUT = 5000;
     private static final int HTTP_CONNECT_TIMEOUT = 3000;
     private HttpTransportManager manager;
+    private ReservationCookieManager reservationCookieManager;
     private HttpConnection connection;
     private URL url;
 
     @BeforeEach
     void setUp() throws Exception {
         manager = mock(HttpTransportManager.class);
+        reservationCookieManager = mock(ReservationCookieManager.class);
         connection = mock(HttpConnection.class);
         url = URI.create("http://node.example.com/push").toURL();
         when(manager.openConnection(any(URL.class), any(), any())).thenReturn(connection);
+        when(manager.getReservationCookieManager()).thenReturn(reservationCookieManager);
     }
 
     @Test
@@ -287,6 +291,96 @@ class HttpOutgoingTransportTest {
         assertEquals(Collections.singleton("otherNode"), ignoreChannels.getByChannelId("chanE"));
         verify(connection).setRequestMethod("HEAD");
         verify(connection).close();
+    }
+
+    @Test
+    void testRequestReservation_onSuccess_beginsReservationForTargetUrl() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        verify(reservationCookieManager).beginReservation(url);
+    }
+
+    @Test
+    void testRequestReservation_calledTwiceOnSameInstance_beginsReservationOnlyOnce() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        verify(reservationCookieManager, times(1)).beginReservation(url);
+    }
+
+    @Test
+    void testRequestReservation_onServiceBusy_doesNotBeginReservation() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        assertThrows(ConnectionRejectedException.class,
+                () -> transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode));
+        verify(reservationCookieManager, never()).beginReservation(any());
+    }
+
+    @Test
+    void testClose_afterSuccessfulReservation_endsReservationForTargetUrl() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.close();
+        verify(reservationCookieManager).endReservation(url);
+    }
+
+    @Test
+    void testClose_withoutReservation_doesNotEndReservation() throws Exception {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        transport.openStream();
+        transport.close();
+        verify(reservationCookieManager, never()).endReservation(any());
+    }
+
+    @Test
+    void testClose_calledTwiceAfterReservation_endsReservationOnlyOnce() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.close();
+        transport.close();
+        verify(reservationCookieManager, times(1)).endReservation(url);
+    }
+
+    @Test
+    void testReadResponse_withServiceBusy_handlesServiceBusy() throws Exception {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        transport.openStream();
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        assertThrows(ConnectionRejectedException.class, transport::readResponse);
+        verify(reservationCookieManager).handleServiceBusy(connection);
     }
 
     @Test

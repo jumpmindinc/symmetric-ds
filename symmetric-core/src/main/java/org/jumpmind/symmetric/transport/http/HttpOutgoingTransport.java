@@ -73,6 +73,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private int streamOutputChunkSize = 30720;
     private boolean fileUpload = false;
     private Map<String, String> requestProperties;
+    private boolean isReservationHeld = false;
 
     public HttpOutgoingTransport(HttpTransportManager httpTransportManager, URL url, int httpTimeout, int httpConnectTimeout, boolean useCompression,
             int compressionStrategy, int compressionLevel, String nodeId,
@@ -105,6 +106,10 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         closeWriter(true);
         closeOutputStream(true);
         closeReader();
+        if (isReservationHeld) {
+            httpTransportManager.getReservationCookieManager().endReservation(url);
+            isReservationHeld = false;
+        }
         if (connection != null) {
             connection.disconnect();
             connection = null;
@@ -186,6 +191,10 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
+            if (!isReservationHeld) {
+                httpTransportManager.getReservationCookieManager().beginReservation(url);
+                isReservationHeld = true;
+            }
         } catch (IOException ex) {
             throw new IoException(ex);
         }
@@ -258,6 +267,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private void analyzeResponseCode(int code) {
         httpTransportManager.checkResponseCode(connection, code);
         if (WebConstants.SC_SERVICE_BUSY == code) {
+            httpTransportManager.getReservationCookieManager().handleServiceBusy(connection);
             throw new ConnectionRejectedException();
         } else if (WebConstants.SC_SERVICE_UNAVAILABLE == code) {
             throw new ServiceUnavailableException();

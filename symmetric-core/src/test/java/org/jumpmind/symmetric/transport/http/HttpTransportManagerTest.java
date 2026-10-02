@@ -378,6 +378,11 @@ class HttpTransportManagerTest {
     }
 
     @Test
+    void testGetReservationCookieManager_returnsNonNullInstance() {
+        assertNotNull(manager.getReservationCookieManager());
+    }
+
+    @Test
     void testGetUri_returnsUrlWithoutLastPathSegment() throws Exception {
         HttpConnection conn = mock(HttpConnection.class);
         when(conn.getURL()).thenReturn(URI.create("http://host/path/action").toURL());
