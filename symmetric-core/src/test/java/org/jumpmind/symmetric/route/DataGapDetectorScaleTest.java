@@ -200,6 +200,7 @@ class DataGapDetectorScaleTest {
         assertEquals(0L, queryCount.get());
     }
 
+    // Estimates composition of gaps found in production snapshot
     private static List<DataGap> newSnapshotShapedGaps(int count) {
         List<DataGap> gaps = new ArrayList<DataGap>(count);
         long startId = FIRST_GAP_START_ID;
