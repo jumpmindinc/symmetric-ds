@@ -54,9 +54,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Gap detection with a gap list shaped like the Landmark production snapshots (about 1,000,000 gaps). Gap width is spread evenly over 1 to 104 (median 52, as
- * in the snapshots; 74.5% of the snapshot gaps are inside that range) with one data ID between gaps (98.6% of the snapshot gaps). Set SYM_GAP_SCALE_TEST_GAPS
- * to change the number of gaps.
+ * Gap detection with a gap list shaped like production environments with about 1,000,000 gaps. Gap width is spread evenly over 1 to 104 (median 52; 74.5% of
+ * the sampled production gaps are inside that range) with one data ID between gaps (98.6% of the sampled production gaps). Set SYM_GAP_SCALE_TEST_GAPS to
+ * change the number of gaps.
  */
 class DataGapDetectorScaleTest {
     private static final String GAP_COUNT_VARIABLE = "SYM_GAP_SCALE_TEST_GAPS";
