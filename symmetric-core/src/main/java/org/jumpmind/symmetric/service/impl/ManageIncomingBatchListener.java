@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.IDataProcessorListener;
@@ -170,6 +171,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
             } else if (this.currentBatch.isRetry()) {
                 incomingBatchService.deleteIncomingBatch(this.currentBatch);
             }
+            SyncEventNotifier.incomingBatchEnded(engine, null, this.currentBatch, null);
         } catch (RuntimeException ex) {
             this.currentBatch.setStatus(oldStatus);
             throw ex;
@@ -289,6 +291,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                 if (Boolean.TRUE.equals(context.get(AbstractDatabaseWriter.TRANSACTION_ABORTED))) {
                     transaction = null;
                 }
+                IncomingError failedRowError = null;
                 if (currentBatch.getStatus() == Status.ER) {
                     if (context.getRelation() != null && context.getData() != null) {
                         try {
@@ -318,6 +321,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                             if (context.get(AbstractDatabaseWriter.CONFLICT_IGNORE) != null) {
                                 error.setResolveIgnore(true);
                             }
+                            failedRowError = error;
                             if (transaction != null) {
                                 dataLoaderService.insertIncomingError(transaction, error);
                             } else {
@@ -353,6 +357,9 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     } else {
                         incomingBatchService.insertIncomingBatch(this.currentBatch);
                     }
+                }
+                if (currentBatch.getStatus() == Status.ER) {
+                    SyncEventNotifier.incomingBatchEnded(engine, transaction, currentBatch, failedRowError);
                 }
             }
         } catch (Throwable e) {
