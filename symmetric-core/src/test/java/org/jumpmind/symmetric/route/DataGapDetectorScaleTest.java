@@ -52,11 +52,16 @@ import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Gap detection with a gap list shaped like production environments with about 1,000,000 gaps. Gap width is spread evenly over 1 to 104 (median 52; 74.5% of
  * the sampled production gaps are inside that range) with one data ID between gaps (98.6% of the sampled production gaps). Set SYM_GAP_SCALE_TEST_GAPS to
  * change the number of gaps.
+ *
+ * The second profile models concurrent writers whose open transactions interleave data IDs: writer w owns data ID FIRST + row * 192 + w, and writer w has
+ * committed when (w * 37) mod 192 is below 3. The IDs of writers that have not committed are the gaps.
  */
 class DataGapDetectorScaleTest {
     private static final String GAP_COUNT_VARIABLE = "SYM_GAP_SCALE_TEST_GAPS";
@@ -65,6 +70,9 @@ class DataGapDetectorScaleTest {
     private static final int GAP_WIDTH_RANGE = 104;
     private static final int GAP_WIDTH_SPREAD_FACTOR = 37;
     private static final int DATA_RUN_BETWEEN_GAPS = 1;
+    private static final int WRITER_COUNT = 192;
+    private static final int COMMITTED_WRITER_LIMIT = 3;
+    private static final int WRITER_COMMIT_SPREAD_FACTOR = 37;
     private static final long LARGEST_GAP_SIZE = 50000000L;
     private static final long QUERY_LATENCY_IN_MS = 2;
     private static final int LATENCY_GAP_COUNT = 300;
@@ -90,7 +98,8 @@ class DataGapDetectorScaleTest {
             }
             return new ArrayList<Long>();
         });
-        when(sqlTemplate.startSqlTransaction()).thenReturn(mock(ISqlTransaction.class, withSettings().stubOnly()));
+        ISqlTransaction sqlTransaction = mock(ISqlTransaction.class, withSettings().stubOnly());
+        when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
@@ -136,19 +145,40 @@ class DataGapDetectorScaleTest {
     }
 
     @Test
-    void testFullGapAnalysisRunsOneQueryPerGap() {
-        when(dataService.findDataGaps()).thenReturn(newSnapshotShapedGaps(gapCount));
+    void testInterleavedWriterGapsFollowFormula() {
+        List<DataGap> gaps = newInterleavedWriterGaps(gapCount);
+        long firstPeriodWidthSum = 0;
+        for (int index = 0; index < gaps.size(); index++) {
+            long width = gaps.get(index).getEndId() - gaps.get(index).getStartId() + 1;
+            assertTrue(width >= 1 && width < WRITER_COUNT);
+            if (index < COMMITTED_WRITER_LIMIT) {
+                firstPeriodWidthSum += width;
+            }
+            if (index > 0) {
+                assertEquals(DATA_RUN_BETWEEN_GAPS, gaps.get(index).getStartId() - gaps.get(index - 1).getEndId() - 1);
+            }
+        }
+        assertEquals(gapCount, gaps.size());
+        assertEquals(FIRST_GAP_START_ID + 1, gaps.get(0).getStartId());
+        assertEquals((long) (WRITER_COUNT - COMMITTED_WRITER_LIMIT), firstPeriodWidthSum);
+    }
+
+    @ParameterizedTest
+    @EnumSource(GapProfile.class)
+    void testFullGapAnalysisRunsOneQueryPerGap(GapProfile profile) {
+        when(dataService.findDataGaps()).thenReturn(profile.newGaps(gapCount));
         detector.setFullGapAnalysis(true);
         long startTime = System.currentTimeMillis();
         detector.beforeRouting();
         long elapsedTimeInMs = System.currentTimeMillis() - startTime;
-        System.out.println(String.format("Full gap analysis of %d gaps ran %d queries in %d ms", gapCount, queryCount.get(), elapsedTimeInMs));
+        System.out.println(String.format("Full gap analysis of %d %s gaps ran %d queries in %d ms", gapCount, profile, queryCount.get(), elapsedTimeInMs));
         assertEquals((long) gapCount, queryCount.get());
     }
 
-    @Test
-    void testQueryLatencyAddsToFullGapAnalysisTimeForEveryGap() {
-        when(dataService.findDataGaps()).thenReturn(newSnapshotShapedGaps(LATENCY_GAP_COUNT));
+    @ParameterizedTest
+    @EnumSource(GapProfile.class)
+    void testQueryLatencyAddsToFullGapAnalysisTimeForEveryGap(GapProfile profile) {
+        when(dataService.findDataGaps()).thenReturn(profile.newGaps(LATENCY_GAP_COUNT));
         queryLatencyInMs = QUERY_LATENCY_IN_MS;
         detector.setFullGapAnalysis(true);
         long startTime = System.currentTimeMillis();
@@ -158,10 +188,11 @@ class DataGapDetectorScaleTest {
         assertTrue(elapsedTimeInMs >= LATENCY_GAP_COUNT * QUERY_LATENCY_IN_MS * 0.9);
     }
 
-    @Test
-    void testClusterLockingReadsAllGapsOnEveryCycle() {
+    @ParameterizedTest
+    @EnumSource(GapProfile.class)
+    void testClusterLockingReadsAllGapsOnEveryCycle(GapProfile profile) {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
-        when(dataService.findDataGaps()).thenReturn(newSnapshotShapedGaps(gapCount));
+        when(dataService.findDataGaps()).thenReturn(profile.newGaps(gapCount));
         detector.beforeRouting();
         detector.beforeRouting();
         verify(dataService, times(2)).findDataGaps();
@@ -169,7 +200,6 @@ class DataGapDetectorScaleTest {
         assertEquals(0L, queryCount.get());
     }
 
-    // Estimates composition of gaps found in production snapshot - JMC LMG ticket JMCH-2310 (about 1,000,000)
     private static List<DataGap> newSnapshotShapedGaps(int count) {
         List<DataGap> gaps = new ArrayList<DataGap>(count);
         long startId = FIRST_GAP_START_ID;
@@ -180,5 +210,47 @@ class DataGapDetectorScaleTest {
             startId = endId + 1 + DATA_RUN_BETWEEN_GAPS;
         }
         return gaps;
+    }
+
+    private static long dataIdOfWriterRow(long row, int writer) {
+        return FIRST_GAP_START_ID + row * WRITER_COUNT + writer;
+    }
+
+    private static boolean isWriterCommitted(int writer) {
+        return ((long) writer * WRITER_COMMIT_SPREAD_FACTOR) % WRITER_COUNT < COMMITTED_WRITER_LIMIT;
+    }
+
+    private static List<DataGap> newInterleavedWriterGaps(int count) {
+        List<DataGap> gaps = new ArrayList<DataGap>(count);
+        long gapStartId = -1;
+        for (long row = 0; gaps.size() < count; row++) {
+            for (int writer = 0; writer < WRITER_COUNT && gaps.size() < count; writer++) {
+                long dataId = dataIdOfWriterRow(row, writer);
+                if (!isWriterCommitted(writer) && gapStartId == -1) {
+                    gapStartId = dataId;
+                } else if (isWriterCommitted(writer) && gapStartId != -1) {
+                    gaps.add(new DataGap(gapStartId, dataId - 1));
+                    gapStartId = -1;
+                }
+            }
+        }
+        return gaps;
+    }
+
+    private enum GapProfile {
+        SPREAD_WIDTH {
+            @Override
+            List<DataGap> newGaps(int count) {
+                return newSnapshotShapedGaps(count);
+            }
+        },
+        INTERLEAVED_WRITERS {
+            @Override
+            List<DataGap> newGaps(int count) {
+                return newInterleavedWriterGaps(count);
+            }
+        };
+
+        abstract List<DataGap> newGaps(int count);
     }
 }
