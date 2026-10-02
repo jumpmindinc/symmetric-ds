@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.jumpmind.log.LogThrottle;
-import org.jumpmind.log.LogThrottle.ThrottledLogMessageLevel;
 import org.jumpmind.log.ThrottledLogger;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
