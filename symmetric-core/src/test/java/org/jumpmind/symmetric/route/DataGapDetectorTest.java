@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.route;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -29,11 +30,13 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -70,6 +73,7 @@ import org.jumpmind.symmetric.statistic.StatisticManager;
 import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.internal.verification.VerificationModeFactory;
@@ -212,6 +216,75 @@ class DataGapDetectorTest {
         verify(dataService).insertDataGaps(sqlTransaction, inserted);
         verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
         verifyNoMoreInteractions(dataService);
+    }
+
+    @Test
+    void testLoggerNameIsClassName() {
+        assertEquals(DataGapFastDetector.class.getName(), detector.getLoggerName());
+        assertEquals(DataGapDetector.class.getName(), new DataGapDetector().getLoggerName());
+    }
+
+    @Test
+    void testSummaryRecordsGapChanges() throws Exception {
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        runGapDetector(dataGaps, dataIds, true);
+        DataGapDetectionSummary summary = detector.getDetectionSummary();
+        assertEquals(1, summary.getCycleCount());
+        assertEquals(2, summary.getOpenGapCount());
+        assertEquals(2L, summary.getGapsAdded());
+        assertEquals(1L, summary.getGapsDeleted());
+        assertEquals(100L, summary.getLastDataId());
+        assertEquals(0L, summary.getLastFullAnalysisTime());
+    }
+
+    @Test
+    void testSummaryRecordsFullGapAnalysis() throws Exception {
+        detector.setFullGapAnalysis(true);
+        when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(4, 50000004));
+        long beforeAnalysisTime = System.currentTimeMillis();
+        runGapDetector(dataGaps, new ArrayList<Long>(), true);
+        DataGapDetectionSummary summary = detector.getDetectionSummary();
+        assertEquals(true, summary.getLastFullAnalysisTime() >= beforeAnalysisTime);
+    }
+
+    @Test
+    void testSummaryUsesSystemClockWhenDatabaseClockIsFiveHoursAhead() throws Exception {
+        when(symmetricDialect.supportsTransactionViews()).thenReturn(true);
+        when(symmetricDialect.getDatabaseTime()).thenReturn(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(5));
+        detector.setFullGapAnalysis(true);
+        when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(4, 50000004));
+        long beforeTime = System.currentTimeMillis();
+        runGapDetector(dataGaps, new ArrayList<Long>(), true);
+        long afterTime = System.currentTimeMillis();
+        long fullAnalysisTime = detector.getDetectionSummary().getLastFullAnalysisTime();
+        assertEquals(true, fullAnalysisTime >= beforeTime && fullAnalysisTime <= afterTime);
+    }
+
+    @Test
+    void testNewGapCreateTimeUsesDatabaseClockWhenDatabaseClockIsFiveHoursAhead() throws Exception {
+        long databaseTime = System.currentTimeMillis() + TimeUnit.HOURS.toMillis(5);
+        when(symmetricDialect.supportsTransactionViews()).thenReturn(true);
+        when(symmetricDialect.getDatabaseTime()).thenReturn(databaseTime);
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        runGapDetector(dataGaps, dataIds, true);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<DataGap>> insertedGaps = ArgumentCaptor.forClass(Collection.class);
+        verify(dataService).insertDataGaps(ArgumentMatchers.eq(sqlTransaction), insertedGaps.capture());
+        assertEquals(2, insertedGaps.getValue().size());
+        for (DataGap insertedGap : insertedGaps.getValue()) {
+            assertEquals(databaseTime, insertedGap.getCreateTime().getTime());
+        }
     }
 
     @Test
