@@ -36,43 +36,13 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
-import org.jumpmind.db.util.DataSourceProperties;
+import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 class MySqlSymmetricDialectTest {
-    @Test
-    void constructor_disablesGeneratedAndPersistedColumnSupport_belowVersion570() {
-        IDatabasePlatform platform = createPlatform("5.6.0");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertFalse(platform.getDatabaseInfo().isGeneratedColumnsSupported());
-        assertFalse(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
-    }
-
-    @Test
-    void constructor_enablesGeneratedAndPersistedColumnSupport_atVersion570() {
-        IDatabasePlatform platform = createPlatform("5.7.0");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertTrue(platform.getDatabaseInfo().isGeneratedColumnsSupported());
-        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
-    }
-
-    @Test
-    void constructor_disablesNonPersistedGeneratedColumnsIndexSupport_belowVersion578() {
-        IDatabasePlatform platform = createPlatform("5.7.7");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
-    }
-
-    @Test
-    void constructor_enablesNonPersistedGeneratedColumnsIndexSupport_atVersion578() {
-        IDatabasePlatform platform = createPlatform("5.7.8");
-        new MySqlSymmetricDialect(createParameterService(), platform);
-        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
-    }
-
     @Test
     void doesTriggerExistOnPlatform_skipsCaseInsensitiveFallback_whenExactMatchFound() {
         IDatabasePlatform platform = createPlatform("8.0.30");
@@ -122,7 +92,7 @@ class MySqlSymmetricDialectTest {
     private IParameterService createParameterService() {
         IParameterService parameterService = mock(ParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(parameterService.getString(DataSourceProperties.DB_POOL_URL)).thenReturn("jdbc:mysql://localhost/test");
+        when(parameterService.getString(BasicDataSourcePropertyConstants.DB_POOL_URL)).thenReturn("jdbc:mysql://localhost/test");
         return parameterService;
     }
 

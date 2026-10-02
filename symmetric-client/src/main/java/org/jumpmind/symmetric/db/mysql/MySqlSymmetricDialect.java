@@ -37,12 +37,8 @@ import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.StringMapper;
-<<<<<<< HEAD
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
-=======
->>>>>>> 0d2c02d44b (SYM-8122: Standardizing case when case insensitivity is active (#1155))
 import org.jumpmind.db.util.BinaryEncoding;
-import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.ParameterConstants;
