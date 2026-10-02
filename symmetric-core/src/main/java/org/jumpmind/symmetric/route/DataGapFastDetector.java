@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jumpmind.log.ThrottledLogger;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -129,7 +128,8 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 processInfo.setStatus(ProcessStatus.OK);
             }
             detectionSummary.recordDetection(System.currentTimeMillis() - detectionStartTime, gaps.size());
-            detectionSummary.logSummary(System.currentTimeMillis());
+            logGapDetectionSummary(System.currentTimeMillis());
+            detectionSummary.resetCounters(System.currentTimeMillis());
         } catch (RuntimeException e) {
             if (processInfo.getStatus() != ProcessStatus.OK) {
                 processInfo.setStatus(ProcessStatus.ERROR);
@@ -175,7 +175,6 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
         ProcessInfo processInfo = this.statisticManager.newProcessInfo(new ProcessInfoKey(
                 nodeService.findIdentityNodeId(), null, ProcessType.GAP_DETECT));
         processInfo.setStatus(ProcessStatus.PROCESSING);
-        ThrottledLogger progressLog = newProgressLog();
         DataGapPassStats passStats = new DataGapPassStats();
         long gapTimoutInMs = parameterService.getLong(ParameterConstants.ROUTING_STALE_DATA_ID_GAP_TIME);
         final int dataIdIncrementBy = parameterService.getInt(ParameterConstants.DATA_ID_INCREMENT_BY);
@@ -271,7 +270,8 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
             if (isBusyExpire) {
                 setLastBusyExpireRunTime(System.currentTimeMillis());
             }
-            logSlowDetection(System.currentTimeMillis() - ts);
+            long detectionTime = System.currentTimeMillis() - ts;
+            progressLog.infoOrDebug(System.currentTimeMillis(), "Detecting gaps took {} ms", detectionTime);
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {
             processInfo.setStatus(ProcessStatus.ERROR);

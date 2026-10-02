@@ -20,21 +20,12 @@
  */
 package org.jumpmind.symmetric.route;
 
-import java.util.Date;
-
-import org.jumpmind.symmetric.common.Constants;
-import org.jumpmind.log.LogThrottle;
-import org.jumpmind.log.LogThrottle.ThrottledLogMessageLevel;
-import org.jumpmind.log.ThrottledLogger;
-import org.slf4j.Logger;
-
 /**
- * Accumulates gap detection figures across routing cycles and writes them as one INFO line per throttle interval.
+ * Accumulates gap detection figures across routing cycles and describes them for the periodic summary log message.
  */
 public class DataGapDetectionSummary {
     private static final long NO_DATA_ID = -1;
     private static final long NO_FULL_ANALYSIS = 0;
-    private final ThrottledLogger summaryLog;
     private long lastSummaryLogTime;
     private int cycleCount;
     private long totalDetectionTimeInMs;
@@ -46,9 +37,8 @@ public class DataGapDetectionSummary {
     private long lastDataId = NO_DATA_ID;
     private long lastFullAnalysisTime = NO_FULL_ANALYSIS;
 
-    public DataGapDetectionSummary(Logger log, long creationTime) {
+    public DataGapDetectionSummary(long creationTime) {
         this.lastSummaryLogTime = creationTime;
-        this.summaryLog = new ThrottledLogger(log, new LogThrottle(creationTime, Constants.LONG_OPERATION_THRESHOLD, 0, true));
     }
 
     public synchronized void recordDetection(long detectionTimeInMs, int openGapCount) {
@@ -72,15 +62,27 @@ public class DataGapDetectionSummary {
         lastFullAnalysisTime = analysisTime;
     }
 
-    public synchronized void logSummary(long currentTime) {
-        ThrottledLogMessageLevel level = summaryLog.getLevel(currentTime);
-        if (level == ThrottledLogMessageLevel.INFO) {
-            logInfoSummary(currentTime);
-            resetCounters(currentTime);
-        } else if (level == ThrottledLogMessageLevel.DEBUG) {
-            summaryLog.debug(currentTime, "Gap detection took {} ms, {} gaps added and {} gaps deleted since the last summary",
-                    lastDetectionTimeInMs, gapsAdded, gapsDeleted);
-        }
+    public synchronized String getInfoMessage(long currentTime) {
+        long elapsedTimeInMs = currentTime - lastSummaryLogTime;
+        long averageDetectionTimeInMs = cycleCount == 0 ? 0 : totalDetectionTimeInMs / cycleCount;
+        return String.format("Gap detection summary for the last %d ms: %d cycles, average detection time %d ms, maximum detection time %d ms, "
+                + "%d open gaps, %d gaps added, %d gaps deleted, last data ID %s",
+                elapsedTimeInMs, cycleCount, averageDetectionTimeInMs, maxDetectionTimeInMs, openGapCount, gapsAdded, gapsDeleted,
+                describeLastDataId());
+    }
+
+    public synchronized String getDebugMessage() {
+        return String.format("Gap detection took %d ms, %d gaps added and %d gaps deleted since the last summary", lastDetectionTimeInMs,
+                gapsAdded, gapsDeleted);
+    }
+
+    public synchronized void resetCounters(long currentTime) {
+        lastSummaryLogTime = currentTime;
+        cycleCount = 0;
+        totalDetectionTimeInMs = 0;
+        maxDetectionTimeInMs = 0;
+        gapsAdded = 0;
+        gapsDeleted = 0;
     }
 
     synchronized int getCycleCount() {
@@ -107,29 +109,7 @@ public class DataGapDetectionSummary {
         return lastFullAnalysisTime;
     }
 
-    private void logInfoSummary(long currentTime) {
-        long elapsedTimeInMs = currentTime - lastSummaryLogTime;
-        long averageDetectionTimeInMs = cycleCount == 0 ? 0 : totalDetectionTimeInMs / cycleCount;
-        summaryLog.info(currentTime, "Gap detection summary for the last {} ms: {} cycles, average detection time {} ms, maximum detection time {} ms, "
-                + "{} open gaps, {} gaps added, {} gaps deleted, last full gap analysis {}, last data ID {}",
-                elapsedTimeInMs, cycleCount, averageDetectionTimeInMs, maxDetectionTimeInMs, openGapCount, gapsAdded, gapsDeleted,
-                describeLastFullAnalysis(), describeLastDataId());
-    }
-
-    private String describeLastFullAnalysis() {
-        return lastFullAnalysisTime == NO_FULL_ANALYSIS ? "never" : "at " + new Date(lastFullAnalysisTime);
-    }
-
     private String describeLastDataId() {
         return lastDataId == NO_DATA_ID ? "none" : String.valueOf(lastDataId);
-    }
-
-    private void resetCounters(long currentTime) {
-        lastSummaryLogTime = currentTime;
-        cycleCount = 0;
-        totalDetectionTimeInMs = 0;
-        maxDetectionTimeInMs = 0;
-        gapsAdded = 0;
-        gapsDeleted = 0;
     }
 }

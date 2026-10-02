@@ -21,114 +21,77 @@
 package org.jumpmind.symmetric.route;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
-import org.jumpmind.symmetric.common.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.slf4j.Logger;
 
 class DataGapDetectionSummaryTest {
     private static final long CREATION_TIME = 1000;
-    private static final long INTERVAL_END_TIME = CREATION_TIME + Constants.LONG_OPERATION_THRESHOLD + 1;
-    Logger log;
+    private static final long LOG_TIME = 31001;
     DataGapDetectionSummary summary;
 
     @BeforeEach
     void setUp() {
-        log = mock(Logger.class);
-        summary = new DataGapDetectionSummary(log, CREATION_TIME);
+        summary = new DataGapDetectionSummary(CREATION_TIME);
     }
 
     @Test
-    void testLogsDebugBeforeInterval() {
-        summary.recordDetection(120, 4);
-        summary.recordGapChanges(2, 1);
-        summary.logSummary(CREATION_TIME + Constants.LONG_OPERATION_THRESHOLD);
-        ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
-        verify(log).debug(anyString(), arguments.capture());
-        assertEquals(Arrays.<Object> asList(120L, 2L, 1L), Arrays.asList(arguments.getValue()));
-        verifyNoMoreInteractions(log);
-    }
-
-    @Test
-    void testLogsInfoAfterInterval() {
+    void testInfoMessageReportsRecordedFigures() {
         summary.recordDetection(120, 4);
         summary.recordGapChanges(2, 1);
         summary.recordLastDataId(500);
         summary.recordFullAnalysis(2000);
-        summary.logSummary(INTERVAL_END_TIME);
-        assertEquals(Arrays.<Object> asList(Constants.LONG_OPERATION_THRESHOLD + 1, 1, 120L, 120L, 4, 2L, 1L, "at " + new Date(2000), "500"),
-                captureInfoArguments());
-        verifyNoMoreInteractions(log);
+        assertEquals("Gap detection summary for the last 30001 ms: 1 cycles, average detection time 120 ms, maximum detection time 120 ms, "
+                + "4 open gaps, 2 gaps added, 1 gaps deleted, last data ID 500",
+                summary.getInfoMessage(LOG_TIME));
     }
 
     @Test
-    void testInfoReportsAverageAndMaximumDetectionTime() {
+    void testInfoMessageReportsAverageAndMaximumDetectionTime() {
         summary.recordDetection(100, 3);
         summary.recordDetection(300, 5);
-        summary.logSummary(INTERVAL_END_TIME);
-        List<Object> arguments = captureInfoArguments();
-        assertEquals(2, arguments.get(1));
-        assertEquals(200L, arguments.get(2));
-        assertEquals(300L, arguments.get(3));
-        assertEquals(5, arguments.get(4));
+        assertEquals("Gap detection summary for the last 30001 ms: 2 cycles, average detection time 200 ms, maximum detection time 300 ms, "
+                + "5 open gaps, 0 gaps added, 0 gaps deleted, last data ID none",
+                summary.getInfoMessage(LOG_TIME));
     }
 
     @Test
-    void testInfoReportsNeverAndNoneWhenNothingRecorded() {
-        summary.recordDetection(10, 0);
-        summary.logSummary(INTERVAL_END_TIME);
-        List<Object> arguments = captureInfoArguments();
-        assertEquals("never", arguments.get(7));
-        assertEquals("none", arguments.get(8));
-    }
-
-    @Test
-    void testCountersResetAfterInfo() {
+    void testDebugMessageReportsLastDetectionAndGapChanges() {
+        summary.recordDetection(100, 3);
         summary.recordDetection(120, 4);
         summary.recordGapChanges(2, 1);
-        summary.logSummary(INTERVAL_END_TIME);
+        summary.recordGapChanges(1, 1);
+        assertEquals("Gap detection took 120 ms, 3 gaps added and 2 gaps deleted since the last summary", summary.getDebugMessage());
+    }
+
+    @Test
+    void testResetCountersClearsCycleFigures() {
+        summary.recordDetection(120, 4);
+        summary.recordGapChanges(2, 1);
+        summary.resetCounters(LOG_TIME);
         assertEquals(0, summary.getCycleCount());
         assertEquals(0L, summary.getGapsAdded());
         assertEquals(0L, summary.getGapsDeleted());
     }
 
     @Test
-    void testLastDataIdAndFullAnalysisSurviveReset() {
+    void testResetCountersRestartsElapsedTime() {
         summary.recordDetection(120, 4);
-        summary.recordLastDataId(500);
-        summary.recordFullAnalysis(2000);
-        summary.logSummary(INTERVAL_END_TIME);
-        assertEquals(500L, summary.getLastDataId());
-        assertEquals(2000L, summary.getLastFullAnalysisTime());
-        assertEquals(4, summary.getOpenGapCount());
+        summary.resetCounters(LOG_TIME);
+        summary.recordDetection(80, 4);
+        assertEquals("Gap detection summary for the last 5000 ms: 1 cycles, average detection time 80 ms, maximum detection time 80 ms, "
+                + "4 open gaps, 0 gaps added, 0 gaps deleted, last data ID none",
+                summary.getInfoMessage(LOG_TIME + 5000));
     }
 
     @Test
-    void testNextInfoWaitsForNewInterval() {
+    void testLastDataIdOpenGapsAndFullAnalysisSurviveReset() {
         summary.recordDetection(120, 4);
-        summary.logSummary(INTERVAL_END_TIME);
-        summary.recordDetection(80, 4);
-        summary.logSummary(INTERVAL_END_TIME + Constants.LONG_OPERATION_THRESHOLD);
-        verify(log).info(anyString(), any(Object[].class));
-        summary.logSummary(INTERVAL_END_TIME + Constants.LONG_OPERATION_THRESHOLD + 1);
-        verify(log, times(2)).info(anyString(), any(Object[].class));
-    }
-
-    private List<Object> captureInfoArguments() {
-        ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
-        verify(log).info(anyString(), arguments.capture());
-        return Arrays.asList(arguments.getValue());
+        summary.recordLastDataId(500);
+        summary.recordFullAnalysis(2000);
+        summary.resetCounters(LOG_TIME);
+        assertEquals(500L, summary.getLastDataId());
+        assertEquals(2000L, summary.getLastFullAnalysisTime());
+        assertEquals(4, summary.getOpenGapCount());
     }
 }
