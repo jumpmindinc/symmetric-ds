@@ -60,6 +60,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
@@ -80,6 +81,7 @@ import org.jumpmind.symmetric.route.AbstractFileParsingRouter;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
+import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IInitialLoadService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -113,6 +115,7 @@ class DataExtractorServiceTest {
     private IOutgoingBatchService outgoingBatchService;
     private IRouterService routerService;
     private IInitialLoadService initialLoadService;
+    private IExtensionService extensionService;
     private TestableDataExtractorService service;
     private Node targetNode;
 
@@ -180,6 +183,8 @@ class DataExtractorServiceTest {
         when(engine.getRouterService()).thenReturn(routerService);
         initialLoadService = mock(IInitialLoadService.class);
         when(engine.getInitialLoadService()).thenReturn(initialLoadService);
+        extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         service = new TestableDataExtractorService(engine);
         targetNode = new Node();
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
@@ -301,6 +306,40 @@ class DataExtractorServiceTest {
         service.checkSendDeferredForeignKeys(LOAD_ID, targetNode);
         assertEquals(2, service.sendPasses.get(),
                 "a load completed through the batch-loaded path must release its deferred-constraints claim");
+    }
+
+    @Test
+    void updateExtractRequestLoadTime_loadReachesTerminalState_notifiesSyncEventListeners() {
+        TableReloadStatus status = new TableReloadStatus();
+        status.setLoadId((int) LOAD_ID);
+        status.setFullLoad(true);
+        status.setCompleted(true);
+        when(dataService.updateTableReloadStatusDataLoaded(any(), anyLong(), any(), anyLong(), anyInt(), anyBoolean())).thenReturn(status);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        OutgoingBatch outgoingBatch = new OutgoingBatch();
+        outgoingBatch.setBatchId(1);
+        outgoingBatch.setNodeId("target");
+        outgoingBatch.setLoadId(LOAD_ID);
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        service.updateExtractRequestLoadTime(transaction, new Date(), outgoingBatch);
+        verify(listener).loadTerminated(transaction, status, "target");
+    }
+
+    @Test
+    void updateExtractRequestLoadTime_loadStillRunning_doesNotNotifySyncEventListeners() {
+        TableReloadStatus status = new TableReloadStatus();
+        status.setLoadId((int) LOAD_ID);
+        status.setFullLoad(true);
+        when(dataService.updateTableReloadStatusDataLoaded(any(), anyLong(), any(), anyLong(), anyInt(), anyBoolean())).thenReturn(status);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        OutgoingBatch outgoingBatch = new OutgoingBatch();
+        outgoingBatch.setBatchId(1);
+        outgoingBatch.setNodeId("target");
+        outgoingBatch.setLoadId(LOAD_ID);
+        service.updateExtractRequestLoadTime(mock(ISqlTransaction.class), new Date(), outgoingBatch);
+        verify(listener, never()).loadTerminated(any(), any(), any());
     }
 
     @Test
