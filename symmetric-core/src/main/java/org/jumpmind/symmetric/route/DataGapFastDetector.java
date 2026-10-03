@@ -54,14 +54,11 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Responsible for managing gaps in data ids to ensure that all captured data is routed for delivery to other nodes.
  */
 public class DataGapFastDetector extends DataGapDetector implements ISqlRowMapper<Long> {
-    private static final Logger log = LoggerFactory.getLogger(DataGapFastDetector.class);
     private static final String EXPIRED_GAP_COLLISION_MSG = "Detected expired data gap collision during insert, clearing conflicts and retrying";
     protected IContextService contextService;
     protected IClusterService clusterService;
@@ -101,6 +98,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
         ProcessInfo processInfo = this.statisticManager.newProcessInfo(new ProcessInfoKey(
                 nodeService.findIdentityNodeId(), null, ProcessType.GAP_DETECT));
         processInfo.setStatus(ProcessStatus.QUERYING);
+        long detectionStartTime = System.currentTimeMillis();
         try {
             maxDataToSelect = parameterService.getLong(ParameterConstants.ROUTING_LARGEST_GAP_SIZE);
             detectInvalidGaps = parameterService.is(ParameterConstants.ROUTING_DETECT_INVALID_GAPS) || firstTime.get(parameterService.getEngineName()) == null;
@@ -119,6 +117,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 afterRouting();
                 reset();
                 log.info("Full gap analysis is done after {} ms", System.currentTimeMillis() - ts);
+                detectionSummary.recordFullAnalysis(System.currentTimeMillis());
             } else if (gaps == null || parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
                 gaps = dataService.findDataGaps();
                 if (detectInvalidGaps) {
@@ -128,6 +127,9 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
             } else {
                 processInfo.setStatus(ProcessStatus.OK);
             }
+            detectionSummary.recordDetection(System.currentTimeMillis() - detectionStartTime, gaps.size());
+            logGapDetectionSummary(System.currentTimeMillis());
+            detectionSummary.resetCounters(System.currentTimeMillis());
         } catch (RuntimeException e) {
             if (processInfo.getStatus() != ProcessStatus.OK) {
                 processInfo.setStatus(ProcessStatus.ERROR);
@@ -173,7 +175,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
         ProcessInfo processInfo = this.statisticManager.newProcessInfo(new ProcessInfoKey(
                 nodeService.findIdentityNodeId(), null, ProcessType.GAP_DETECT));
         processInfo.setStatus(ProcessStatus.PROCESSING);
-        long printStats = System.currentTimeMillis();
+        DataGapPassStats passStats = new DataGapPassStats();
         long gapTimoutInMs = parameterService.getLong(ParameterConstants.ROUTING_STALE_DATA_ID_GAP_TIME);
         final int dataIdIncrementBy = parameterService.getInt(ParameterConstants.DATA_ID_INCREMENT_BY);
         Date currentDate = new Date(routingStartTime);
@@ -192,12 +194,9 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
         try {
             long ts = System.currentTimeMillis();
             long lastDataId = -1;
-            int dataIdCount = 0;
-            int rangeChecked = 0;
-            int expireChecked = 0;
             gapsAll.addAll(gaps);
             Map<DataGap, List<Long>> dataIdMap = getDataIdMap();
-            if (System.currentTimeMillis() - ts > 30000) {
+            if (System.currentTimeMillis() - ts > Constants.LONG_OPERATION_THRESHOLD) {
                 log.info("It took {}ms to map {} data IDs into {} gaps", new Object[] { System.currentTimeMillis() - ts,
                         dataIds.size(), gaps.size() });
             }
@@ -205,8 +204,8 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 final boolean lastGap = dataGap.equals(gaps.get(gaps.size() - 1));
                 lastDataId = -1;
                 List<Long> ids = dataIdMap.get(dataGap);
-                dataIdCount += ids.size();
-                rangeChecked += dataGap.getEndId() - dataGap.getStartId();
+                passStats.addIdsFound(ids.size());
+                passStats.addRangeChecked(dataGap.getEndId() - dataGap.getStartId());
                 // if we found data in the gap
                 if (ids.size() > 0) {
                     gapsDeleted.add(dataGap);
@@ -216,7 +215,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                     boolean isGapEmpty = false;
                     if (!isAllDataRead) {
                         isGapEmpty = dataService.countDataInRange(dataGap.getStartId() - 1, dataGap.getEndId() + 1) == 0;
-                        expireChecked++;
+                        passStats.incrementGapsExpireChecked();
                     }
                     if (isAllDataRead || isGapEmpty) {
                         gapsExpired.add(dataGap);
@@ -242,16 +241,20 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 if (Thread.interrupted()) {
                     throw new SymmetricException("Thread received interrupt");
                 }
-                if (System.currentTimeMillis() - printStats > 30000) {
-                    checkInterrupted();
-                    clusterService.refreshLock(ClusterConstants.ROUTE);
-                    log.info("The data gap detection has been running for {}ms, detected {} rows over a gap range of {}, "
-                            + "found {} new gaps, found old {} gaps, and checked data in {} gaps", new Object[] { System.currentTimeMillis() - ts,
-                                    dataIdCount, rangeChecked, gapsAdded.size(), gapsDeleted.size(), expireChecked });
-                    printStats = System.currentTimeMillis();
+                if (progressLog.isDebugDue(System.currentTimeMillis())) {
+                    if (progressLog.isInfoDue(System.currentTimeMillis())) {
+                        checkInterrupted();
+                        clusterService.refreshLock(ClusterConstants.ROUTE);
+                    }
+                    progressLog.infoOrDebug(System.currentTimeMillis(),
+                            "The data gap detection has been running for {}ms, detected {} rows over a gap range of {}, "
+                                    + "found {} new gaps, found old {} gaps, and checked data in {} gaps", new Object[] { System.currentTimeMillis() - ts,
+                                            passStats.getIdsFound(), passStats.getRangeChecked(), gapsAdded.size(), gapsDeleted.size(),
+                                            passStats.getGapsExpireChecked() });
                 }
             }
             if (lastDataId != -1) {
+                detectionSummary.recordLastDataId(lastDataId);
                 DataGap newGap = new DataGap(lastDataId + 1, lastDataId + maxDataToSelect, currentDate);
                 if (addDataGap(newGap)) {
                     log.debug("Inserting new last data gap: {}", newGap);
@@ -259,6 +262,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
             }
             processInfo.setStatus(ProcessStatus.CREATING);
             saveDataGaps();
+            detectionSummary.recordGapChanges(gapsAdded.size(), gapsDeleted.size() + gapsExpired.size());
             if (gaps.size() > 0) {
                 lastGap = gaps.get(gaps.size() - 1);
             }
@@ -266,10 +270,8 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
             if (isBusyExpire) {
                 setLastBusyExpireRunTime(System.currentTimeMillis());
             }
-            long updateTimeInMs = System.currentTimeMillis() - ts;
-            if (updateTimeInMs > 10000) {
-                log.info("Detecting gaps took {} ms", updateTimeInMs);
-            }
+            long detectionTime = System.currentTimeMillis() - ts;
+            logDetectionTime(System.currentTimeMillis(), detectionTime);
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {
             processInfo.setStatus(ProcessStatus.ERROR);
