@@ -271,7 +271,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 setLastBusyExpireRunTime(System.currentTimeMillis());
             }
             long detectionTime = System.currentTimeMillis() - ts;
-            progressLog.infoOrDebug(System.currentTimeMillis(), "Detecting gaps took {} ms", detectionTime);
+            logDetectionTime(System.currentTimeMillis(), detectionTime);
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {
             processInfo.setStatus(ProcessStatus.ERROR);

@@ -221,7 +221,7 @@ public class DataGapDetector {
                 }
             }
             long updateTimeInMs = System.currentTimeMillis() - ts;
-            progressLog.infoOrDebug(System.currentTimeMillis(), "Detecting gaps took {} ms", updateTimeInMs);
+            logDetectionTime(System.currentTimeMillis(), updateTimeInMs);
             detectionSummary.recordDetection(updateTimeInMs, gapCheck.size() - passStats.getGapsDeleted());
             detectionSummary.recordGapChanges(passStats.getGapsAdded(), passStats.getGapsDeleted());
             if (lastDataId != -1) {
@@ -239,6 +239,12 @@ public class DataGapDetector {
     // Overridden by subclasses (e.g. PRO)
     protected String getLoggerName() {
         return getClass().getName();
+    }
+
+    protected void logDetectionTime(long currentTime, long detectionTimeInMs) {
+        if (detectionTimeInMs > Constants.LONG_OPERATION_DEBUG_THRESHOLD) {
+            progressLog.infoOrDebug(currentTime, "Detecting gaps took {} ms", detectionTimeInMs);
+        }
     }
 
     protected void logGapDetectionSummary(long currentTime) {

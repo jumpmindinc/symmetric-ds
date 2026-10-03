@@ -115,4 +115,19 @@ class DataGapDetectorSummaryLoggingTest {
         detector.logGapDetectionSummary(infoTime + 1);
         assertEquals(1, appender.list.size());
     }
+
+    @Test
+    void testDetectionTimeBelowDebugThresholdIsNotLogged() {
+        detector.logDetectionTime(startTime + Constants.LONG_OPERATION_THRESHOLD + 1000, Constants.LONG_OPERATION_DEBUG_THRESHOLD);
+        assertEquals(0, appender.list.size());
+    }
+
+    @Test
+    void testDetectionTimeAboveDebugThresholdIsLogged() {
+        detector.logDetectionTime(startTime + Constants.LONG_OPERATION_THRESHOLD + 1000, Constants.LONG_OPERATION_DEBUG_THRESHOLD + 1);
+        List<ILoggingEvent> events = appender.list;
+        assertEquals(1, events.size());
+        assertEquals(Level.INFO, events.get(0).getLevel());
+        assertEquals("Detecting gaps took " + (Constants.LONG_OPERATION_DEBUG_THRESHOLD + 1) + " ms", events.get(0).getFormattedMessage());
+    }
 }
