@@ -57,6 +57,8 @@ be compared to a threshold value.
 
 |emptyTargetNodeGroup|Number of node group links whose target node group has no enabled nodes (and source includes the current node), whether those nodes were removed, disabled, or never registered, which is a misconfiguration that is known to degrade the performance of the Routing job.|
 
+|disabledNodeBatches|Number of pending outgoing batches held for disabled nodes (sync_enabled = 0), which can never be delivered and degrade the performance of jobs that scan outgoing batches. Remove or clean up nodes that are not coming back.|
+
 |jvmOutOfMemoryMonitor|Number of times a java.lang.OutOfMemoryError appears in the wrapper.log file within the last 24 hours.|
 
 |jvm64Bit|Value of 0 or 1 indicating whether or not the operating system is 64-bit and the JVM is 32-bit.|✔
