@@ -60,26 +60,29 @@ class ReservationCookieManager {
     void handleServiceBusy(HttpConnection conn) {
         boolean clearBusyAffinityCookieEnabled = engine.getParameterService()
                 .is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false);
+        String uri = getUri(conn);
         if (clearBusyAffinityCookieEnabled) {
             clearReservationCookieForUri(conn);
+            log.debug("Clearing load balancer affinity cookies for {}", uri);
         } else {
-            log.debug("Not clearing load balancer affinity cookies for {} because {} = {}", getUri(conn),
+            log.debug("Not clearing load balancer affinity cookies for {} because {} = {}", uri,
                     ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, clearBusyAffinityCookieEnabled);
         }
     }
 
     void clearReservationCookieForUri(HttpConnection conn) {
         Integer outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
+        String uriString = getUri(conn);
         if (outstandingReservations != null && outstandingReservations > 0) {
             log.debug(
                     "Not clearing load balancer affinity cookies for {} because {} reservation(s) are outstanding",
-                    getUri(conn), outstandingReservations);
+                    uriString, outstandingReservations);
             return;
         }
         CookieHandler handler = CookieHandler.getDefault();
         if (!(handler instanceof CookieManager)) {
             log.debug("Not clearing load balancer affinity cookies for {} because no CookieManager is installed (server.http.cookies.enabled may be false)",
-                    getUri(conn));
+                    uriString);
             return;
         }
         URI uri = getAffinityURI(conn.getURL());
