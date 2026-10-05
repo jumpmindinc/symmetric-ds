@@ -67,6 +67,15 @@ public interface IDataExtractorService {
 
     public void resetExtractRequest(OutgoingBatch batch);
 
+    /**
+     * Return extract requests to NE when they are marked complete but their batches are still requested, which is the state a load is left in when the JVM is
+     * interrupted mid-extract. Called automatically from {@link #queueWork(boolean)}; exposed so an operator can drive it directly, and so a request whose
+     * range contains already-delivered batches can be recovered with {@code force} once the target has been dealt with.
+     *
+     * @return the number of requests restarted
+     */
+    public int recoverStuckExtractRequests(boolean force);
+
     public void removeBatchFromStaging(OutgoingBatch batch);
 
     public StagingFileLock acquireStagingFileLock(OutgoingBatch batch);
