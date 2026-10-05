@@ -58,6 +58,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
     private String nodeId;
     private String securityToken;
     private Map<String, String> requestProperties;
+    private boolean isReservationHeld = false;
 
     public HttpIncomingTransport(HttpTransportManager httpTransportManager, HttpConnection connection, IParameterService parameterService) {
         this.httpTransportManager = httpTransportManager;
@@ -86,6 +87,10 @@ public class HttpIncomingTransport implements IIncomingTransport {
 
     @Override
     public void close() {
+        if (isReservationHeld) {
+            httpTransportManager.getReservationCookieManager().endReservation(connection.getURL());
+            isReservationHeld = false;
+        }
         if (connection != null) {
             try {
                 connection.close();
@@ -137,6 +142,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
             case WebConstants.SYNC_DISABLED:
                 throw new SyncDisabledException();
             case WebConstants.SC_SERVICE_BUSY:
+                httpTransportManager.getReservationCookieManager().handleServiceBusy(connection);
                 throw new ConnectionRejectedException();
             case WebConstants.SC_ALREADY_CONNECTED:
                 throw new ConnectionDuplicateException();
@@ -154,6 +160,10 @@ public class HttpIncomingTransport implements IIncomingTransport {
                 throw new NoContentException();
             case WebConstants.SC_OK:
                 httpTransportManager.updateSession(connection);
+                if (!isReservationHeld) {
+                    httpTransportManager.getReservationCookieManager().beginReservation(connection.getURL());
+                    isReservationHeld = true;
+                }
                 is = HttpTransportManager.getInputStreamFrom(connection);
                 return is;
             default:
