@@ -71,7 +71,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void incomingBatchEnded_everyListener_isNotifiedWithArguments() {
+    void testIncomingBatchEnded_withMultipleListeners() {
         ISyncEventListener first = mock(ISyncEventListener.class);
         ISyncEventListener second = mock(ISyncEventListener.class);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(first, second));
@@ -83,7 +83,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void outgoingBatchEnded_listener_isNotifiedWithArguments() {
+    void testOutgoingBatchEnded_withListener() {
         ISyncEventListener listener = mock(ISyncEventListener.class);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
         OutgoingBatch batch = new OutgoingBatch();
@@ -92,7 +92,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void loadTerminated_listener_isNotifiedWithArguments() {
+    void testLoadTerminated_withListener() {
         ISyncEventListener listener = mock(ISyncEventListener.class);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
         TableReloadStatus status = new TableReloadStatus();
@@ -101,7 +101,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void outgoingBatchEnded_failingListener_laterListenersAreStillNotified() {
+    void testOutgoingBatchEnded_withFailingListenerNotifiesLaterListeners() {
         ISyncEventListener failing = mock(ISyncEventListener.class);
         ISyncEventListener later = mock(ISyncEventListener.class);
         OutgoingBatch batch = new OutgoingBatch();
@@ -112,7 +112,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void outgoingBatchEnded_failingListener_logsError() {
+    void testOutgoingBatchEnded_withFailingListenerLogsError() {
         ISyncEventListener failing = mock(ISyncEventListener.class);
         OutgoingBatch batch = new OutgoingBatch();
         doThrow(new IllegalStateException("listener failure")).when(failing).outgoingBatchEnded(transaction, batch);
@@ -124,7 +124,7 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void incomingBatchEnded_noListeners_doesNothing() {
+    void testIncomingBatchEnded_withNoListeners() {
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of());
         SyncEventNotifier.incomingBatchEnded(engine, transaction, new IncomingBatch(), null);
         assertTrue(logAppender.list.isEmpty());

@@ -1611,7 +1611,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 outgoingBatch.getLoadId(), engine.getNodeId(), outgoingBatch.getBatchId(), 1, outgoingBatch.isBulkLoaderFlag());
         if (status != null && (status.isCancelled() || status.isCompleted())) {
             handleLoadTerminated(transaction, status, outgoingBatch.getNodeId());
-            SyncEventNotifier.loadTerminated(engine, transaction, status, outgoingBatch.getNodeId());
         }
     }
 
@@ -1625,6 +1624,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             log.info("Partial load ended for node {}, load ID {}", nodeId, status.getLoadId());
             nodeService.setPartialLoadEnded(transaction, nodeId);
         }
+        SyncEventNotifier.loadTerminated(engine, transaction, status, nodeId);
     }
 
     @Override

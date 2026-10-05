@@ -83,11 +83,14 @@ class ManageIncomingBatchListenerTest {
         writerTransaction = mock(ISqlTransaction.class);
         IExtensionService extensionService = mock(IExtensionService.class);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(syncEventListener));
-        when(engine.getParameterService()).thenReturn(mock(IParameterService.class));
-        when(engine.getSymmetricDialect()).thenReturn(mock(ISymmetricDialect.class));
+        IParameterService parameterService = mock(IParameterService.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getDataLoaderService()).thenReturn(dataLoaderService);
         when(engine.getIncomingBatchService()).thenReturn(incomingBatchService);
-        when(engine.getStatisticManager()).thenReturn(mock(IStatisticManager.class));
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
         when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getTablePrefix()).thenReturn(TABLE_PREFIX);
         batch = new Batch();
@@ -113,21 +116,15 @@ class ManageIncomingBatchListenerTest {
         listener.currentBatch = incomingBatch;
     }
 
-    private void failOnTable(String tableName) {
-        Table table = new Table(tableName, new Column("ID", true));
-        when(context.getRelation()).thenReturn(table);
-        when(context.getData()).thenReturn(new CsvData(DataEventType.INSERT));
-    }
-
     @Test
-    void batchSuccessful_notifiesSyncEventListenersWithOkBatchOutsideTransaction() {
+    void testBatchSuccessful_notifiesListenersOutsideTransaction() {
         listener.batchSuccessful(context);
         verify(syncEventListener).incomingBatchEnded(isNull(), any(IncomingBatch.class), isNull());
         assertEquals(Status.OK, incomingBatch.getStatus());
     }
 
     @Test
-    void batchSuccessful_statusUpdateFails_doesNotNotifySyncEventListeners() {
+    void testBatchSuccessful_whenStatusUpdateFails() {
         when(incomingBatchService.isRecordOkBatchesEnabled()).thenReturn(true);
         doThrow(new IllegalStateException("update failed")).when(incomingBatchService).updateIncomingBatch(incomingBatch);
         assertThrows(IllegalStateException.class, () -> listener.batchSuccessful(context));
@@ -136,7 +133,7 @@ class ManageIncomingBatchListenerTest {
     }
 
     @Test
-    void batchInError_failingRow_notifiesSyncEventListenersWithWriterTransactionAndFailingTable() {
+    void testBatchInError_withFailingRow() {
         failOnTable("ORDERS");
         listener.batchInError(context, new IllegalStateException("load failed"));
         ArgumentCaptor<IncomingError> error = ArgumentCaptor.forClass(IncomingError.class);
@@ -147,13 +144,13 @@ class ManageIncomingBatchListenerTest {
     }
 
     @Test
-    void batchInError_failingRowUnknown_notifiesSyncEventListenersWithoutError() {
+    void testBatchInError_withUnknownFailingRow() {
         listener.batchInError(context, new IllegalStateException("load failed"));
         verify(syncEventListener).incomingBatchEnded(writerTransaction, incomingBatch, null);
     }
 
     @Test
-    void batchInError_suppressedError_doesNotNotifySyncEventListeners() {
+    void testBatchInError_withSuppressedError() {
         batch.setLineCount(7);
         failOnTable("ORDERS");
         listener.batchInError(context, new ProtocolException("bad protocol"));
@@ -162,10 +159,16 @@ class ManageIncomingBatchListenerTest {
     }
 
     @Test
-    void batchInError_failingSyncEventListener_stillRecordsBatchStatus() {
+    void testBatchInError_withFailingListener() {
         doThrow(new IllegalStateException("listener failure")).when(syncEventListener).incomingBatchEnded(any(), any(), any());
         listener.batchInError(context, new IllegalStateException("load failed"));
         verify(incomingBatchService).insertIncomingBatch(writerTransaction, incomingBatch);
         assertSame(incomingBatch, listener.currentBatch);
+    }
+
+    private void failOnTable(String tableName) {
+        Table table = new Table(tableName, new Column("ID", true));
+        when(context.getRelation()).thenReturn(table);
+        when(context.getData()).thenReturn(new CsvData(DataEventType.INSERT));
     }
 }

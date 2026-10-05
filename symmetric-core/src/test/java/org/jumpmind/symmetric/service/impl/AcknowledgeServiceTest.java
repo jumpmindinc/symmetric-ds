@@ -379,7 +379,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void firstTimeOkNotifiesSyncEventListenersWithAckTransaction() {
+    void testAck_withFirstTimeOkNotifiesListeners() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
@@ -390,7 +390,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void nonSuppressedErrorNotifiesSyncEventListeners() {
+    void testAck_withNonSuppressedErrorNotifiesListeners() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
@@ -402,7 +402,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void suppressedErrorDoesNotNotifySyncEventListeners() {
+    void testAck_withSuppressedErrorSkipsListeners() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         batch.setErrorLine(1);
         batch.setSqlCode(ErrorConstants.DEADLOCK_CODE);
@@ -418,7 +418,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void duplicateOkDoesNotNotifySyncEventListeners() {
+    void testAck_withDuplicateOkSkipsListeners() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.OK);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
@@ -429,7 +429,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void failingSyncEventListenerDoesNotPreventAckCommit() {
+    void testAck_withFailingListenerStillCommits() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);

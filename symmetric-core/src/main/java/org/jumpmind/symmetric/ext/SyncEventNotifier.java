@@ -37,6 +37,9 @@ import org.slf4j.LoggerFactory;
 public final class SyncEventNotifier {
     private static final Logger log = LoggerFactory.getLogger(SyncEventNotifier.class);
 
+    /**
+     * Prevents use of default constructor
+     */
     private SyncEventNotifier() {
     }
 
@@ -57,7 +60,7 @@ public final class SyncEventNotifier {
             try {
                 notification.accept(listener);
             } catch (RuntimeException ex) {
-                log.error("Sync event listener {} failed", listener.getClass().getName(), ex);
+                log.error("Sync event listener " + listener.getClass().getName() + " failed", ex);
             }
         }
     }

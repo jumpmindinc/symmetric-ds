@@ -309,7 +309,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void updateExtractRequestLoadTime_loadReachesTerminalState_notifiesSyncEventListeners() {
+    void testUpdateExtractRequestLoadTime_withTerminatedLoadNotifiesListeners() {
         TableReloadStatus status = new TableReloadStatus();
         status.setLoadId((int) LOAD_ID);
         status.setFullLoad(true);
@@ -327,7 +327,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void updateExtractRequestLoadTime_loadStillRunning_doesNotNotifySyncEventListeners() {
+    void testUpdateExtractRequestLoadTime_withRunningLoadSkipsListeners() {
         TableReloadStatus status = new TableReloadStatus();
         status.setLoadId((int) LOAD_ID);
         status.setFullLoad(true);
@@ -338,7 +338,8 @@ class DataExtractorServiceTest {
         outgoingBatch.setBatchId(1);
         outgoingBatch.setNodeId("target");
         outgoingBatch.setLoadId(LOAD_ID);
-        service.updateExtractRequestLoadTime(mock(ISqlTransaction.class), new Date(), outgoingBatch);
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        service.updateExtractRequestLoadTime(transaction, new Date(), outgoingBatch);
         verify(listener, never()).loadTerminated(any(), any(), any());
     }
 
