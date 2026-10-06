@@ -127,6 +127,8 @@ import org.jumpmind.util.FormatUtils;
  * @see IRouterService
  */
 public class RouterService extends AbstractService implements IRouterService, INodeCommunicationExecutor {
+    public static final int GAP_COUNT_WARN_EXCESSIVE = 10000;
+    protected static final long EXCESSIVE_GAP_WARN_INTERVAL_MS = 600000;
     final int MAX_LOGGING_LENGTH = 512;
     protected static final Set<String> PRO_ONLY_ROUTER_TYPES = Collections.unmodifiableSet(
             new HashSet<String>(Arrays.asList("column", "lookuptable", "subselect", "segment")));
@@ -145,6 +147,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected IExtensionService extensionService;
     protected DataGapDetector gapDetector;
     protected boolean firstTimeCheck = true;
+    protected long lastExcessiveGapWarnTime;
     protected boolean isUsingTargetExternalId;
     protected boolean useChannelThreading;
 
@@ -233,6 +236,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                         isUsingTargetExternalId = engine.getCacheManager().isUsingTargetExternalId(false);
                         useChannelThreading = parameterService.is(ParameterConstants.ROUTING_USE_CHANNEL_THREADS);
                         gapDetector.beforeRouting();
+                        warnIfGapCountExcessive(gapDetector.getDataGaps().size(), System.currentTimeMillis());
                         dataCount = routeDataForEachChannel();
                         ts = System.currentTimeMillis() - ts;
                         if (dataCount > 0 || ts > Constants.LONG_OPERATION_THRESHOLD) {
@@ -385,6 +389,18 @@ public class RouterService extends AbstractService implements IRouterService, IN
             throw ex;
         }
         return dataCount;
+    }
+
+    protected boolean warnIfGapCountExcessive(int gapCount, long currentTimeMs) {
+        boolean isWarned = false;
+        if (gapCount >= GAP_COUNT_WARN_EXCESSIVE && currentTimeMs - lastExcessiveGapWarnTime >= EXCESSIVE_GAP_WARN_INTERVAL_MS) {
+            log.warn("Routing starts with {} data gaps, which reaches the warning level of {}. Each channel queries all gaps, so "
+                    + "channels that route in parallel (see {}) multiply the number of queries and slow routing down",
+                    gapCount, GAP_COUNT_WARN_EXCESSIVE, ParameterConstants.ROUTING_USE_CHANNEL_THREADS);
+            lastExcessiveGapWarnTime = currentTimeMs;
+            isWarned = true;
+        }
+        return isWarned;
     }
 
     protected Set<String> getReadyChannels() {

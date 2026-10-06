@@ -25,6 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.jumpmind.log.LogThrottle;
+import org.jumpmind.log.ThrottledLogger;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.mapper.NumberMapper;
@@ -48,7 +50,10 @@ import org.slf4j.LoggerFactory;
  * Responsible for managing gaps in data ids to ensure that all captured data is routed for delivery to other nodes.
  */
 public class DataGapDetector {
-    private static final Logger log = LoggerFactory.getLogger(DataGapDetector.class);
+    protected final Logger log = LoggerFactory.getLogger(getLoggerName());
+    protected final DataGapDetectionSummary detectionSummary = new DataGapDetectionSummary(System.currentTimeMillis());
+    protected final ThrottledLogger progressLog = new ThrottledLogger(log,
+            new LogThrottle(System.currentTimeMillis(), Constants.LONG_OPERATION_THRESHOLD, Constants.LONG_OPERATION_DEBUG_THRESHOLD, true));
     protected IDataService dataService;
     protected IParameterService parameterService;
     protected ISymmetricDialect symmetricDialect;
@@ -73,13 +78,14 @@ public class DataGapDetector {
      * Always make sure sym_data_gap is up to date to make sure that we don't dual route data.
      */
     public void beforeRouting() {
-        long printStats = System.currentTimeMillis();
+        DataGapPassStats passStats = new DataGapPassStats();
         ProcessInfo processInfo = this.statisticManager.newProcessInfo(new ProcessInfoKey(
                 nodeService.findIdentityNodeId(), null, ProcessType.GAP_DETECT));
         try {
             long ts = System.currentTimeMillis();
             processInfo.setStatus(ProcessStatus.QUERYING);
             final List<DataGap> gaps = dataService.findDataGaps();
+            incrementGapQueryStats(passStats, processInfo);
             long lastDataId = -1;
             final int dataIdIncrementBy = parameterService
                     .getInt(ParameterConstants.DATA_ID_INCREMENT_BY);
@@ -88,10 +94,6 @@ public class DataGapDetector {
             final long gapTimoutInMs = parameterService
                     .getLong(ParameterConstants.ROUTING_STALE_DATA_ID_GAP_TIME);
             long databaseTime = symmetricDialect.getDatabaseTime();
-            int idsFilled = 0;
-            int newGapsInserted = 0;
-            int rangeChecked = 0;
-            int gapsDeleted = 0;
             Set<DataGap> gapCheck = new HashSet<DataGap>(gaps);
             boolean supportsTransactionViews = symmetricDialect.supportsTransactionViews();
             long earliestTransactionTime = 0;
@@ -111,13 +113,14 @@ public class DataGapDetector {
                 processInfo.setStatus(ProcessStatus.QUERYING);
                 long queryForIdsTs = System.currentTimeMillis();
                 List<Number> ids = sqlTemplate.query(sql, new NumberMapper(), params);
+                incrementGapQueryStats(passStats, processInfo);
                 if (System.currentTimeMillis() - queryForIdsTs > Constants.LONG_OPERATION_THRESHOLD) {
                     log.info("It took longer than {}ms to run the following sql for gap from {} to {}.  {}",
                             new Object[] { Constants.LONG_OPERATION_THRESHOLD, dataGap.getStartId(), dataGap.getEndId(), sql });
                 }
                 processInfo.setStatus(ProcessStatus.PROCESSING);
-                idsFilled += ids.size();
-                rangeChecked += dataGap.getEndId() - dataGap.getStartId();
+                passStats.addIdsFound(ids.size());
+                passStats.addRangeChecked(dataGap.getEndId() - dataGap.getStartId());
                 ISqlTransaction transaction = null;
                 try {
                     transaction = sqlTemplate.startSqlTransaction();
@@ -128,18 +131,20 @@ public class DataGapDetector {
                             // there was a new gap at the start
                             DataGap newGap = new DataGap(dataGap.getStartId(), dataId - 1);
                             if (!gapCheck.contains(newGap)) {
+                                incrementGapQueryStats(passStats, processInfo);
                                 dataService.insertDataGap(transaction, newGap);
                                 gapCheck.add(newGap);
                             }
-                            newGapsInserted++;
+                            passStats.incrementGapsAdded();
                         } else if (lastDataId != -1 && lastDataId + dataIdIncrementBy != dataId && lastDataId != dataId) {
                             // found a gap somewhere in the existing gap
                             DataGap newGap = new DataGap(lastDataId + 1, dataId - 1);
                             if (!gapCheck.contains(newGap)) {
+                                incrementGapQueryStats(passStats, processInfo);
                                 dataService.insertDataGap(transaction, newGap);
                                 gapCheck.add(newGap);
                             }
-                            newGapsInserted++;
+                            passStats.incrementGapsAdded();
                         }
                         lastDataId = dataId;
                     }
@@ -148,19 +153,22 @@ public class DataGapDetector {
                         if (!lastGap && lastDataId + dataIdIncrementBy <= dataGap.getEndId()) {
                             DataGap newGap = new DataGap(lastDataId + dataIdIncrementBy, dataGap.getEndId());
                             if (!gapCheck.contains(newGap)) {
+                                incrementGapQueryStats(passStats, processInfo);
                                 dataService.insertDataGap(transaction, newGap);
                                 gapCheck.add(newGap);
                             }
-                            newGapsInserted++;
+                            passStats.incrementGapsAdded();
                         }
+                        incrementGapQueryStats(passStats, processInfo);
                         dataService.deleteDataGap(transaction, dataGap);
-                        gapsDeleted++;
+                        passStats.incrementGapsDeleted();
                         // if we did not find data in the gap and it was not the
                         // last gap
                     } else if (!lastGap) {
                         Date createTime = dataGap.getCreateTime();
                         if (supportsTransactionViews) {
                             if (createTime != null && (createTime.getTime() < earliestTransactionTime || earliestTransactionTime == 0)) {
+                                incrementGapQueryStats(passStats, processInfo);
                                 if (dataService.countDataInRange(dataGap.getStartId() - 1, dataGap.getEndId() + 1) == 0) {
                                     if (dataGap.getStartId() == dataGap.getEndId()) {
                                         log.info(
@@ -171,11 +179,13 @@ public class DataGapDetector {
                                                 "Found a gap in data_id from {} to {}.  Skipping it because there are no pending transactions in the database",
                                                 dataGap.getStartId(), dataGap.getEndId());
                                     }
+                                    incrementGapQueryStats(passStats, processInfo);
                                     dataService.deleteDataGap(transaction, dataGap);
-                                    gapsDeleted++;
+                                    passStats.incrementGapsDeleted();
                                 }
                             }
                         } else if (createTime != null && databaseTime - createTime.getTime() > gapTimoutInMs) {
+                            incrementGapQueryStats(passStats, processInfo);
                             if (dataService.countDataInRange(dataGap.getStartId() - 1, dataGap.getEndId() + 1) == 0) {
                                 if (dataGap.getStartId() == dataGap.getEndId()) {
                                     log.info("Found a gap in data_id at {}.  Skipping it because the gap expired", dataGap.getStartId());
@@ -183,19 +193,20 @@ public class DataGapDetector {
                                     log.info("Found a gap in data_id from {} to {}.  Skipping it because the gap expired",
                                             dataGap.getStartId(), dataGap.getEndId());
                                 }
+                                incrementGapQueryStats(passStats, processInfo);
                                 dataService.deleteDataGap(transaction, dataGap);
-                                gapsDeleted++;
+                                passStats.incrementGapsDeleted();
                             }
                         }
                     }
-                    if (System.currentTimeMillis() - printStats > 30000) {
-                        log.info(
-                                "The data gap detection process has been running for {}ms, detected {} rows that have been previously routed over a total gap range of {}, "
-                                        + "inserted {} new gaps, and deleted {} gaps", new Object[] { System.currentTimeMillis() - ts,
-                                                idsFilled, rangeChecked, newGapsInserted, gapsDeleted });
-                        printStats = System.currentTimeMillis();
-                    }
                     transaction.commit();
+                    if (progressLog.isDebugDue(System.currentTimeMillis())) {
+                        progressLog.infoOrDebug(System.currentTimeMillis(),
+                                "The data gap detection process has been running for {}ms, detected {} rows that have been previously routed over a total gap range of {}, "
+                                        + "inserted {} new gaps, deleted {} gaps, and executed {} queries", new Object[] { System.currentTimeMillis() - ts,
+                                                passStats.getIdsFound(), passStats.getRangeChecked(), passStats.getGapsAdded(),
+                                                passStats.getGapsDeleted(), passStats.getGapQueriesCount() });
+                    }
                 } catch (Error ex) {
                     if (transaction != null) {
                         transaction.rollback();
@@ -215,19 +226,53 @@ public class DataGapDetector {
             if (lastDataId != -1) {
                 DataGap newGap = new DataGap(lastDataId + 1, lastDataId + maxDataToSelect);
                 if (!gapCheck.contains(newGap)) {
+                    incrementGapQueryStats(passStats, processInfo);
                     dataService.insertDataGap(newGap);
                     gapCheck.add(newGap);
                 }
             }
             long updateTimeInMs = System.currentTimeMillis() - ts;
-            if (updateTimeInMs > 10000) {
-                log.info("Detecting gaps took {} ms", updateTimeInMs);
+            logDetectionTime(System.currentTimeMillis(), updateTimeInMs);
+            detectionSummary.recordDetection(updateTimeInMs, gapCheck.size() - passStats.getGapsDeleted());
+            detectionSummary.recordGapChanges(passStats.getGapsAdded(), passStats.getGapsDeleted());
+            if (lastDataId != -1) {
+                detectionSummary.recordLastDataId(lastDataId);
             }
+            logGapDetectionSummary(System.currentTimeMillis());
+            detectionSummary.resetCounters(System.currentTimeMillis());
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {
             processInfo.setStatus(ProcessStatus.ERROR);
             throw ex;
         }
+    }
+
+    // Overridden by subclasses (e.g. PRO)
+    protected String getLoggerName() {
+        return getClass().getName();
+    }
+
+    protected void logDetectionTime(long currentTime, long detectionTimeInMs) {
+        if (detectionTimeInMs > Constants.LONG_OPERATION_DEBUG_THRESHOLD) {
+            progressLog.infoOrDebug(currentTime, "Detecting gaps took {} ms", detectionTimeInMs);
+        }
+    }
+
+    protected void logGapDetectionSummary(long currentTime) {
+        if (progressLog.isInfoDue(currentTime)) {
+            progressLog.info(currentTime, "{}", detectionSummary.getInfoMessage(currentTime));
+        } else {
+            progressLog.infoOrDebug(currentTime, "{}", detectionSummary.getDebugMessage());
+        }
+    }
+
+    DataGapDetectionSummary getDetectionSummary() {
+        return detectionSummary;
+    }
+
+    protected void incrementGapQueryStats(DataGapPassStats passStats, ProcessInfo processInfo) {
+        passStats.incrementGapQueriesCount();
+        processInfo.incrementTotalQueryCount();
     }
 
     public void afterRouting() {

@@ -62,6 +62,7 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
     private long currentDataCount;
     private long totalDataCount = 0;
     private long totalBatchCount;
+    private long totalQueryCount;
     private long currentBatchId;
     private long currentBatchCount;
     private long currentRowCount;
@@ -160,6 +161,18 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
         if (listener != null) {
             listener.changeDataCount(totalDataCount, currentDataCount);
         }
+    }
+
+    public long getTotalQueryCount() {
+        return totalQueryCount;
+    }
+
+    public void setTotalQueryCount(long totalQueryCount) {
+        this.totalQueryCount = totalQueryCount;
+    }
+
+    public void incrementTotalQueryCount() {
+        this.totalQueryCount++;
     }
 
     public void incrementBatchCount() {

@@ -116,6 +116,7 @@ public class DataGapRouteReader implements IDataToRouteReader {
                 new ProcessInfoKey(engine.getNodeService().findIdentityNodeId(), context.getChannel().getChannelId(), null,
                         ProcessType.ROUTER_READER));
         processInfo.setCurrentChannelId(context.getChannel().getChannelId());
+        context.setReaderProcessInfo(processInfo);
         try {
             boolean transactional = !context.getChannel().getBatchAlgorithm()
                     .equals(NonTransactionalBatchAlgorithm.NAME)
