@@ -96,6 +96,7 @@ class DataGapDetectorTest {
     INodeService nodeService;
     IClusterService clusterService;
     DataGapFastDetector detector;
+    ProcessInfo processInfo = new ProcessInfo();
     ThreadLocalRandom rand = ThreadLocalRandom.current();
 
     @BeforeEach
@@ -135,7 +136,7 @@ class DataGapDetectorTest {
         contextService = mock(ContextService.class);
         dataService = mock(DataService.class);
         statisticManager = mock(StatisticManager.class);
-        when(statisticManager.newProcessInfo((ProcessInfoKey) any())).thenReturn(new ProcessInfo());
+        when(statisticManager.newProcessInfo((ProcessInfoKey) any())).thenReturn(processInfo);
         nodeService = mock(NodeService.class);
         when(nodeService.findIdentity()).thenReturn(new Node(NODE_ID, NODE_GROUP_ID));
         clusterService = mock(ClusterService.class);
@@ -216,6 +217,40 @@ class DataGapDetectorTest {
         verify(dataService).insertDataGaps(sqlTransaction, inserted);
         verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
         verifyNoMoreInteractions(dataService);
+    }
+
+    @Test
+    void testGapWritesAreCountedInProcessInfo() {
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        runGapDetector(dataGaps, dataIds, true);
+        assertEquals(4L, processInfo.getTotalQueryCount());
+    }
+
+    @Test
+    void testBeforeRoutingReportsFindDataGapsQueryInProcessInfo() {
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        when(dataService.findDataGaps()).thenReturn(dataGaps);
+        detector.beforeRouting();
+        assertEquals(1L, processInfo.getTotalQueryCount());
+        assertEquals(0L, processInfo.getCurrentDataCount());
+    }
+
+    @Test
+    void testQueryDataIdMapCountsOneQueryPerGap() {
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        when(dataService.findDataGaps()).thenReturn(dataGaps);
+        detector.beforeRouting();
+        DataGapPassStats passStats = new DataGapPassStats();
+        detector.queryDataIdMap(new ProcessInfo(), passStats);
+        assertEquals(2L, passStats.getGapQueriesCount());
     }
 
     @Test

@@ -31,6 +31,8 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataGap;
+import org.jumpmind.symmetric.model.ProcessInfo;
+import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
@@ -69,19 +71,34 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
         ISqlTemplate sqlTemplate = engine.getSymmetricDialect().getPlatform().getSqlTemplate();
         ISqlRowMapper<Data> dataMapper = engine.getDataService().getDataMapper();
         ISqlReadCursor<Data> cursor = null;
+        ProcessInfo processInfo = context.getReaderProcessInfo();
+        ProcessStatus statusBeforeQuery = processInfo == null ? null : processInfo.getStatus();
         long ts = System.currentTimeMillis();
         try {
-            cursor = sqlTemplate.queryForCursor(sql, dataMapper, args, types);
+            cursor = queryForCursor(sqlTemplate, dataMapper, sql, args, types, processInfo);
         } catch (RuntimeException e) {
             log.info("Failed to execute query, but will try again,", e);
             AppUtils.sleep(1000);
-            cursor = sqlTemplate.queryForCursor(sql, dataMapper, args, types);
+            cursor = queryForCursor(sqlTemplate, dataMapper, sql, args, types, processInfo);
+        } finally {
+            if (processInfo != null) {
+                processInfo.setStatus(statusBeforeQuery);
+            }
         }
         if (isSortInMemory) {
             cursor = getDataMemoryCursor(cursor);
         }
         context.incrementStat(System.currentTimeMillis() - ts, ChannelRouterContext.STAT_QUERY_EXEC_TIME_MS);
         return cursor;
+    }
+
+    protected ISqlReadCursor<Data> queryForCursor(ISqlTemplate sqlTemplate, ISqlRowMapper<Data> dataMapper, String sql, Object[] args, int[] types,
+            ProcessInfo processInfo) {
+        if (processInfo != null) {
+            processInfo.setStatus(ProcessStatus.QUERYING);
+            processInfo.incrementTotalQueryCount();
+        }
+        return sqlTemplate.queryForCursor(sql, dataMapper, args, types);
     }
 
     protected ISqlReadCursor<Data> getDataMemoryCursor(ISqlReadCursor<Data> cursor) {

@@ -509,4 +509,24 @@ public class RouterServiceTest {
         assertEquals(1, counts.size());
         assertEquals("chan1", counts.get(0).channelId());
     }
+
+    @Test
+    public void testWarnIfGapCountExcessiveWarnsAtThreshold() {
+        assertTrue(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE, RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS));
+    }
+
+    @Test
+    public void testWarnIfGapCountExcessiveStaysQuietBelowThreshold() {
+        assertFalse(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE - 1, RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS));
+    }
+
+    @Test
+    public void testWarnIfGapCountExcessiveRepeatsOnlyAfterInterval() {
+        long startTime = RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS;
+        assertTrue(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE, startTime));
+        assertFalse(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE,
+                startTime + RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS - 1));
+        assertTrue(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE,
+                startTime + RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS));
+    }
 }

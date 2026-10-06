@@ -29,6 +29,7 @@ public class DataGapPassStats {
     private int gapsAdded;
     private int gapsDeleted;
     private int gapsExpireChecked;
+    private long gapQueriesCount;
 
     public void addIdsFound(int count) {
         idsFound += count;
@@ -50,6 +51,10 @@ public class DataGapPassStats {
         gapsExpireChecked++;
     }
 
+    public void incrementGapQueriesCount() {
+        gapQueriesCount++;
+    }
+
     public int getIdsFound() {
         return idsFound;
     }
@@ -68,5 +73,9 @@ public class DataGapPassStats {
 
     public int getGapsExpireChecked() {
         return gapsExpireChecked;
+    }
+
+    public long getGapQueriesCount() {
+        return gapQueriesCount;
     }
 }

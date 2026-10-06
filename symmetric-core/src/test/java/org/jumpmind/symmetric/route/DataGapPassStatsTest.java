@@ -33,6 +33,7 @@ class DataGapPassStatsTest {
         assertEquals(0, stats.getGapsAdded());
         assertEquals(0, stats.getGapsDeleted());
         assertEquals(0, stats.getGapsExpireChecked());
+        assertEquals(0L, stats.getGapQueriesCount());
     }
 
     @Test
@@ -63,5 +64,14 @@ class DataGapPassStatsTest {
         assertEquals(2, stats.getGapsAdded());
         assertEquals(1, stats.getGapsDeleted());
         assertEquals(3, stats.getGapsExpireChecked());
+    }
+
+    @Test
+    void testIncrementGapQueriesCountAccumulates() {
+        DataGapPassStats stats = new DataGapPassStats();
+        stats.incrementGapQueriesCount();
+        stats.incrementGapQueriesCount();
+        stats.incrementGapQueriesCount();
+        assertEquals(3L, stats.getGapQueriesCount());
     }
 }

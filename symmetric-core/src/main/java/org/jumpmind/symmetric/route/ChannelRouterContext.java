@@ -37,6 +37,7 @@ import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.OutgoingBatch;
+import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.slf4j.Logger;
 
@@ -84,6 +85,7 @@ public class ChannelRouterContext extends SimpleRouterContext {
     private int maxBatchesJdbcFlushSize;
     private long dataRereadCount;
     private List<DataGap> dataGaps = new ArrayList<DataGap>();
+    private ProcessInfo readerProcessInfo;
     private long lastDataId = -1;
     private List<Long> dataIds = new ArrayList<Long>();
     private List<Long> uncommittedDataIds = new ArrayList<Long>();
@@ -352,6 +354,14 @@ public class ChannelRouterContext extends SimpleRouterContext {
 
     public void setDataGaps(List<DataGap> dataGaps) {
         this.dataGaps = dataGaps;
+    }
+
+    public ProcessInfo getReaderProcessInfo() {
+        return readerProcessInfo;
+    }
+
+    public void setReaderProcessInfo(ProcessInfo readerProcessInfo) {
+        this.readerProcessInfo = readerProcessInfo;
     }
 
     public void setOnlyDefaultRoutersAssigned(boolean onlyDefaultRoutersAssigned) {
