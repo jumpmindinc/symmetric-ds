@@ -64,6 +64,7 @@ import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.transport.IBearerTokenProvider;
 import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
@@ -73,6 +74,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 class HttpTransportManagerTest {
+    private static final String REGISTRATION_URL = "http://node.example.com/sync";
     private HttpTransportManager manager;
     private ISymmetricEngine engine;
     private Node remoteNode;
@@ -311,6 +313,79 @@ class HttpTransportManagerTest {
         sessionManager.openConnection(url, "node1", "secret");
         verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_SESSION_ID, "sess-1");
         verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_SECURITY_TOKEN), anyString());
+    }
+
+    @Test
+    void testOpenConnection_withBearerTokenForRegistrationUrlSetsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        stubBearerToken("header.payload.signature");
+        when(ps.getRegistrationUrl()).thenReturn(REGISTRATION_URL);
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_AUTHORIZATION, "Bearer header.payload.signature");
+    }
+
+    @Test
+    void testOpenConnection_withBearerTokenAndSecurityTokenSetsBothHeaders() throws Exception {
+        stubBearerToken("header.payload.signature");
+        when(ps.is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN)).thenReturn(true);
+        when(ps.getRegistrationUrl()).thenReturn(REGISTRATION_URL);
+        HttpTransportManager tokenManager = new HttpTransportManager(engine);
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        tokenManager.openConnection(url, "node1", "secret");
+        verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_SECURITY_TOKEN, "secret");
+        verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_AUTHORIZATION, "Bearer header.payload.signature");
+    }
+
+    @Test
+    void testOpenConnection_withBearerTokenForOtherHostOmitsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        stubBearerToken("header.payload.signature");
+        when(ps.getRegistrationUrl()).thenReturn("http://registration.example.com/sync");
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_AUTHORIZATION), anyString());
+    }
+
+    @Test
+    void testOpenConnection_withBearerTokenAndBlankRegistrationUrlOmitsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        stubBearerToken("header.payload.signature");
+        when(ps.getRegistrationUrl()).thenReturn("");
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_AUTHORIZATION), anyString());
+    }
+
+    @Test
+    void testOpenConnection_withNoBearerTokenProviderOmitsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        when(extensionService.getExtensionPoint(IBearerTokenProvider.class)).thenReturn(null);
+        when(ps.getRegistrationUrl()).thenReturn(REGISTRATION_URL);
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_AUTHORIZATION), anyString());
+    }
+
+    @Test
+    void testOpenConnection_withNullBearerTokenOmitsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        stubBearerToken(null);
+        when(ps.getRegistrationUrl()).thenReturn(REGISTRATION_URL);
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_AUTHORIZATION), anyString());
+    }
+
+    @Test
+    void testOpenConnection_withBlankBearerTokenOmitsAuthorizationHeader() throws Exception {
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        URL url = newTestUrl(httpUrlConnectionMock);
+        stubBearerToken("  ");
+        when(ps.getRegistrationUrl()).thenReturn(REGISTRATION_URL);
+        manager.openConnection(url, "node1", "token");
+        verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_AUTHORIZATION), anyString());
     }
 
     @Test
@@ -732,6 +807,12 @@ class HttpTransportManagerTest {
     @Test
     void testGetEngine_returnsConstructorEngine() {
         assertSame(engine, manager.getEngine());
+    }
+
+    private void stubBearerToken(String bearerToken) {
+        IBearerTokenProvider provider = mock(IBearerTokenProvider.class);
+        when(provider.getBearerToken()).thenReturn(bearerToken);
+        when(extensionService.getExtensionPoint(IBearerTokenProvider.class)).thenReturn(provider);
     }
 
     private HttpTransportManager newManager(boolean useHeaderSecurityToken, boolean useSessionAuth) {

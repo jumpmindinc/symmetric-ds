@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -47,6 +48,7 @@ import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.transport.AbstractTransportManager;
+import org.jumpmind.symmetric.transport.IBearerTokenProvider;
 import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
@@ -221,7 +223,30 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         if (securityToken != null && useHeaderSecurityToken && !hasSession) {
             conn.setRequestProperty(WebConstants.HEADER_SECURITY_TOKEN, securityToken);
         }
+        applyBearerToken(conn, url);
         return conn;
+    }
+
+    protected void applyBearerToken(HttpConnection conn, URL url) {
+        IBearerTokenProvider provider = extensionService.getExtensionPoint(IBearerTokenProvider.class);
+        if (provider != null && isRegistrationUrl(url)) {
+            String bearerToken = provider.getBearerToken();
+            if (StringUtils.isNotBlank(bearerToken)) {
+                conn.setRequestProperty(WebConstants.HEADER_AUTHORIZATION, WebConstants.BEARER_PREFIX + bearerToken);
+            }
+        }
+    }
+
+    protected boolean isRegistrationUrl(URL url) {
+        String registrationUrl = engine.getParameterService().getRegistrationUrl();
+        if (StringUtils.isBlank(registrationUrl)) {
+            return false;
+        }
+        return Strings.CI.startsWith(withTrailingSlash(url.toExternalForm()), withTrailingSlash(registrationUrl));
+    }
+
+    private String withTrailingSlash(String value) {
+        return Strings.CS.appendIfMissing(value, "/");
     }
 
     public void checkResponseCode(HttpConnection conn, int responseCode) {
