@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.ext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -71,6 +72,30 @@ class SyncEventNotifierTest {
     }
 
     @Test
+    void testIsEnabled_withNoListeners() {
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of());
+        assertFalse(SyncEventNotifier.isEnabled(engine));
+    }
+
+    @Test
+    void testIsEnabled_withOnlyDisabledListeners() {
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(listener.isEnabled()).thenReturn(false);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        assertFalse(SyncEventNotifier.isEnabled(engine));
+    }
+
+    @Test
+    void testIsEnabled_withOneEnabledListener() {
+        ISyncEventListener disabled = mock(ISyncEventListener.class);
+        ISyncEventListener enabled = mock(ISyncEventListener.class);
+        when(disabled.isEnabled()).thenReturn(false);
+        when(enabled.isEnabled()).thenReturn(true);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(disabled, enabled));
+        assertTrue(SyncEventNotifier.isEnabled(engine));
+    }
+
+    @Test
     void testIncomingBatchEnded_withMultipleListeners() {
         ISyncEventListener first = mock(ISyncEventListener.class);
         ISyncEventListener second = mock(ISyncEventListener.class);
@@ -89,6 +114,26 @@ class SyncEventNotifierTest {
         OutgoingBatch batch = new OutgoingBatch();
         SyncEventNotifier.outgoingBatchEnded(engine, transaction, batch);
         verify(listener).outgoingBatchEnded(transaction, batch);
+    }
+
+    @Test
+    void testLoadStarted_withListener() {
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        TableReloadStatus status = new TableReloadStatus();
+        SyncEventNotifier.loadStarted(engine, null, status, "target");
+        verify(listener).loadStarted(null, status, "target");
+    }
+
+    @Test
+    void testLoadStarted_withFailingListenerNotifiesLaterListeners() {
+        ISyncEventListener failing = mock(ISyncEventListener.class);
+        ISyncEventListener later = mock(ISyncEventListener.class);
+        TableReloadStatus status = new TableReloadStatus();
+        doThrow(new IllegalStateException("listener failure")).when(failing).loadStarted(null, status, "target");
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(failing, later));
+        SyncEventNotifier.loadStarted(engine, null, status, "target");
+        verify(later).loadStarted(null, status, "target");
     }
 
     @Test

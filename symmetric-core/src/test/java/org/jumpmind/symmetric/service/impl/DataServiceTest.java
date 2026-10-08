@@ -56,6 +56,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.io.data.CsvUtils;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.load.IReloadGenerator;
@@ -99,6 +100,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 public class DataServiceTest {
@@ -112,6 +114,7 @@ public class DataServiceTest {
     ISymmetricDialect symmetricDialect;
     TableReloadRequest request;
     ISymmetricEngine engine;
+    IExtensionService extensionService;
     IDatabasePlatform platform;
     public final String strandedTableName = "sym_node_host";
     public final String strandedChannelId = "heartbeat";
@@ -130,9 +133,10 @@ public class DataServiceTest {
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         parameterService = mock(ParameterService.class);
         when(parameterService.getLong(ParameterConstants.ROUTING_LARGEST_GAP_SIZE)).thenReturn(50000000L);
-        IExtensionService extensionService = mock(ExtensionService.class);
+        extensionService = mock(ExtensionService.class);
         engine = mock(AbstractSymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
@@ -567,6 +571,42 @@ public class DataServiceTest {
                 .count();
         assertEquals(4, reloadChannelBatchCount,
                 "Expected 4 batches on reload channel (no DROP FK or deferred index)");
+    }
+
+    @Test
+    void testInsertReloadEvents_notifiesLoadStartedAfterCommit() {
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        ReloadTestFixture f = setupFullReloadTest(false);
+        dataService.insertReloadEvents(f.targetNode, false, f.reloadRequests, f.processInfo, f.triggerRouters, f.extractRequests, f.reloadGenerator);
+        InOrder inOrder = Mockito.inOrder(sqlTransaction, listener);
+        inOrder.verify(sqlTransaction, Mockito.atLeastOnce()).commit();
+        inOrder.verify(listener).loadStarted(ArgumentMatchers.isNull(), ArgumentMatchers.any(TableReloadStatus.class), ArgumentMatchers.eq("client"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testInsertReloadEvents_withoutLoadStatus_doesNotNotifyLoadStarted() {
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        ReloadTestFixture f = setupFullReloadTest(false);
+        when(sqlTemplate.queryForObject(ArgumentMatchers.anyString(), (ISqlRowMapper<TableReloadStatus>) ArgumentMatchers.any(), ArgumentMatchers.anyLong(),
+                ArgumentMatchers.anyString())).thenReturn(null);
+        dataService.insertReloadEvents(f.targetNode, false, f.reloadRequests, f.processInfo, f.triggerRouters, f.extractRequests, f.reloadGenerator);
+        verify(listener, never()).loadStarted(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testInsertReloadEvents_withListener_queriesLoadStatusOnlyOnce() {
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        ReloadTestFixture f = setupFullReloadTest(false);
+        dataService.insertReloadEvents(f.targetNode, false, f.reloadRequests, f.processInfo, f.triggerRouters, f.extractRequests, f.reloadGenerator);
+        verify(sqlTemplate, times(1)).queryForObject(ArgumentMatchers.anyString(), (ISqlRowMapper<TableReloadStatus>) ArgumentMatchers.any(), ArgumentMatchers
+                .anyLong(),
+                ArgumentMatchers.anyString());
+        verify(listener).loadStarted(ArgumentMatchers.isNull(), ArgumentMatchers.any(TableReloadStatus.class), ArgumentMatchers.eq("client"));
     }
 
     @ParameterizedTest

@@ -43,12 +43,20 @@ public final class SyncEventNotifier {
     private SyncEventNotifier() {
     }
 
+    public static boolean isEnabled(ISymmetricEngine engine) {
+        return engine.getExtensionService().getExtensionPointList(ISyncEventListener.class).stream().anyMatch(ISyncEventListener::isEnabled);
+    }
+
     public static void incomingBatchEnded(ISymmetricEngine engine, ISqlTransaction transaction, IncomingBatch batch, IncomingError error) {
         notifyListeners(engine, listener -> listener.incomingBatchEnded(transaction, batch, error));
     }
 
     public static void outgoingBatchEnded(ISymmetricEngine engine, ISqlTransaction transaction, OutgoingBatch batch) {
         notifyListeners(engine, listener -> listener.outgoingBatchEnded(transaction, batch));
+    }
+
+    public static void loadStarted(ISymmetricEngine engine, ISqlTransaction transaction, TableReloadStatus status, String targetNodeId) {
+        notifyListeners(engine, listener -> listener.loadStarted(transaction, status, targetNodeId));
     }
 
     public static void loadTerminated(ISymmetricEngine engine, ISqlTransaction transaction, TableReloadStatus status, String targetNodeId) {

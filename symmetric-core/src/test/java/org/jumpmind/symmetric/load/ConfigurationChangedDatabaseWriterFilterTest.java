@@ -20,13 +20,16 @@
  */
 package org.jumpmind.symmetric.load;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,7 +46,9 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ConfigurationChangedHelper;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -343,6 +348,7 @@ class ConfigurationChangedDatabaseWriterFilterTest {
 
     @Test
     void testSyncEnded_withCancelledTableReload_cancelsInitialLoad() {
+        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
         INodeService nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
         when(nodeService.findIdentityNodeId()).thenReturn("node1");
@@ -362,6 +368,151 @@ class ConfigurationChangedDatabaseWriterFilterTest {
         when(engine.getInitialLoadService()).thenReturn(initialLoadService);
         filter.syncEnded(context, Collections.emptyList(), null);
         verify(initialLoadService).cancelLoad(status);
+    }
+
+    @Test
+    void testBatchRolledback_withLoadStatusInsert_doesNotNotifyOnLaterCommit() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
+        filter.batchRolledback(context);
+        filter.batchCommitted(context);
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withIncomingLoadStatusInsert_notifiesLoadStarted() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        TableReloadStatus status = loadStatus("node1");
+        when(engine.getDataService().getTableReloadStatusByLoadIdAndSourceNodeId(55L, "source1")).thenReturn(status);
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
+        filter.batchCommitted(context);
+        verify(listener).loadStarted(null, status, "node1");
+        verify(listener, never()).loadTerminated(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusInsertForAnotherTarget_doesNotNotify() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node2", "0", "0" });
+        filter.batchCommitted(context);
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusInsertAlreadyEnded_doesNotNotifyLoadStarted() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "1", "0" });
+        filter.batchCommitted(context);
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusUpdateCompleting_notifiesLoadTerminated() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        TableReloadStatus status = loadStatus("node1");
+        when(engine.getDataService().getTableReloadStatusByLoadIdAndSourceNodeId(55L, "source1")).thenReturn(status);
+        writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "1", "0" });
+        filter.batchCommitted(context);
+        verify(listener).loadTerminated(null, status, "node1");
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusUpdateCancelling_notifiesLoadTerminated() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        TableReloadStatus status = loadStatus("node1");
+        when(engine.getDataService().getTableReloadStatusByLoadIdAndSourceNodeId(55L, "source1")).thenReturn(status);
+        writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "0", "1" });
+        filter.batchCommitted(context);
+        verify(listener).loadTerminated(null, status, "node1");
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusUpdateAfterEnded_doesNotNotifyAgain() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "1", "0" }, new String[] { "55", "source1", "node1", "1", "0" });
+        filter.batchCommitted(context);
+        verify(listener, never()).loadTerminated(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusUpdateNotEnding_doesNotNotify() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "0", "0" });
+        filter.batchCommitted(context);
+        verify(listener, never()).loadTerminated(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withUnknownLoadStatus_doesNotNotify() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
+        filter.batchCommitted(context);
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusInsertWhenListenerDisabled_doesNotQueryLoadStatus() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        when(listener.isEnabled()).thenReturn(false);
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
+        filter.batchCommitted(context);
+        verify(engine.getDataService(), never()).getTableReloadStatusByLoadIdAndSourceNodeId(anyLong(), any());
+        verify(listener, never()).loadStarted(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusUpdateWhenListenerDisabled_doesNotQueryLoadStatus() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        when(listener.isEnabled()).thenReturn(false);
+        writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "1", "0" });
+        filter.batchCommitted(context);
+        verify(engine.getDataService(), never()).getTableReloadStatusByLoadIdAndSourceNodeId(anyLong(), any());
+        verify(listener, never()).loadTerminated(any(), any(), any());
+    }
+
+    @Test
+    void testBatchCommitted_withLoadStatusInsertAndFailingListener_doesNotFail() {
+        ISyncEventListener listener = loadStatusListener("node1");
+        TableReloadStatus status = loadStatus("node1");
+        when(engine.getDataService().getTableReloadStatusByLoadIdAndSourceNodeId(55L, "source1")).thenReturn(status);
+        doThrow(new IllegalStateException("listener failure")).when(listener).loadStarted(null, status, "node1");
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
+        assertDoesNotThrow(() -> filter.batchCommitted(context));
+    }
+
+    private ISyncEventListener loadStatusListener(String myNodeId) {
+        INodeService nodeService = mock(INodeService.class);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(nodeService.findIdentityNodeId()).thenReturn(myNodeId);
+        when(nodeService.findNodeSecurity(myNodeId, true)).thenReturn(new NodeSecurity());
+        filter.syncStarted(context);
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(listener.isEnabled()).thenReturn(true);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(Arrays.asList(listener));
+        IDataService dataService = mock(IDataService.class);
+        when(engine.getDataService()).thenReturn(dataService);
+        return listener;
+    }
+
+    private TableReloadStatus loadStatus(String targetNodeId) {
+        TableReloadStatus status = new TableReloadStatus();
+        status.setTargetNodeId(targetNodeId);
+        return status;
+    }
+
+    private void writeLoadStatus(DataEventType eventType, String[] oldData, String[] newData) {
+        Table reloadStatusTable = new Table(null, null, TableConstants.SYM_TABLE_RELOAD_STATUS,
+                new String[] { "load_id", "source_node_id", "target_node_id", "completed", "cancelled" }, new String[] { "load_id", "source_node_id" });
+        CsvData loadStatusData = new CsvData(eventType);
+        if (oldData != null) {
+            loadStatusData.putParsedData(CsvData.OLD_DATA, oldData);
+        }
+        loadStatusData.putParsedData(CsvData.ROW_DATA, newData);
+        filter.beforeWrite(context, reloadStatusTable, loadStatusData);
+        filter.afterWrite(context, reloadStatusTable, loadStatusData);
     }
 
     private CsvData monitorInsert(String monitorId) {

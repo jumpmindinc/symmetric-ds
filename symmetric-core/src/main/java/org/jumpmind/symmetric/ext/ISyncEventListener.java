@@ -33,6 +33,12 @@ import org.jumpmind.symmetric.model.TableReloadStatus;
  */
 public interface ISyncEventListener extends IExtensionPoint {
     /**
+     * Whether this listener currently wants to be notified. Callers use it to skip work that only exists to build a notification, such as querying the status
+     * of a load.
+     */
+    public boolean isEnabled();
+
+    /**
      * @param error
      *            the row that failed the batch, or null when the batch was successful or the failing row is unknown
      */
@@ -40,5 +46,14 @@ public interface ISyncEventListener extends IExtensionPoint {
 
     public void outgoingBatchEnded(ISqlTransaction transaction, OutgoingBatch batch);
 
+    /**
+     * Called on both the source node and the target node of a load. The source node is notified when the load has been set up, and the target node when the
+     * status of the load arrives.
+     */
+    public void loadStarted(ISqlTransaction transaction, TableReloadStatus status, String targetNodeId);
+
+    /**
+     * Called on both the source node and the target node of a load when the load completes or is cancelled.
+     */
     public void loadTerminated(ISqlTransaction transaction, TableReloadStatus status, String targetNodeId);
 }
