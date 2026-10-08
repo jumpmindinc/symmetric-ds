@@ -67,6 +67,8 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class ConfigurationChangedDatabaseWriterFilterTest {
     private static final String SUFFIX = ConfigurationChangedHelper.class.getSimpleName();
@@ -348,7 +350,8 @@ class ConfigurationChangedDatabaseWriterFilterTest {
 
     @Test
     void testSyncEnded_withCancelledTableReload_cancelsInitialLoad() {
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         INodeService nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
         when(nodeService.findIdentityNodeId()).thenReturn("node1");
@@ -390,18 +393,11 @@ class ConfigurationChangedDatabaseWriterFilterTest {
         verify(listener, never()).loadTerminated(any(), any(), any());
     }
 
-    @Test
-    void testBatchCommitted_withLoadStatusInsertForAnotherTarget_doesNotNotify() {
+    @ParameterizedTest
+    @CsvSource({ "node2,0,0", "node1,1,0", "node1,0,1", "node1,0,0" })
+    void testBatchCommitted_withLoadStatusInsertThatYieldsNoLoadStartedEvent_doesNotNotifyLoadStarted(String targetNodeId, String completed, String cancelled) {
         ISyncEventListener listener = loadStatusListener("node1");
-        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node2", "0", "0" });
-        filter.batchCommitted(context);
-        verify(listener, never()).loadStarted(any(), any(), any());
-    }
-
-    @Test
-    void testBatchCommitted_withLoadStatusInsertAlreadyEnded_doesNotNotifyLoadStarted() {
-        ISyncEventListener listener = loadStatusListener("node1");
-        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "1", "0" });
+        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", targetNodeId, completed, cancelled });
         filter.batchCommitted(context);
         verify(listener, never()).loadStarted(any(), any(), any());
     }
@@ -441,14 +437,6 @@ class ConfigurationChangedDatabaseWriterFilterTest {
         writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "0", "0" });
         filter.batchCommitted(context);
         verify(listener, never()).loadTerminated(any(), any(), any());
-    }
-
-    @Test
-    void testBatchCommitted_withUnknownLoadStatus_doesNotNotify() {
-        ISyncEventListener listener = loadStatusListener("node1");
-        writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
-        filter.batchCommitted(context);
-        verify(listener, never()).loadStarted(any(), any(), any());
     }
 
     @Test
