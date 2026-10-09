@@ -1,0 +1,212 @@
+
+The sync event stream lets an external application find out what the SymmetricDS engine is doing without reading SymmetricDS tables. The
+engine records an event whenever it starts or stops, whenever a batch finishes, and whenever a load starts or finishes. A client subscribes to
+these events through the REST API and receives them as a stream of Server-Sent Events, which is the `text/event-stream` format defined by the
+HTML specification. Most languages have an `EventSource` client or a library that parses this format.
+
+The sync event stream requires an enterprise license.
+
+=== Enabling the Stream
+
+Events are only recorded when the `sync.event.enabled` parameter is `true`, which is not the default. The REST API must also be enabled with the
+`rest.api.enable` parameter, and the client must send a REST API key (see <<Rest Keys>>).
+
+[cols="3,^1,5"]
+|===
+|Parameter|Default|Description
+
+|sync.event.enabled |false |Records sync events so they can be delivered to the stream.
+|rest.stream.keepalive.seconds |5 |Seconds without an event before the stream sends a keepalive.
+|rest.stream.buffer.events.max |500 |Maximum number of events held in memory for a connected client. When the buffer is full, the events are still delivered from the database.
+|rest.stream.poll.seconds |1 |Seconds between checks of the database for events recorded by other members of a cluster. Only used when clustering is enabled.
+|purge.sync.event.retention.minutes |10080 |Minutes to keep recorded events before the purge job deletes them (7 days).
+|===
+
+If the REST API is disabled, the endpoint is not available. If `sync.event.enabled` is `false` or the engine does not have an enterprise
+license, the request is rejected with HTTP status 403.
+
+=== Connecting
+
+[source]
+----
+GET /api/engine/{engine}/syncevents/stream
+----
+
+.Request headers
+[cols="2,5"]
+|===
+|Header|Description
+
+|X-REST-API-KEY |The REST API key. A missing or rejected key results in HTTP status 659.
+|Accept |Should be `text/event-stream`. When it is missing or does not allow `text/event-stream`, a warning is logged and the stream is sent anyway.
+|Last-Event-ID |Optional. The `id` of the last event the client received. See <<Resuming After a Disconnect>>.
+|===
+
+.Example
+----
+curl -N -H "X-REST-API-KEY: <key>" -H "Accept: text/event-stream" \
+  "http://localhost:31415/api/engine/server/syncevents/stream"
+----
+
+The response stays open until the client disconnects or the engine stops. Only one client at a time is supported. Delivery is tracked once per event,
+not once per client, so when more than one client is connected to the same engine, a client can miss events that another client already received,
+and a warning is logged.
+
+.Response status codes
+[cols="1,5"]
+|===
+|Status|Meaning
+
+|200 |The stream was opened.
+|400 |The `Last-Event-ID` header is not the UUID of an event.
+|403 |Sync events are not enabled, or the engine is not licensed for them.
+|659 |The REST API key is missing or not accepted.
+|===
+
+=== Stream Format
+
+Each message in the stream is separated by a blank line. An event has an `id:` line, an `event:` line that holds the event type, and a `data:`
+line that holds a single line of JSON.
+
+.Example batch event
+----
+id: 6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f
+event: batch
+data: {"eventId":"6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f","type":"batch","version":"2026-10-01","direction":"incoming","batchId":1042,"nodeId":"store-001","channelId":"item","tables":["ITEM","ITEM_SELLING_RETAIL"],"status":"OK","loadId":0,"byteCount":2150,"rowsLoaded":12,"insertRows":10,"updateRows":2,"deleteRows":0}
+
+----
+
+The JSON data of every event holds these fields, along with the fields of its event type.
+
+[cols="2,5"]
+|===
+|Field|Description
+
+|eventId |A unique identifier for the event, which is also sent as the `id:` line. Not present on `status` events.
+|type |The event type, which is also sent as the `event:` line.
+|version |The version of the event format, currently `2026-10-01`. New fields may be added to an event type without changing the version.
+|===
+
+Events are delivered in the order they were recorded. Delivery is at least once, so a client should ignore an `eventId` that it has already processed.
+
+=== Event Types
+
+[cols="1,5"]
+|===
+|Type|Sent when
+
+|status |The first message after connecting. It reports the engine name and whether the engine is starting, started, stopped, or failed.
+|engine |The engine starts or stops.
+|batch |A batch reaches status OK or ER on either side of the synchronization.
+|load |A load starts, completes, or is cancelled on either side of the synchronization.
+|keepalive |No event has been sent for `rest.stream.keepalive.seconds`.
+|===
+
+==== Status
+
+The `status` event is sent first on every new connection, including one that resumes with `Last-Event-ID`, so the client knows which engine it is
+connected to and whether the engine is ready. It has no `id:` line, is not recorded, and is not replayed.
+
+.Example
+----
+event: status
+data: {"type":"status","version":"2026-10-01","engineName":"server","status":"started"}
+
+----
+
+[cols="2,5"]
+|===
+|Field|Description
+
+|engineName |The name of the engine.
+|status |One of `starting`, `started`, `stopped`, or `failed`.
+|===
+
+==== Engine
+
+[cols="2,5"]
+|===
+|Field|Description
+
+|status |One of `started`, `stopped`, or `failed`.
+|engineName |The name of the engine.
+|nodeId |The node ID of the engine, if it has one yet.
+|error |The reason the engine failed. Only present when the status is `failed`.
+|===
+
+==== Batch
+
+A batch event is sent when a batch finishes on the node that created it (outgoing) and on the node that loaded it (incoming).
+
+[cols="2,5"]
+|===
+|Field|Description
+
+|direction |`outgoing` when the node sent the batch, or `incoming` when the node received it.
+|batchId |The ID of the batch.
+|nodeId |The ID of the node on the other side of the synchronization.
+|channelId |The channel of the batch.
+|tables |The names of the tables in the batch.
+|status |`OK` when the batch was successful, or `ER` when it failed.
+|loadId |The ID of the load that the batch belongs to, or 0 when the batch is not part of a load.
+|byteCount |The size of the batch in bytes.
+|rowsExtracted |Outgoing only. The number of rows that were extracted.
+|rowsLoaded |The number of rows that were loaded.
+|insertRows, updateRows, deleteRows |Incoming only. The number of rows loaded by each kind of change.
+|failedTable, failedRowNumber |Incoming and `ER` only, when known. The table and the row number where loading failed.
+|sqlState, sqlCode, sqlMessage, failedLineNumber |`ER` only. Details of the error that stopped the batch.
+|===
+
+The `tables` field is taken from the summary of the batch (the `summary` column of <<OUTGOING_BATCH>> and <<INCOMING_BATCH>>). That column holds 254 characters at most, so
+for a batch with many tables with long names, the list is cut off and the last name in it may end with `...`.
+
+==== Load
+
+A load event is sent when a load starts and again when it completes or is cancelled. A load event is sent on the node that sends the data,
+and on the node that receives it, so the stream of each node shows the loads that it takes part in. A load can span several channels and tables.
+
+[cols="2,5"]
+|===
+|Field|Description
+
+|status |`started`, `completed`, or `cancelled`.
+|loadId |The ID of the load.
+|sourceNodeId |The ID of the node that sends the data.
+|targetNodeId |The ID of the node that receives the data.
+|isFullLoad |`true` for a full load, or `false` when only some tables are reloaded.
+|rowsLoaded |The number of rows loaded so far.
+|tableCount |The number of tables in the load.
+|tables |The names of the tables in the load.
+|channels |The names of the channels that carry the load.
+|===
+
+On the node that receives a load, the lists of `tables` and `channels` are built from the extract requests that have been synchronized to it.
+They can be incomplete in the `started` event if those requests have not arrived yet, and the `completed` event shows the full list.
+
+==== Keepalive
+
+When no event has been sent for `rest.stream.keepalive.seconds`, the stream sends a keepalive so the client and any proxy in between can tell
+that the connection is still alive, and so the engine notices when the client has gone away. It is an `event: keepalive` line and a comment line.
+
+----
+event: keepalive
+: keepalive
+
+----
+
+Because a line that starts with a colon is a comment and the message has no `data:` line, the HTML specification says clients must ignore it: an `EventSource` does not raise an
+event for it and it does not change the last event ID. A client that wants to track the keepalives can read the raw stream.
+
+=== Resuming After a Disconnect
+
+Events are kept in the database for `purge.sync.event.retention.minutes`. When a client has to reconnect, it can send the `id` of the last event it received as
+the `Last-Event-ID` header, and the stream starts with the events that were recorded after it. An `EventSource` client sends this header automatically when it reconnects.
+
+If no event has that ID, which is usually because it was already purged, all of the retained events are sent and a warning is logged. A header that is not a UUID is rejected with HTTP status 400.
+
+=== Limitations
+
+* Events are recorded and delivered once per batch status change. Changes to a batch outside of normal synchronization, such as ignoring a batch or manually updating its status in the database, do not produce events.
+* A client that disconnects and doesn't send `Last-Event-ID` when it connects again receives only the events that have not been delivered yet.
+* Events are marked as delivered after they are written to the connection, so an event can be sent again after a failure, but is not lost.
+* In a cluster, the events of all members are recorded in the same database and are delivered by whichever member the client is connected to.

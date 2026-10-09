@@ -291,6 +291,11 @@ include::appendix/dbimport.ad[]
 include::appendix/dbexport.ad[]
 include::appendix/dbfill.ad[]
 
+ifdef::pro[]
+[appendix]
+== Sync Event Stream
+include::appendix/sync-event-stream.ad[]
+endif::pro[]
 
 [appendix]
 == Production Deployment Infrastructure Guidelines
