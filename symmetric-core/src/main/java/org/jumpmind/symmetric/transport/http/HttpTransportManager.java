@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -48,13 +47,14 @@ import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.transport.AbstractTransportManager;
-import org.jumpmind.symmetric.transport.IBearerTokenProvider;
 import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
+import org.jumpmind.symmetric.transport.ISecurityAuthenticationProvider;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportUtils;
 import org.jumpmind.symmetric.web.WebConstants;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,9 +65,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     private static final Logger log = LoggerFactory.getLogger(HttpTransportManager.class);
     public static final int DEFAULT_MAX_FORM_KEYS = 100000;
     protected ISymmetricEngine engine;
-    protected Map<String, String> sessionIdByUri = new HashMap<String, String>();
-    protected boolean useHeaderSecurityToken;
-    protected boolean useSessionAuth;
+    protected ISecurityAuthenticationProvider securityAuthenticationProvider;
     protected int backOffPostCount;
 
     public HttpTransportManager() {
@@ -76,8 +74,12 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     public HttpTransportManager(ISymmetricEngine engine) {
         super(engine.getExtensionService());
         this.engine = engine;
-        useHeaderSecurityToken = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
-        useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
+        this.securityAuthenticationProvider = createSecurityAuthenticationProvider(engine);
+    }
+
+    protected ISecurityAuthenticationProvider createSecurityAuthenticationProvider(ISymmetricEngine engine) {
+        return AppUtils.newInstance(ISecurityAuthenticationProvider.class, DefaultSecurityAuthenticationProvider.class, new Object[] { engine },
+                new Class<?>[] { ISymmetricEngine.class });
     }
 
     public int sendCopyRequest(Node local) throws IOException {
@@ -212,41 +214,8 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
             handler.prepare(conn);
         }
         conn.setRequestProperty(WebConstants.HEADER_ACCEPT_CHARSET, StandardCharsets.UTF_8.name());
-        boolean hasSession = false;
-        if (useSessionAuth) {
-            String sessionId = sessionIdByUri.get(getUri(conn));
-            if (sessionId != null) {
-                conn.setRequestProperty(WebConstants.HEADER_SESSION_ID, sessionId);
-                hasSession = true;
-            }
-        }
-        if (securityToken != null && useHeaderSecurityToken && !hasSession) {
-            conn.setRequestProperty(WebConstants.HEADER_SECURITY_TOKEN, securityToken);
-        }
-        applyBearerToken(conn, url);
+        securityAuthenticationProvider.authenticate(conn, securityToken);
         return conn;
-    }
-
-    protected void applyBearerToken(HttpConnection conn, URL url) {
-        IBearerTokenProvider provider = extensionService.getExtensionPoint(IBearerTokenProvider.class);
-        if (provider != null && isRegistrationUrl(url)) {
-            String bearerToken = provider.getBearerToken();
-            if (StringUtils.isNotBlank(bearerToken)) {
-                conn.setRequestProperty(WebConstants.HEADER_AUTHORIZATION, WebConstants.BEARER_PREFIX + bearerToken);
-            }
-        }
-    }
-
-    protected boolean isRegistrationUrl(URL url) {
-        String registrationUrl = engine.getParameterService().getRegistrationUrl();
-        if (StringUtils.isBlank(registrationUrl)) {
-            return false;
-        }
-        return Strings.CI.startsWith(withTrailingSlash(url.toExternalForm()), withTrailingSlash(registrationUrl));
-    }
-
-    private String withTrailingSlash(String value) {
-        return Strings.CS.appendIfMissing(value, "/");
     }
 
     public void checkResponseCode(HttpConnection conn, int responseCode) {
@@ -257,24 +226,11 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     }
 
     public void updateSession(HttpConnection conn) {
-        if (useSessionAuth) {
-            String sessionId = conn.getHeaderField(WebConstants.HEADER_SET_SESSION_ID);
-            if (sessionId != null) {
-                sessionIdByUri.put(getUri(conn), sessionId);
-            }
-        }
+        securityAuthenticationProvider.updateSession(conn);
     }
 
     public void clearSession(HttpConnection conn) {
-        if (useSessionAuth) {
-            sessionIdByUri.remove(getUri(conn));
-        }
-    }
-
-    protected String getUri(HttpConnection conn) {
-        String uri = conn.getURL().toExternalForm();
-        uri = uri.substring(0, uri.lastIndexOf("/"));
-        return uri;
+        securityAuthenticationProvider.clearSession(conn);
     }
 
     public int getOutputStreamSize() {
@@ -535,7 +491,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 
     protected String addNodeInfo(String base, String nodeId, String securityToken, boolean forceParamSecurityToken) {
         StringBuilder sb = new StringBuilder(addNodeId(base, nodeId, "?"));
-        if (!useHeaderSecurityToken || forceParamSecurityToken) {
+        if (!securityAuthenticationProvider.isSecurityTokenInHeader() || forceParamSecurityToken) {
             sb.append("&").append(WebConstants.SECURITY_TOKEN).append("=").append(securityToken);
         }
         return sb.toString();

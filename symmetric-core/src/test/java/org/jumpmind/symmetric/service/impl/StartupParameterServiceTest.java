@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,10 +44,13 @@ import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.model.StartupParameter;
 import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.service.IStartupParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class StartupParameterServiceTest {
+    private static final String SOURCE_KEY = "test.source.supplied.key";
+    private static final String SENSITIVE_SOURCE_KEY = "http.jwt.client.token";
     private final IStartupParameterService service = StartupParameterService.getInstance();
     private final List<String> registeredEngineNames = new ArrayList<>();
 
@@ -57,21 +61,6 @@ class StartupParameterServiceTest {
         }
         registeredEngineNames.clear();
         service.unregisterEngine(IStartupParameterService.GLOBAL_ENGINE_NAME);
-    }
-
-    private String registerEngine(TypedProperties properties, Map<String, Source> knownFileSources) {
-        return registerEngine(properties, knownFileSources, Map.of());
-    }
-
-    private String registerEngine(TypedProperties properties, Map<String, Source> knownFileSources,
-            Map<String, ParameterMetaData> supplementalParameterMetaData) {
-        String name = "test-engine-" + UUID.randomUUID();
-        properties.setProperty(ParameterConstants.ENGINE_NAME, name);
-        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
-        when(factory.reload()).thenReturn(properties);
-        service.registerEngine(factory, knownFileSources, supplementalParameterMetaData);
-        registeredEngineNames.add(name);
-        return name;
     }
 
     @Test
@@ -85,16 +74,6 @@ class StartupParameterServiceTest {
         properties.setProperty(ServerConstants.HTTP_PORT, "31415");
         TypedProperties resolved = registerEngineAndReturnResolvedProperties(properties);
         assertEquals("31415", resolved.getProperty(ServerConstants.HTTP_PORT));
-    }
-
-    private TypedProperties registerEngineAndReturnResolvedProperties(TypedProperties properties) {
-        String name = "test-engine-" + UUID.randomUUID();
-        properties.setProperty(ParameterConstants.ENGINE_NAME, name);
-        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
-        when(factory.reload()).thenReturn(properties);
-        TypedProperties resolved = service.registerEngine(factory, Map.of(), Map.of());
-        registeredEngineNames.add(name);
-        return resolved;
     }
 
     @Test
@@ -147,6 +126,65 @@ class StartupParameterServiceTest {
         when(secondFactory.reload()).thenReturn(second);
         service.registerEngine(secondFactory, Map.of(), Map.of());
         assertEquals("second-value", service.getString(name, "some.key"));
+    }
+
+    @Test
+    void testRegisterEngine_withSource_appliesValueAndTagsSourceLabel() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "from-source"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        StartupParameter parameter = service.getParameter(name, SOURCE_KEY);
+        assertEquals("from-source", parameter.rawValue());
+        assertEquals(Source.EXTERNAL_FILE, parameter.source());
+        assertEquals("from-source", service.asTypedProperties(name).getProperty(SOURCE_KEY));
+    }
+
+    @Test
+    void testRegisterEngine_withSourceAndFileValue_sourceWins() {
+        TypedProperties properties = new TypedProperties();
+        properties.setProperty(SOURCE_KEY, "from-file");
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "from-source"));
+        String name = registerEngine(properties, Map.of(SOURCE_KEY, Source.ENGINE_PROPERTIES_FILE), Map.of(), source);
+        assertEquals("from-source", service.getString(name, SOURCE_KEY));
+        assertEquals(Source.EXTERNAL_FILE, service.getParameter(name, SOURCE_KEY).source());
+    }
+
+    @Test
+    void testRegisterEngine_withSourceAndJvmProperty_sourceWins() {
+        String key = "test.source.jvm.key." + UUID.randomUUID();
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(key, "from-source"));
+        try {
+            System.setProperty(key, "from-jvm");
+            service.refreshSystemProperty(key);
+            String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+            assertEquals("from-source", service.getString(name, key));
+            assertEquals(Source.EXTERNAL_FILE, service.getParameter(name, key).source());
+        } finally {
+            System.clearProperty(key);
+        }
+    }
+
+    @Test
+    void testRegisterEngine_withEmptySource_leavesKeyUnset() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of());
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        assertNull(service.getString(name, SOURCE_KEY));
+    }
+
+    @Test
+    void testRegisterEngine_withNullSourceValue_ignoresKey() {
+        Map<String, String> values = new HashMap<>();
+        values.put(SOURCE_KEY, null);
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), new FakeStartupParameterSource(values));
+        assertNull(service.getString(name, SOURCE_KEY));
+    }
+
+    @Test
+    void testRegisterEngine_withSource_refreshesSourceWithResolvedProperties() {
+        TypedProperties properties = new TypedProperties();
+        properties.setProperty("some.location", "from-file");
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of());
+        registerEngine(properties, Map.of(), Map.of(), source);
+        assertEquals("from-file", source.lastStartupProperties.getProperty("some.location"));
     }
 
     @Test
@@ -222,6 +260,16 @@ class StartupParameterServiceTest {
         String dump = service.dumpAsText(name);
         assertFalse(dump.contains("wrapper-secret"));
         assertTrue(dump.contains(ParameterConstants.REDACTED));
+    }
+
+    @Test
+    void testDumpAsText_withSourceSuppliedRedactedKey_masksValue() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SENSITIVE_SOURCE_KEY, "header.payload.signature"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        String dump = service.dumpAsText(name);
+        assertFalse(dump.contains("header.payload.signature"));
+        assertTrue(dump.contains(SENSITIVE_SOURCE_KEY + "=" + ParameterConstants.REDACTED));
+        assertTrue(service.getParameter(name, SENSITIVE_SOURCE_KEY).isSensitive());
     }
 
     @Test
@@ -383,6 +431,112 @@ class StartupParameterServiceTest {
     }
 
     @Test
+    void testRefresh_withSource_keepsValueAndReportsNoChange() {
+        String name = "test-engine-" + UUID.randomUUID();
+        TypedProperties first = new TypedProperties();
+        first.setProperty(ParameterConstants.ENGINE_NAME, name);
+        TypedProperties second = new TypedProperties();
+        second.setProperty(ParameterConstants.ENGINE_NAME, name);
+        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
+        when(factory.reload()).thenReturn(first).thenReturn(second);
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "from-source"));
+        service.registerEngine(factory, Map.of(), Map.of(), source);
+        registeredEngineNames.add(name);
+        assertFalse(service.refresh(name));
+        assertEquals("from-source", service.getString(name, SOURCE_KEY));
+        assertEquals(Source.EXTERNAL_FILE, service.getParameter(name, SOURCE_KEY).source());
+    }
+
+    @Test
+    void testRefresh_withSource_refreshesSourceWithReloadedProperties() {
+        String name = "test-engine-" + UUID.randomUUID();
+        TypedProperties first = new TypedProperties();
+        first.setProperty(ParameterConstants.ENGINE_NAME, name);
+        TypedProperties second = new TypedProperties();
+        second.setProperty(ParameterConstants.ENGINE_NAME, name);
+        second.setProperty("some.location", "reloaded");
+        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
+        when(factory.reload()).thenReturn(first).thenReturn(second);
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of());
+        service.registerEngine(factory, Map.of(), Map.of(), source);
+        registeredEngineNames.add(name);
+        service.refresh(name);
+        assertEquals("reloaded", source.lastStartupProperties.getProperty("some.location"));
+    }
+
+    @Test
+    void testRefreshSources_withChangedSource_appliesNewValueAndReturnsTrue() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "first-value"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        source.supply(Map.of(SOURCE_KEY, "second-value"));
+        assertTrue(service.refreshSources(name));
+        assertEquals("second-value", service.getString(name, SOURCE_KEY));
+        assertEquals("second-value", service.getParameter(name, SOURCE_KEY).rawValue());
+        assertEquals("second-value", service.asTypedProperties(name).getProperty(SOURCE_KEY));
+    }
+
+    @Test
+    void testRefreshSources_refreshesSourceWithResolvedProperties() {
+        TypedProperties properties = new TypedProperties();
+        properties.setProperty("some.location", "from-file");
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of());
+        String name = registerEngine(properties, Map.of(), Map.of(), source);
+        source.lastStartupProperties = null;
+        service.refreshSources(name);
+        assertEquals("from-file", source.lastStartupProperties.getProperty("some.location"));
+    }
+
+    @Test
+    void testRefreshSources_withNewKey_addsKeyWithSourceLabel() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of());
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        source.supply(Map.of(SOURCE_KEY, "late-value"));
+        assertTrue(service.refreshSources(name));
+        assertEquals("late-value", service.getString(name, SOURCE_KEY));
+        assertEquals(Source.EXTERNAL_FILE, service.getParameter(name, SOURCE_KEY).source());
+    }
+
+    @Test
+    void testRefreshSources_withUnchangedSource_keepsValueAndReturnsFalse() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "first-value"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        source.supplyWithoutReportingChange(Map.of(SOURCE_KEY, "second-value"));
+        assertFalse(service.refreshSources(name));
+        assertEquals("first-value", service.getString(name, SOURCE_KEY));
+    }
+
+    @Test
+    void testRefreshSources_withChangeReportedButSameValue_returnsFalse() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "same-value"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        source.supply(Map.of(SOURCE_KEY, "same-value"));
+        assertFalse(service.refreshSources(name));
+        assertEquals("same-value", service.getString(name, SOURCE_KEY));
+    }
+
+    @Test
+    void testRefreshSources_whenSourceStopsSupplyingKey_removesKey() {
+        FakeStartupParameterSource source = new FakeStartupParameterSource(Map.of(SOURCE_KEY, "first-value"));
+        String name = registerEngine(new TypedProperties(), Map.of(), Map.of(), source);
+        source.supply(Map.of());
+        assertTrue(service.refreshSources(name));
+        assertFalse(service.getAllParameters(name).containsKey(SOURCE_KEY));
+        assertNull(service.asTypedProperties(name).getProperty(SOURCE_KEY));
+        assertNull(service.getString(name, SOURCE_KEY));
+    }
+
+    @Test
+    void testRefreshSources_withEngineWithoutSource_returnsFalse() {
+        String name = registerEngine(new TypedProperties(), Map.of());
+        assertFalse(service.refreshSources(name));
+    }
+
+    @Test
+    void testRefreshSources_withUnregisteredEngine_returnsFalse() {
+        assertFalse(service.refreshSources("engine-" + UUID.randomUUID()));
+    }
+
+    @Test
     void refreshGlobal_globalBucketHasNoFactory_returnsFalse() {
         service.registerGlobal(new TypedProperties(), Map.of());
         assertFalse(service.refreshGlobal());
@@ -398,5 +552,72 @@ class StartupParameterServiceTest {
         String name = registerEngine(engineProperties, Map.of());
         assertEquals("global-value", service.getGlobalString("shared.key"));
         assertEquals("engine-value", service.getString(name, "shared.key"));
+    }
+
+    private String registerEngine(TypedProperties properties, Map<String, Source> knownFileSources) {
+        return registerEngine(properties, knownFileSources, Map.of());
+    }
+
+    private String registerEngine(TypedProperties properties, Map<String, Source> knownFileSources,
+            Map<String, ParameterMetaData> supplementalParameterMetaData) {
+        return registerEngine(properties, knownFileSources, supplementalParameterMetaData, null);
+    }
+
+    private String registerEngine(TypedProperties properties, Map<String, Source> knownFileSources,
+            Map<String, ParameterMetaData> supplementalParameterMetaData, IStartupParameterSource source) {
+        String name = "test-engine-" + UUID.randomUUID();
+        properties.setProperty(ParameterConstants.ENGINE_NAME, name);
+        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
+        when(factory.reload()).thenReturn(properties);
+        service.registerEngine(factory, knownFileSources, supplementalParameterMetaData, source);
+        registeredEngineNames.add(name);
+        return name;
+    }
+
+    private TypedProperties registerEngineAndReturnResolvedProperties(TypedProperties properties) {
+        String name = "test-engine-" + UUID.randomUUID();
+        properties.setProperty(ParameterConstants.ENGINE_NAME, name);
+        ITypedPropertiesFactory factory = mock(ITypedPropertiesFactory.class);
+        when(factory.reload()).thenReturn(properties);
+        TypedProperties resolved = service.registerEngine(factory, Map.of(), Map.of());
+        registeredEngineNames.add(name);
+        return resolved;
+    }
+
+    private static class FakeStartupParameterSource implements IStartupParameterSource {
+        private Map<String, String> values;
+        private boolean isChanged;
+        private TypedProperties lastStartupProperties;
+
+        private FakeStartupParameterSource(Map<String, String> values) {
+            this.values = values;
+        }
+
+        @Override
+        public Source getSource() {
+            return Source.EXTERNAL_FILE;
+        }
+
+        @Override
+        public boolean refresh(TypedProperties startupProperties) {
+            lastStartupProperties = startupProperties;
+            boolean wasChanged = isChanged;
+            isChanged = false;
+            return wasChanged;
+        }
+
+        @Override
+        public Map<String, String> getParameters() {
+            return values;
+        }
+
+        private void supply(Map<String, String> newValues) {
+            values = newValues;
+            isChanged = true;
+        }
+
+        private void supplyWithoutReportingChange(Map<String, String> newValues) {
+            values = newValues;
+        }
     }
 }

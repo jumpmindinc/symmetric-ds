@@ -20,14 +20,17 @@
  */
 package org.jumpmind.symmetric.transport;
 
-import org.jumpmind.extension.IExtensionPoint;
+import org.jumpmind.symmetric.transport.http.HttpConnection;
 
 /**
- * Supplies the bearer token sent to the registration node on outbound sync requests.
+ * Applies authentication to outbound sync connections and keeps track of any session the remote node hands back.
  */
-public interface IBearerTokenProvider extends IExtensionPoint {
-    /**
-     * @return the current bearer token, or null if there is nothing to send
-     */
-    public String getBearerToken();
+public interface ISecurityAuthenticationProvider {
+    void authenticate(HttpConnection connection, String securityToken);
+
+    boolean isSecurityTokenInHeader();
+
+    void updateSession(HttpConnection connection);
+
+    void clearSession(HttpConnection connection);
 }

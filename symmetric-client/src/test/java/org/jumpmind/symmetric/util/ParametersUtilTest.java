@@ -64,4 +64,12 @@ class ParametersUtilTest {
             }
         }
     }
+
+    @Test
+    void testRedactParameters_withJwtBearerToken() {
+        Properties parameters = new Properties();
+        parameters.put("http.jwt.client.token", "header.payload.signature");
+        ParametersUtil.redactParameters(parameters);
+        assertEquals(ParameterConstants.REDACTED, parameters.getProperty("http.jwt.client.token"));
+    }
 }
