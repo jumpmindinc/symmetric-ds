@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -67,10 +68,12 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
+import org.jumpmind.symmetric.transport.ISecurityAuthenticationProvider;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 class HttpTransportManagerTest {
     private HttpTransportManager manager;
@@ -304,13 +307,44 @@ class HttpTransportManagerTest {
     @Test
     void testOpenConnection_withCachedSessionUsesSessionHeaderInsteadOfSecurityToken() throws Exception {
         HttpTransportManager sessionManager = newManager(true, true);
+        HttpConnection sessionConn = mock(HttpConnection.class);
+        when(sessionConn.getURL()).thenReturn(URI.create("http://node.example.com/action").toURL());
+        when(sessionConn.getHeaderField(WebConstants.HEADER_SET_SESSION_ID)).thenReturn("sess-1");
+        sessionManager.updateSession(sessionConn);
         HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
         URL url = newTestUrl(httpUrlConnectionMock);
-        String uri = url.toExternalForm();
-        sessionManager.sessionIdByUri.put(uri.substring(0, uri.lastIndexOf("/")), "sess-1");
         sessionManager.openConnection(url, "node1", "secret");
         verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_SESSION_ID, "sess-1");
         verify(httpUrlConnectionMock, never()).setRequestProperty(eq(WebConstants.HEADER_SECURITY_TOKEN), anyString());
+    }
+
+    @Test
+    void testOpenConnection_authenticatesThroughSecurityAuthenticationProvider() throws Exception {
+        ISecurityAuthenticationProvider providerMock = mock(ISecurityAuthenticationProvider.class);
+        manager.securityAuthenticationProvider = providerMock;
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        HttpConnection conn = manager.openConnection(newTestUrl(httpUrlConnectionMock), "node1", "secret");
+        verify(providerMock).authenticate(conn, "secret");
+    }
+
+    @Test
+    void testOpenConnection_authenticatesCallToAnyHost() throws Exception {
+        ISecurityAuthenticationProvider providerMock = mock(ISecurityAuthenticationProvider.class);
+        manager.securityAuthenticationProvider = providerMock;
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        HttpConnection conn = manager.openConnection(newTestUrl("http://other.example.org/sync", httpUrlConnectionMock), "node1", "secret");
+        verify(providerMock).authenticate(conn, "secret");
+    }
+
+    @Test
+    void testOpenConnection_setsAcceptCharsetBeforeAuthenticating() throws Exception {
+        ISecurityAuthenticationProvider providerMock = mock(ISecurityAuthenticationProvider.class);
+        manager.securityAuthenticationProvider = providerMock;
+        HttpURLConnection httpUrlConnectionMock = mock(HttpURLConnection.class);
+        manager.openConnection(newTestUrl(httpUrlConnectionMock), "node1", "secret");
+        InOrder inOrder = inOrder(httpUrlConnectionMock, providerMock);
+        inOrder.verify(httpUrlConnectionMock).setRequestProperty(WebConstants.HEADER_ACCEPT_CHARSET, StandardCharsets.UTF_8.name());
+        inOrder.verify(providerMock).authenticate(any(HttpConnection.class), eq("secret"));
     }
 
     @Test
@@ -330,58 +364,21 @@ class HttpTransportManagerTest {
     }
 
     @Test
-    void testUpdateSession_withSessionAuthEnabledAndHeaderPresent_storesSessionId() throws Exception {
-        HttpTransportManager sessionManager = newManager(false, true);
+    void testUpdateSession_delegatesToSecurityAuthenticationProvider() {
+        ISecurityAuthenticationProvider providerMock = mock(ISecurityAuthenticationProvider.class);
+        manager.securityAuthenticationProvider = providerMock;
         HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getURL()).thenReturn(URI.create("http://host/action").toURL());
-        when(conn.getHeaderField(WebConstants.HEADER_SET_SESSION_ID)).thenReturn("sess-9");
-        sessionManager.updateSession(conn);
-        assertEquals("sess-9", sessionManager.sessionIdByUri.get("http://host"));
+        manager.updateSession(conn);
+        verify(providerMock).updateSession(conn);
     }
 
     @Test
-    void testUpdateSession_withSessionAuthDisabled_doesNothing() {
-        HttpTransportManager sessionManager = newManager(false, false);
+    void testClearSession_delegatesToSecurityAuthenticationProvider() {
+        ISecurityAuthenticationProvider providerMock = mock(ISecurityAuthenticationProvider.class);
+        manager.securityAuthenticationProvider = providerMock;
         HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getHeaderField(WebConstants.HEADER_SET_SESSION_ID)).thenReturn("sess-9");
-        sessionManager.updateSession(conn);
-        assertTrue(sessionManager.sessionIdByUri.isEmpty());
-    }
-
-    @Test
-    void testUpdateSession_withSessionAuthEnabledButHeaderAbsent_doesNothing() {
-        HttpTransportManager sessionManager = newManager(false, true);
-        HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getHeaderField(WebConstants.HEADER_SET_SESSION_ID)).thenReturn(null);
-        sessionManager.updateSession(conn);
-        assertTrue(sessionManager.sessionIdByUri.isEmpty());
-    }
-
-    @Test
-    void testClearSession_withSessionAuthEnabled_removesEntry() throws Exception {
-        HttpTransportManager sessionManager = newManager(false, true);
-        HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getURL()).thenReturn(URI.create("http://host/path").toURL());
-        sessionManager.sessionIdByUri.put(sessionManager.getUri(conn), "sess-1");
-        sessionManager.clearSession(conn);
-        assertTrue(sessionManager.sessionIdByUri.isEmpty());
-    }
-
-    @Test
-    void testClearSession_withSessionAuthDisabled_doesNothing() throws Exception {
-        HttpTransportManager sessionManager = newManager(false, false);
-        HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getURL()).thenReturn(URI.create("http://host/path").toURL());
-        sessionManager.sessionIdByUri.put(sessionManager.getUri(conn), "sess-1");
-        sessionManager.clearSession(conn);
-        assertFalse(sessionManager.sessionIdByUri.isEmpty());
-    }
-
-    @Test
-    void testGetUri_returnsUrlWithoutLastPathSegment() throws Exception {
-        HttpConnection conn = mock(HttpConnection.class);
-        when(conn.getURL()).thenReturn(URI.create("http://host/path/action").toURL());
-        assertEquals("http://host/path", manager.getUri(conn));
+        manager.clearSession(conn);
+        verify(providerMock).clearSession(conn);
     }
 
     @Test
@@ -751,12 +748,16 @@ class HttpTransportManagerTest {
     }
 
     private URL newTestUrl(HttpURLConnection connectionToReturn) throws Exception {
+        return newTestUrl("http://node.example.com/sync", connectionToReturn);
+    }
+
+    private URL newTestUrl(String spec, HttpURLConnection connectionToReturn) throws Exception {
         URLStreamHandler handler = new URLStreamHandler() {
             @Override
             protected URLConnection openConnection(URL u) {
                 return connectionToReturn;
             }
         };
-        return URL.of(URI.create("http://node.example.com/sync"), handler);
+        return URL.of(URI.create(spec), handler);
     }
 }

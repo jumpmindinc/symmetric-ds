@@ -77,6 +77,7 @@ public class ParameterService extends AbstractParameterService implements IParam
 
     @Override
     public boolean refreshFromDatabase() {
+        boolean isSourceChanged = startupParameterService != null && startupParameterService.refreshSources(engineName);
         Date date = sqlTemplate.queryForObject(sql.getSql("selectMaxLastUpdateTime"), Date.class);
         if (date != null) {
             if (lastUpdateTime == null || lastUpdateTime.before(date)) {
@@ -88,7 +89,10 @@ public class ParameterService extends AbstractParameterService implements IParam
                 return true;
             }
         }
-        return false;
+        if (isSourceChanged) {
+            rereadParameters();
+        }
+        return isSourceChanged;
     }
 
     /**

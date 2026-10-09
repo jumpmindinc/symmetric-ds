@@ -101,6 +101,8 @@ public class WebConstants {
     public static final String CHANNEL_QUEUE = "threadChannel";
     public static final String CONFIG_VERSION = "configVersion";
     public static final String SESSION_PREFIX = "JSESSIONID_";
+    public static final String HEADER_AUTHORIZATION = "Authorization";
+    public static final String BEARER_PREFIX = "Bearer ";
     public static final String HEADER_SECURITY_TOKEN = "Security-Token";
     public static final String HEADER_SESSION_ID = "Session-ID";
     public static final String HEADER_SET_SESSION_ID = "Set-Session-ID";

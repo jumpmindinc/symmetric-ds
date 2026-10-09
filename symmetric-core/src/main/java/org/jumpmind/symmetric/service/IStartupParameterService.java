@@ -37,6 +37,9 @@ import org.jumpmind.symmetric.model.StartupParameter.Source;
  * before any specific engine exists (e.g. {@code symmetric-server.properties}, cluster bootstrap) are stored under {@link #GLOBAL_ENGINE_NAME}. Every
  * engine-scoped method has a {@code getGlobal*}/{@code isGlobal}/{@code refreshGlobal}/{@code dumpGlobalAsText} counterpart that operates on that same global
  * bucket.
+ * <p>
+ * An engine can also be registered with an {@link IStartupParameterSource}, which supplies values from outside those layers (such as a file written by another
+ * process) and is re-read at runtime through {@link #refreshSources(String)}.
  */
 public interface IStartupParameterService {
     String GLOBAL_ENGINE_NAME = "*";
@@ -47,8 +50,17 @@ public interface IStartupParameterService {
      * for the same name. Returns the resolved properties so callers that need them immediately (e.g. to register the JDBC driver or create the database
      * platform) don't need to already know the engine's name.
      */
+    default TypedProperties registerEngine(ITypedPropertiesFactory propertiesFactory, Map<String, Source> knownFileSources,
+            Map<String, ParameterMetaData> supplementalParameterMetaData) {
+        return registerEngine(propertiesFactory, knownFileSources, supplementalParameterMetaData, null);
+    }
+
+    /**
+     * Same as the overload without a source, and additionally layers the values supplied by {@code source}, which may be null, on top of the files, environment
+     * variables and JVM system properties. The source's values are recorded under its own {@link Source}.
+     */
     TypedProperties registerEngine(ITypedPropertiesFactory propertiesFactory, Map<String, Source> knownFileSources,
-            Map<String, ParameterMetaData> supplementalParameterMetaData);
+            Map<String, ParameterMetaData> supplementalParameterMetaData, IStartupParameterSource source);
 
     /**
      * Resolves and stores process-wide startup parameters (e.g. from {@code symmetric-server.properties}) that exist before any specific engine does, under
@@ -81,9 +93,16 @@ public interface IStartupParameterService {
     TypedProperties asTypedProperties(String engineName);
 
     /**
-     * Re-resolves an engine's parameters from files/JVM/environment. Returns true if any previously resolved value changed.
+     * Re-resolves an engine's parameters from files/JVM/environment and re-applies the values the engine's source last supplied. Returns true if any previously
+     * resolved value changed.
      */
     boolean refresh(String engineName);
+
+    /**
+     * Re-reads the {@link IStartupParameterSource} registered for an engine, if any, and applies its changed, added or removed values, without re-reading the
+     * files, environment or JVM system properties. Returns true if any resolved value changed.
+     */
+    boolean refreshSources(String engineName);
 
     /**
      * Re-resolves a single key against the live JVM system properties, across every registered engine (and the global bucket), for callers that just changed
