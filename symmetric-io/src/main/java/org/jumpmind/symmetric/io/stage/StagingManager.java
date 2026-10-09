@@ -197,6 +197,7 @@ public class StagingManager implements IStagingManager {
         IStagedResource resource = createStagedResource(filePath);
         if (resource.exists()) {
             resource.delete();
+            ((StagedResource) resource).resetGenerationTime();
         } else {
             resource.getFile().getParentFile().mkdirs();
         }

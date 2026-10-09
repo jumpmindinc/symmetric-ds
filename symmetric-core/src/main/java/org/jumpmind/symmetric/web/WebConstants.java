@@ -56,6 +56,7 @@ public class WebConstants {
     public static final int SC_INTERNAL_ERROR = 600;
     public static final int SC_NO_CONTENT = 204;
     public static final int SC_OK = 200;
+    public static final int SC_PARTIAL_CONTENT = 206;
     public static final String ACK_BATCH_NAME = "batch-";
     public static final String ACK_BATCH_OK = "ok";
     public static final String ACK_BATCH_RESEND = "resend";
@@ -83,6 +84,7 @@ public class WebConstants {
     public static final String ACK_MISSING_DELETE_COUNT = "missingDeleteCount-";
     public static final String ACK_SKIP_COUNT = "skipCount-";
     public static final String NODE_ID = "nodeId";
+    public static final String BATCH_ID = "batchId";
     public static final String NODE_GROUP_ID = "nodeGroupId";
     public static final String EXTERNAL_ID = "externalId";
     public static final String SYMMETRIC_VERSION = "symmetricVersion";
@@ -104,6 +106,12 @@ public class WebConstants {
     public static final String HEADER_SECURITY_TOKEN = "Security-Token";
     public static final String HEADER_SESSION_ID = "Session-ID";
     public static final String HEADER_SET_SESSION_ID = "Set-Session-ID";
+    public static final String HEADER_ETAG = "ETag";
+    public static final String HEADER_IF_ETAG = "If-ETag";
+    public static final String HEADER_ACCEPT_RANGES = "Accept-Ranges";
+    public static final String HEADER_RANGE = "Range";
+    public static final String HEADER_CONTENT_RANGE = "Content-Range";
+    public static final String HEADER_FILESYNC_FORMAT = "FileSync-Format";
     public static final String REG_USER_ID = "regUserId";
     public static final String REG_PASSWORD = "regPassword";
     public static final String PUSH_REGISTRATION = "pushRegistration";

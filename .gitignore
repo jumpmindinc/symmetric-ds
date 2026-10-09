@@ -2,6 +2,11 @@
 *.log
 *.tmp
 .clover/*
+/.idea/*
+*.ipr
+*.iws
+.gradle/
+*.factorypath
 
 # Visual Studio Code related temporary files and personal preferences
 .vscode-test

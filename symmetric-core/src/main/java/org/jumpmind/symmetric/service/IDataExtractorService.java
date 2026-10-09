@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.io.data.writer.StructureDataWriter.PayloadType;
+import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.Node;
@@ -58,6 +59,20 @@ public interface IDataExtractorService {
             Date endBatchTime, String... channelIds);
 
     public boolean extractOnlyOutgoingBatch(String nodeId, long batchId, Writer writer);
+
+    /**
+     * @return the batch's staged resource if it exists and is fully staged, usable for a resumed pull; otherwise {@code null}
+     */
+    public IStagedResource getStagedResourceForResume(OutgoingBatch batch);
+
+    /**
+     * Streams a single batch's staged content, optionally skipping the first {@code skipCount} already-received characters, for a resumed pull. See
+     * {@code DataExtractorService.extractSingleBatchForResume} for details.
+     *
+     * @return the total number of characters in the batch (skipped plus forwarded)
+     */
+    public long extractSingleBatchForResume(OutgoingBatch batch, IStagedResource stagedResource, Writer destination,
+            long skipCount, ProcessInfo processInfo);
 
     public RemoteNodeStatuses queueWork(boolean force);
 

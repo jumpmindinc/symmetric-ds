@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +41,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,12 +61,17 @@ import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
+import org.jumpmind.symmetric.io.data.CsvConstants;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
+import org.jumpmind.symmetric.io.stage.IStagedResource;
+import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
+import org.jumpmind.symmetric.io.stage.StagedResourceETag;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
@@ -104,11 +112,13 @@ class DataExtractorServiceTest {
     private static final String EXTRACT_SECOND_CHANNEL = "othertestchannel";
     private static final String EXTRACT_QUEUE = "default";
     protected ISymmetricEngine engine;
-    private IParameterService parameterService;
+    protected IStagingManager stagingManager;
+    protected INodeService nodeService;
+    protected IParameterService parameterService;
+    protected DataExtractorService dataExtractorService;
     private ISqlTemplate sqlTemplate;
     private ISqlTemplate sqlTemplateDirty;
     private IDataService dataService;
-    private INodeService nodeService;
     private IConfigurationService configurationService;
     private IOutgoingBatchService outgoingBatchService;
     private IRouterService routerService;
@@ -169,6 +179,8 @@ class DataExtractorServiceTest {
         when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
         dataService = mock(IDataService.class);
         when(engine.getDataService()).thenReturn(dataService);
+        stagingManager = mock(IStagingManager.class);
+        when(engine.getStagingManager()).thenReturn(stagingManager);
         nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
         configurationService = mock(IConfigurationService.class);
@@ -180,6 +192,7 @@ class DataExtractorServiceTest {
         when(engine.getRouterService()).thenReturn(routerService);
         initialLoadService = mock(IInitialLoadService.class);
         when(engine.getInitialLoadService()).thenReturn(initialLoadService);
+        dataExtractorService = new DataExtractorService(engine);
         service = new TestableDataExtractorService(engine);
         targetNode = new Node();
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
@@ -200,6 +213,158 @@ class DataExtractorServiceTest {
         when(engine.getDataService().selectDataFor(any(), any(), eq(false))).thenReturn(cursor);
         SelectFromSymDataSource source = new SelectFromSymDataSource(engine, new OutgoingBatch(), new Node(), new Node(), new ProcessInfo(), false);
         assertTrue(source.next().equals(data));
+    }
+
+    @Test
+    void getStagedResourceForResume_nullBatch_returnsNull() {
+        assertNull(dataExtractorService.getStagedResourceForResume(null));
+    }
+
+    @Test
+    void getStagedResourceForResume_delegatesToStagingManagerLookup() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(123);
+        batch.setNodeId("node1");
+        IStagedResource resource = mock(IStagedResource.class);
+        when(stagingManager.find(Constants.STAGING_CATEGORY_OUTGOING, batch.getStagedLocation(), batch.getBatchId())).thenReturn(resource);
+        assertEquals(resource, dataExtractorService.getStagedResourceForResume(batch));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_resumeDisabled_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(false);
+        IStagedResource resource = mock(IStagedResource.class);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(new OutgoingBatch(), resource));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_nullStagedResource_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(new OutgoingBatch(), null));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_resourceNotDone_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.CREATE);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(new OutgoingBatch(), resource));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_resourceNotFileBacked_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(false);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(new OutgoingBatch(), resource));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_nodeNotFound_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(true);
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setNodeId("node1");
+        when(nodeService.findNode("node1", true)).thenReturn(null);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(batch, resource));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_nodeVersionTooOld_returnsNull() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(true);
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setNodeId("node1");
+        Node node = new Node();
+        node.setSymmetricVersion("3.18.0");
+        when(nodeService.findNode("node1", true)).thenReturn(node);
+        assertNull(dataExtractorService.getResumeEtagIfEligible(batch, resource));
+    }
+
+    @Test
+    void getResumeEtagIfEligible_allConditionsMet_returnsEtag() {
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(true);
+        when(resource.getGenerationTime()).thenReturn(1000L);
+        when(resource.getSize()).thenReturn(2000L);
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setNodeId("node1");
+        Node node = new Node();
+        node.setSymmetricVersion("3.19.0");
+        when(nodeService.findNode("node1", true)).thenReturn(node);
+        StagedResourceETag etag = dataExtractorService.getResumeEtagIfEligible(batch, resource);
+        assertNotNull(etag);
+        assertEquals(1000L, etag.getGenerationTime());
+        assertEquals(2000L, etag.getSize());
+    }
+
+    @Test
+    void writeBatchPreambleExtras_neitherStatsNorEtag_writesBufferUnchanged() throws IOException {
+        String content = "\n" + CsvConstants.BATCH + ",1\ndata after batch line";
+        char[] buffer = content.toCharArray();
+        StringWriter stringWriter = new StringWriter();
+        try (BufferedWriter writer = new BufferedWriter(stringWriter)) {
+            boolean injected = dataExtractorService.writeBatchPreambleExtras(writer, buffer, buffer.length, "", new OutgoingBatch(), false, null);
+            writer.flush();
+            assertTrue(injected);
+            assertEquals(content, stringWriter.toString());
+        }
+    }
+
+    @Test
+    void writeBatchPreambleExtras_etagOnly_injectsEtagLineAfterBatchLine() throws IOException {
+        String content = "\n" + CsvConstants.BATCH + ",1\ndata after batch line";
+        char[] buffer = content.toCharArray();
+        StringWriter stringWriter = new StringWriter();
+        StagedResourceETag etag = new StagedResourceETag(1000L, 2000L);
+        try (BufferedWriter writer = new BufferedWriter(stringWriter)) {
+            boolean injected = dataExtractorService.writeBatchPreambleExtras(writer, buffer, buffer.length, "", new OutgoingBatch(), false, etag);
+            writer.flush();
+            assertTrue(injected);
+            String result = stringWriter.toString();
+            assertTrue(result.contains(CsvConstants.ETAG + "," + etag.toJson()));
+            assertTrue(result.endsWith("data after batch line"));
+        }
+    }
+
+    @Test
+    void writeBatchPreambleExtras_statsAndEtag_injectsBothInOrder() throws IOException {
+        String content = "\n" + CsvConstants.BATCH + ",1\ndata after batch line";
+        char[] buffer = content.toCharArray();
+        StringWriter stringWriter = new StringWriter();
+        StagedResourceETag etag = new StagedResourceETag(1000L, 2000L);
+        OutgoingBatch batch = new OutgoingBatch();
+        try (BufferedWriter writer = new BufferedWriter(stringWriter)) {
+            boolean injected = dataExtractorService.writeBatchPreambleExtras(writer, buffer, buffer.length, "", batch, true, etag);
+            writer.flush();
+            assertTrue(injected);
+            String result = stringWriter.toString();
+            int statsIndex = result.indexOf(CsvConstants.STATS_COLUMNS);
+            int etagIndex = result.indexOf(CsvConstants.ETAG + ",");
+            assertTrue(statsIndex >= 0);
+            assertTrue(etagIndex > statsIndex);
+        }
+    }
+
+    @Test
+    void writeBatchPreambleExtras_noBatchLineFound_writesBufferUnchangedAndReturnsFalse() throws IOException {
+        String content = "no batch marker in this text";
+        char[] buffer = content.toCharArray();
+        StringWriter stringWriter = new StringWriter();
+        try (BufferedWriter writer = new BufferedWriter(stringWriter)) {
+            boolean injected = dataExtractorService.writeBatchPreambleExtras(writer, buffer, buffer.length, "", new OutgoingBatch(), true,
+                    new StagedResourceETag(1L, 2L));
+            writer.flush();
+            assertFalse(injected);
+            assertEquals(content, stringWriter.toString());
+        }
     }
 
     @Test

@@ -53,6 +53,7 @@ import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportUtils;
 import org.jumpmind.symmetric.web.WebConstants;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     protected boolean useHeaderSecurityToken;
     protected boolean useSessionAuth;
     protected int backOffPostCount;
+    protected IHttpResumeCache resumeCache;
 
     public HttpTransportManager() {
     }
@@ -76,6 +78,13 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         this.engine = engine;
         useHeaderSecurityToken = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
         useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
+        resumeCache = AppUtils.newInstance(IHttpResumeCache.class, DefaultHttpResumeCache.class,
+                new Object[] { engine }, new Class<?>[] { ISymmetricEngine.class });
+    }
+
+    @Override
+    public IHttpResumeCache getResumeCache() {
+        return resumeCache;
     }
 
     public int sendCopyRequest(Node local) throws IOException {
@@ -290,25 +299,48 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 
     public IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
-        HttpConnection conn = createGetConnectionFor(URI.create(buildURL(WebConstants.URL_FILESYNC_PULL, remote, local, securityToken, registrationUrl))
-                .toURL(),
-                local.getNodeId(), securityToken);
+        return getFilePullTransport(remote, local, securityToken, requestProperties, registrationUrl, null);
+    }
+
+    @Override
+    public IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, Long resumeBatchId) throws IOException {
+        String url = buildURL(WebConstants.URL_FILESYNC_PULL, remote, local, securityToken, registrationUrl);
+        if (resumeBatchId != null) {
+            url = add(url, WebConstants.BATCH_ID, String.valueOf(resumeBatchId), "&");
+        }
+        HttpConnection conn = createGetConnectionFor(URI.create(url).toURL(), local.getNodeId(), securityToken);
         if (requestProperties != null) {
             for (String key : requestProperties.keySet()) {
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Requesting file pull from {} with headers {}", maskSecurityToken(url), requestProperties);
         }
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
 
     public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
-        HttpConnection conn = createGetConnectionFor(URI.create(buildURL(WebConstants.URL_PULL, remote, local, securityToken, registrationUrl)).toURL(),
-                local.getNodeId(), securityToken);
+        return getPullTransport(remote, local, securityToken, requestProperties, registrationUrl, null);
+    }
+
+    @Override
+    public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, Long resumeBatchId) throws IOException {
+        String url = buildURL(WebConstants.URL_PULL, remote, local, securityToken, registrationUrl);
+        if (resumeBatchId != null) {
+            url = add(url, WebConstants.BATCH_ID, String.valueOf(resumeBatchId), "&");
+        }
+        HttpConnection conn = createGetConnectionFor(URI.create(url).toURL(), local.getNodeId(), securityToken);
         if (requestProperties != null) {
             for (String key : requestProperties.keySet()) {
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Requesting pull from {} with headers {}", maskSecurityToken(url), requestProperties);
         }
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
@@ -514,6 +546,13 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
             sb.append("&").append(WebConstants.SECURITY_TOKEN).append("=").append(securityToken);
         }
         return sb.toString();
+    }
+
+    /**
+     * @return {@code url} with any {@code securitytoken} query-string value replaced by {@code ***}, for safe inclusion in debug logging
+     */
+    private static String maskSecurityToken(String url) {
+        return url.replaceAll("([?&]" + WebConstants.SECURITY_TOKEN + "=)[^&]*", "$1***");
     }
 
     protected String addNodeId(String base, String nodeId, String connector) {

@@ -486,6 +486,9 @@ is uploaded as an HTTP multi-part attachment. Outgoing zip files are written and
 Incoming zip files are staged in the filesync_incoming staging directory by source node id. The filesync_incoming/{node_id} staging 
 directory is cleared out before each subsequent delivery of files.
 
+A file sync pull may bundle more than one batch's zip into a single response, and an interrupted pull can resume from where it left
+off instead of re-downloading everything; see <<Resumable Batch Transfer>> for details.
+
 The acknowledgement of a batch happens the same way it is acknowledged in database synchronization. The client responds with an 
 acknowledgement as part of the response during a file push or pull.
 
