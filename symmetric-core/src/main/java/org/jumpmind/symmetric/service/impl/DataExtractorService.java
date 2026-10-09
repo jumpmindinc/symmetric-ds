@@ -88,6 +88,7 @@ import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.IReloadQueueThreadAssigner;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.extract.ExtractDataReaderFactory;
 import org.jumpmind.symmetric.extract.IExtractDataReaderFactory;
 import org.jumpmind.symmetric.extract.MultiBatchStagingWriter;
@@ -1025,6 +1026,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 currentBatch.setErrorFlag(true);
                                 currentBatch.setSqlMessage(ExceptionUtils.unwrapMessages(e));
                                 outgoingBatchService.updateOutgoingBatch(currentBatch);
+                                SyncEventNotifier.outgoingBatchEnded(engine, null, currentBatch);
                                 if (currentBatch.isLoadFlag()) {
                                     dataService.updateTableReloadStatusFailed(currentBatch.getLoadId(), sourceNode.getNodeId(), currentBatch.getBatchId());
                                 }
@@ -1622,6 +1624,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             log.info("Partial load ended for node {}, load ID {}", nodeId, status.getLoadId());
             nodeService.setPartialLoadEnded(transaction, nodeId);
         }
+        SyncEventNotifier.loadTerminated(engine, transaction, status, nodeId);
     }
 
     @Override

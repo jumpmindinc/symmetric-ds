@@ -383,6 +383,8 @@ public class SnapshotUtil {
         extract(export, new File(exportDir, "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
         extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
         extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
+        extract(export, 10000, "order by event_time desc", new File(exportDir, "sync_event.csv"),
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_SYNC_EVENT));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeRuntimeParameters(engine, tmpDir);
