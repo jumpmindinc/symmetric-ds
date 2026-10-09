@@ -38,6 +38,7 @@ import org.jumpmind.symmetric.common.ConfigurationChangedHelper;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -67,6 +68,8 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
     private static final String CTX_KEY_MY_NODE_SECURITY = "MyNodeSecurity." + SUFFIX;
     private static final String CTX_KEY_CANCEL_LOAD = "CancelLoad." + SUFFIX;
     private static final String CTX_KEY_INITAL_LOAD_ID = "InitialLoadId." + SUFFIX;
+    private static final String CTX_KEY_LOADS_STARTED = "LoadsStarted." + SUFFIX;
+    private static final String CTX_KEY_LOADS_TERMINATED = "LoadsTerminated." + SUFFIX;
     private static final String CREATE_OR_ALTER_TABLE_PATTERN = " *(alter|create) +table +.*";
     private ISymmetricEngine engine;
     private ConfigurationChangedHelper helper;
@@ -187,6 +190,9 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
                 loadIds.add(Long.parseLong(loadId));
             }
         }
+        if (matchesTable(table, TableConstants.SYM_TABLE_RELOAD_STATUS)) {
+            recordLoadStatusChange(context, table, data);
+        }
     }
 
     private boolean hasClientReloadListener(DataContext context) {
@@ -204,6 +210,41 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
         } else {
             return false;
         }
+    }
+
+    private void recordLoadStatusChange(DataContext context, Table table, CsvData data) {
+        if (!SyncEventNotifier.isEnabled(engine)) {
+            return;
+        }
+        Map<String, String> rowData = data.toColumnNameValuePairs(table.getColumnNames(), CsvData.ROW_DATA);
+        String loadId = rowData.get("load_id");
+        String myNodeId = (String) context.get(CTX_KEY_MY_NODE_ID);
+        if (loadId == null || myNodeId == null || !myNodeId.equals(rowData.get("target_node_id"))) {
+            return;
+        }
+        LoadStatusKey key = new LoadStatusKey(Long.parseLong(loadId), rowData.get("source_node_id"));
+        DataEventType dataEventType = data.getDataEventType();
+        boolean isEnded = isLoadEnded(rowData);
+        if (dataEventType == DataEventType.INSERT && !isEnded) {
+            addLoadStatusKey(context, CTX_KEY_LOADS_STARTED, key);
+        } else if (dataEventType == DataEventType.UPDATE && isEnded && !isLoadEnded(data.toColumnNameValuePairs(table.getColumnNames(),
+                CsvData.OLD_DATA))) {
+            addLoadStatusKey(context, CTX_KEY_LOADS_TERMINATED, key);
+        }
+    }
+
+    private boolean isLoadEnded(Map<String, String> loadStatus) {
+        return "1".equals(loadStatus.get("completed")) || "1".equals(loadStatus.get("cancelled"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addLoadStatusKey(DataContext context, String contextKey, LoadStatusKey key) {
+        List<LoadStatusKey> keys = (List<LoadStatusKey>) context.get(contextKey);
+        if (keys == null) {
+            keys = new ArrayList<>();
+            context.put(contextKey, keys);
+        }
+        keys.add(key);
     }
 
     @Override
@@ -257,8 +298,15 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
     }
 
     @Override
+    public void batchRolledback(DataContext context) {
+        context.remove(CTX_KEY_LOADS_STARTED);
+        context.remove(CTX_KEY_LOADS_TERMINATED);
+    }
+
+    @Override
     public void batchCommitted(DataContext context) {
         helper.contextCommitted(context);
+        notifyLoadEvents(context);
         if (context.remove(CTX_KEY_CHANGED_NODE_SECURITY) != null) {
             putNodeSecurityIntoContext(context);
         }
@@ -275,6 +323,32 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private void notifyLoadEvents(DataContext context) {
+        List<LoadStatusKey> started = (List<LoadStatusKey>) context.remove(CTX_KEY_LOADS_STARTED);
+        List<LoadStatusKey> terminated = (List<LoadStatusKey>) context.remove(CTX_KEY_LOADS_TERMINATED);
+        if (started != null) {
+            for (LoadStatusKey key : started) {
+                TableReloadStatus status = findLoadStatus(key);
+                if (status != null) {
+                    SyncEventNotifier.loadStarted(engine, null, status, status.getTargetNodeId());
+                }
+            }
+        }
+        if (terminated != null) {
+            for (LoadStatusKey key : terminated) {
+                TableReloadStatus status = findLoadStatus(key);
+                if (status != null) {
+                    SyncEventNotifier.loadTerminated(engine, null, status, status.getTargetNodeId());
+                }
+            }
+        }
+    }
+
+    private TableReloadStatus findLoadStatus(LoadStatusKey key) {
+        return engine.getDataService().getTableReloadStatusByLoadIdAndSourceNodeId(key.loadId, key.sourceNodeId);
+    }
+
     protected void putNodeIdentityIntoContext(DataContext context) {
         context.put(CTX_KEY_MY_NODE_ID, engine.getNodeService().findIdentityNodeId());
     }
@@ -283,6 +357,16 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
         String myNodeId = engine.getNodeService().findIdentityNodeId();
         if (myNodeId != null) {
             context.put(CTX_KEY_MY_NODE_SECURITY, engine.getNodeService().findNodeSecurity(myNodeId, true));
+        }
+    }
+
+    private static class LoadStatusKey {
+        private final long loadId;
+        private final String sourceNodeId;
+
+        LoadStatusKey(long loadId, String sourceNodeId) {
+            this.loadId = loadId;
+            this.sourceNodeId = sourceNodeId;
         }
     }
 }

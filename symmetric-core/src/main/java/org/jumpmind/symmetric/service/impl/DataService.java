@@ -80,6 +80,7 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.db.SequenceIdentifier;
 import org.jumpmind.symmetric.ext.IHeartbeatListener;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.CsvUtils;
@@ -1207,9 +1208,11 @@ public class DataService extends AbstractService implements IDataService {
                             }
                             log.info("Table reload request(s) for load id " + loadId + " have been processed.");
                         }
-                        update_outgoing_batch_and_extract_request_for_processing(transaction, sourceNode.getNodeId(), targetNode.getNodeId(), loadId);
+                        TableReloadStatus status = getTableReloadStatusByLoadIdAndSourceNodeId(loadId, sourceNode.getNodeId());
+                        update_outgoing_batch_and_extract_request_for_processing(transaction, status, targetNode.getNodeId(), loadId);
                         checkInterrupted();
                         transaction.commit();
+                        notifyLoadStarted(status, targetNode.getNodeId());
                     } catch (Error ex) {
                         if (transaction != null) {
                             transaction.rollback();
@@ -1251,6 +1254,12 @@ public class DataService extends AbstractService implements IDataService {
         return extractRequests;
     }
 
+    private void notifyLoadStarted(TableReloadStatus status, String targetNodeId) {
+        if (status != null) {
+            SyncEventNotifier.loadStarted(engine, null, status, targetNodeId);
+        }
+    }
+
     private long generateNewLoadId(ISqlTransaction transaction) {
         long loadId;
         if (platform.supportsMultiThreadedTransactions()) {
@@ -1262,8 +1271,7 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     private void update_outgoing_batch_and_extract_request_for_processing(
-            ISqlTransaction transaction, String sourceNodeId, String targetNodeId, long loadId) {
-        TableReloadStatus status = getTableReloadStatusByLoadIdAndSourceNodeId(loadId, sourceNodeId);
+            ISqlTransaction transaction, TableReloadStatus status, String targetNodeId, long loadId) {
         if (status != null) {
             long startDataBatchId = status.getStartDataBatchId();
             long endDataBatchId = status.getEndDataBatchId();
