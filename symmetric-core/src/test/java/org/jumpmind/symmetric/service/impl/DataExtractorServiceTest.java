@@ -60,6 +60,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -158,6 +159,7 @@ class DataExtractorServiceTest {
         parameterService = mock(IParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getName()).thenReturn("H2");
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);

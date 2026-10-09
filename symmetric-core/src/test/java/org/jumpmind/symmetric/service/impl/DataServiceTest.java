@@ -136,6 +136,7 @@ public class DataServiceTest {
         extensionService = mock(ExtensionService.class);
         engine = mock(AbstractSymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(parameterService.getTablePrefix()).thenReturn("sym");

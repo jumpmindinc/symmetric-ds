@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.IncomingError;
 import org.jumpmind.symmetric.model.OutgoingBatch;
@@ -32,7 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Calls every {@link ISyncEventListener} of an engine. A failing listener is logged and never interrupts the batch or load processing that notified it.
+ * Calls every {@link ISyncEventListener} of an engine while the sync.event.enabled parameter is true. A failing listener is logged and never interrupts the
+ * batch or load processing that notified it.
  */
 public final class SyncEventNotifier {
     private static final Logger log = LoggerFactory.getLogger(SyncEventNotifier.class);
@@ -44,7 +46,7 @@ public final class SyncEventNotifier {
     }
 
     public static boolean isEnabled(ISymmetricEngine engine) {
-        return engine.getExtensionService().getExtensionPointList(ISyncEventListener.class).stream().anyMatch(ISyncEventListener::isEnabled);
+        return engine.getParameterService().is(ParameterConstants.SYNC_EVENT_ENABLED);
     }
 
     public static void incomingBatchEnded(ISymmetricEngine engine, ISqlTransaction transaction, IncomingBatch batch, IncomingError error) {
@@ -64,6 +66,9 @@ public final class SyncEventNotifier {
     }
 
     private static void notifyListeners(ISymmetricEngine engine, Consumer<ISyncEventListener> notification) {
+        if (!isEnabled(engine)) {
+            return;
+        }
         for (ISyncEventListener listener : engine.getExtensionService().getExtensionPointList(ISyncEventListener.class)) {
             try {
                 notification.accept(listener);

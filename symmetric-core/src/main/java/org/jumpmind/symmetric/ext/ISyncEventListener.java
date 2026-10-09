@@ -28,16 +28,12 @@ import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.TableReloadStatus;
 
 /**
- * Notified when a batch reaches a final status or a load terminates. Every extension point of this type is notified. The transaction is the open transaction
- * the status change was written in, or null when the status was written outside of one.
+ * Notified when a batch reaches a final status or a load starts or terminates, but only while the sync.event.enabled parameter is true. Every extension point
+ * of this type is notified, synchronously on the thread that is processing the batch or load and sometimes inside its transaction, so an implementation must
+ * return quickly and must not block. The transaction is the open transaction the status change was written in, or null when the status was written outside of
+ * one.
  */
 public interface ISyncEventListener extends IExtensionPoint {
-    /**
-     * Whether this listener currently wants to be notified. Callers use it to skip work that only exists to build a notification, such as querying the status
-     * of a load.
-     */
-    public boolean isEnabled();
-
     /**
      * @param error
      *            the row that failed the batch, or null when the batch was successful or the failing row is unknown

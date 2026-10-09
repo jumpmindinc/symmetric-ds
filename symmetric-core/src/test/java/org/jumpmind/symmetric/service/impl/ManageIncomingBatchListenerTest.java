@@ -40,6 +40,7 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -87,6 +88,7 @@ class ManageIncomingBatchListenerTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         IStatisticManager statisticManager = mock(IStatisticManager.class);
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getDataLoaderService()).thenReturn(dataLoaderService);
         when(engine.getIncomingBatchService()).thenReturn(incomingBatchService);

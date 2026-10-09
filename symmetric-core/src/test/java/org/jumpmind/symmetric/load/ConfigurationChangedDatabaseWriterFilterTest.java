@@ -350,8 +350,6 @@ class ConfigurationChangedDatabaseWriterFilterTest {
 
     @Test
     void testSyncEnded_withCancelledTableReload_cancelsInitialLoad() {
-        IExtensionService extensionService = mock(IExtensionService.class);
-        when(engine.getExtensionService()).thenReturn(extensionService);
         INodeService nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
         when(nodeService.findIdentityNodeId()).thenReturn("node1");
@@ -442,7 +440,7 @@ class ConfigurationChangedDatabaseWriterFilterTest {
     @Test
     void testBatchCommitted_withLoadStatusInsertWhenListenerDisabled_doesNotQueryLoadStatus() {
         ISyncEventListener listener = loadStatusListener("node1");
-        when(listener.isEnabled()).thenReturn(false);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(false);
         writeLoadStatus(DataEventType.INSERT, null, new String[] { "55", "source1", "node1", "0", "0" });
         filter.batchCommitted(context);
         verify(engine.getDataService(), never()).getTableReloadStatusByLoadIdAndSourceNodeId(anyLong(), any());
@@ -452,7 +450,7 @@ class ConfigurationChangedDatabaseWriterFilterTest {
     @Test
     void testBatchCommitted_withLoadStatusUpdateWhenListenerDisabled_doesNotQueryLoadStatus() {
         ISyncEventListener listener = loadStatusListener("node1");
-        when(listener.isEnabled()).thenReturn(false);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(false);
         writeLoadStatus(DataEventType.UPDATE, new String[] { "55", "source1", "node1", "0", "0" }, new String[] { "55", "source1", "node1", "1", "0" });
         filter.batchCommitted(context);
         verify(engine.getDataService(), never()).getTableReloadStatusByLoadIdAndSourceNodeId(anyLong(), any());
@@ -478,7 +476,7 @@ class ConfigurationChangedDatabaseWriterFilterTest {
         IExtensionService extensionService = mock(IExtensionService.class);
         when(engine.getExtensionService()).thenReturn(extensionService);
         ISyncEventListener listener = mock(ISyncEventListener.class);
-        when(listener.isEnabled()).thenReturn(true);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(Arrays.asList(listener));
         IDataService dataService = mock(IDataService.class);
         when(engine.getDataService()).thenReturn(dataService);

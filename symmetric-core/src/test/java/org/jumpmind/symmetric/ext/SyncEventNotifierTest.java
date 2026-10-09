@@ -26,17 +26,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.IncomingError;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.TableReloadStatus;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +53,7 @@ import ch.qos.logback.core.read.ListAppender;
 class SyncEventNotifierTest {
     private ISymmetricEngine engine;
     private IExtensionService extensionService;
+    private IParameterService parameterService;
     private ISqlTransaction transaction;
     private ListAppender<ILoggingEvent> logAppender;
     private Logger notifierLogger;
@@ -59,7 +63,10 @@ class SyncEventNotifierTest {
         engine = mock(ISymmetricEngine.class);
         extensionService = mock(IExtensionService.class);
         transaction = mock(ISqlTransaction.class);
+        parameterService = mock(IParameterService.class);
         when(engine.getExtensionService()).thenReturn(extensionService);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         notifierLogger = (Logger) LoggerFactory.getLogger(SyncEventNotifier.class);
         logAppender = new ListAppender<>();
         logAppender.start();
@@ -72,27 +79,27 @@ class SyncEventNotifierTest {
     }
 
     @Test
-    void testIsEnabled_withNoListeners() {
-        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of());
-        assertFalse(SyncEventNotifier.isEnabled(engine));
-    }
-
-    @Test
-    void testIsEnabled_withOnlyDisabledListeners() {
-        ISyncEventListener listener = mock(ISyncEventListener.class);
-        when(listener.isEnabled()).thenReturn(false);
-        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
-        assertFalse(SyncEventNotifier.isEnabled(engine));
-    }
-
-    @Test
-    void testIsEnabled_withOneEnabledListener() {
-        ISyncEventListener disabled = mock(ISyncEventListener.class);
-        ISyncEventListener enabled = mock(ISyncEventListener.class);
-        when(disabled.isEnabled()).thenReturn(false);
-        when(enabled.isEnabled()).thenReturn(true);
-        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(disabled, enabled));
+    void testIsEnabled_whenParameterIsTrue() {
         assertTrue(SyncEventNotifier.isEnabled(engine));
+    }
+
+    @Test
+    void testIsEnabled_whenParameterIsFalse() {
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(false);
+        assertFalse(SyncEventNotifier.isEnabled(engine));
+    }
+
+    @Test
+    void testNotifyListeners_whenParameterIsFalse_doesNotCallAnyListener() {
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(false);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        TableReloadStatus status = new TableReloadStatus();
+        SyncEventNotifier.incomingBatchEnded(engine, transaction, new IncomingBatch(), new IncomingError());
+        SyncEventNotifier.outgoingBatchEnded(engine, transaction, new OutgoingBatch());
+        SyncEventNotifier.loadStarted(engine, null, status, "target");
+        SyncEventNotifier.loadTerminated(engine, null, status, "target");
+        verifyNoInteractions(listener);
     }
 
     @Test

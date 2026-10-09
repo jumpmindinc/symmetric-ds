@@ -474,6 +474,7 @@ final public class ParameterConstants {
     public static final String CAPTURE_TYPE_TIME_BASED = "time.based.capture";
     public static final String FILESYNCTRACKER_MAX_ROWS_BEFORE_COMMIT = "filesynctracker.max.rows.before.commit";
     public static final String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
+    public static final String SYNC_EVENT_ENABLED = "sync.event.enabled";
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";

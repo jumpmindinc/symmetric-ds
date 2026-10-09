@@ -43,6 +43,7 @@ import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -101,6 +102,7 @@ class AcknowledgeServiceTest {
         dataExtractorService = mock(IDataExtractorService.class);
         configurationService = mock(IConfigurationService.class);
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getRegistrationService()).thenReturn(registrationService);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
