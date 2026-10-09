@@ -281,7 +281,7 @@ class DataExtractorServiceTest {
         OutgoingBatch batch = new OutgoingBatch();
         batch.setNodeId("node1");
         Node node = new Node();
-        node.setSymmetricVersion("3.17.0");
+        node.setSymmetricVersion("3.18.0");
         when(nodeService.findNode("node1", true)).thenReturn(node);
         assertNull(dataExtractorService.getResumeEtagIfEligible(batch, resource));
     }
@@ -297,7 +297,7 @@ class DataExtractorServiceTest {
         OutgoingBatch batch = new OutgoingBatch();
         batch.setNodeId("node1");
         Node node = new Node();
-        node.setSymmetricVersion("3.18.0");
+        node.setSymmetricVersion("3.19.0");
         when(nodeService.findNode("node1", true)).thenReturn(node);
         StagedResourceETag etag = dataExtractorService.getResumeEtagIfEligible(batch, resource);
         assertNotNull(etag);

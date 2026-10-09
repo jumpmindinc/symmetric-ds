@@ -174,7 +174,7 @@ class DataExtractorServiceResumeRoundTripTest {
         INodeService nodeService = mock(INodeService.class);
         Node targetNode = new Node();
         targetNode.setNodeId("node1");
-        targetNode.setSymmetricVersion("3.18.0");
+        targetNode.setSymmetricVersion("3.19.0");
         when(nodeService.findNode("node1", true)).thenReturn(targetNode);
         when(engine.getNodeService()).thenReturn(nodeService);
         IConfigurationService configurationService = mock(IConfigurationService.class);

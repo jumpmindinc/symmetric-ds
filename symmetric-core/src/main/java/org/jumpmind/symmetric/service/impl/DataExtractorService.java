@@ -1776,7 +1776,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     /**
-     * A batch is eligible for a proactive resume {@code ETAG} only when resume is enabled, the target node understands it (3.18+), and the batch's staged
+     * A batch is eligible for a proactive resume {@code ETAG} only when resume is enabled, the target node understands it (3.19+), and the batch's staged
      * content is file-backed and fully staged ({@link State#DONE}) — the same eligibility a resumed pull itself requires in {@code PullUriHandler}.
      */
     protected StagedResourceETag getResumeEtagIfEligible(OutgoingBatch batch, IStagedResource stagedResource) {
@@ -1785,7 +1785,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             return null;
         }
         Node targetNode = nodeService.findNode(batch.getNodeId(), true);
-        if (targetNode == null || !targetNode.isVersionGreaterThanOrEqualTo(3, 18)) {
+        if (targetNode == null || !targetNode.isVersionGreaterThanOrEqualTo(3, 19)) {
             return null;
         }
         return new StagedResourceETag(stagedResource.getGenerationTime(), stagedResource.getSize());

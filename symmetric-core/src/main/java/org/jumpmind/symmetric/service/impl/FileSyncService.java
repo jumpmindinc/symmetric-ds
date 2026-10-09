@@ -811,7 +811,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
 
     /**
      * Same overall shape as {@link #sendFiles(ProcessInfo, Node, IOutgoingTransport)}, but used only by the pull path: honors a resume request for one specific
-     * batch, and (for 3.18+ peers, with resume enabled) restructures extraction so each batch gets its own independently-staged, independently-finished zip
+     * batch, and (for 3.19+ peers, with resume enabled) restructures extraction so each batch gets its own independently-staged, independently-finished zip
      * instead of sharing one growing zip across the whole loop — a prerequisite for being able to resume any one batch on its own. Bundling multiple such
      * batches into a single response requires the peer to understand the {@code FileSync-Format} envelope; older or unrecognized peers get exactly today's
      * behavior, one complete zip containing a single batch per response.
@@ -829,7 +829,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 return resumeResult;
             }
         }
-        boolean useEnvelope = isResumeEnabled && targetNode != null && targetNode.isVersionGreaterThanOrEqualTo(3, 18);
+        boolean useEnvelope = isResumeEnabled && targetNode != null && targetNode.isVersionGreaterThanOrEqualTo(3, 19);
         List<OutgoingBatch> batchesToProcess = getBatchesToProcess(targetNode);
         if (batchesToProcess.isEmpty()) {
             return FileSyncPullResult.builder().batches(batchesToProcess).allRequestedBatches(batchesToProcess)

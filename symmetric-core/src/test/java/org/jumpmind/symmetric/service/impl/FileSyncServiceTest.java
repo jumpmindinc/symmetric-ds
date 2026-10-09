@@ -161,7 +161,7 @@ class FileSyncServiceTest {
 
     @Test
     void sendFilesForPull_noBatchesAvailable_returnsEmptyResult() {
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         doReturn(new ArrayList<OutgoingBatch>()).when(fileSyncService).getBatchesToProcess(targetNode);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, null, null, null);
         assertTrue(result.getBatches().isEmpty());
@@ -172,7 +172,7 @@ class FileSyncServiceTest {
     @Test
     void sendFilesForPull_resumeDisabled_batchIdParamIsIgnored() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(false);
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         doReturn(new ArrayList<OutgoingBatch>()).when(fileSyncService).getBatchesToProcess(targetNode);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, "42", null, null);
         assertTrue(result.getBatches().isEmpty());
@@ -183,7 +183,7 @@ class FileSyncServiceTest {
     @Test
     void sendFilesForPull_resumeRequestedButBatchNotFound_fallsBackToNormalPull() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         when(outgoingBatchService.findOutgoingBatch(42L, "node1")).thenReturn(null);
         doReturn(new ArrayList<OutgoingBatch>()).when(fileSyncService).getBatchesToProcess(targetNode);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, "42", null, null);
@@ -194,7 +194,7 @@ class FileSyncServiceTest {
     @Test
     void sendFilesForPull_resumeWithMatchingEtagAndRange_servesPartialContentFromSkipOffset() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         OutgoingBatch batch = new OutgoingBatch();
         batch.setBatchId(42);
         batch.setNodeId("node1");
@@ -225,7 +225,7 @@ class FileSyncServiceTest {
     @Test
     void sendFilesForPull_resumeWithStaleEtag_servesFullContentNotPartial() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         OutgoingBatch batch = new OutgoingBatch();
         batch.setBatchId(42);
         batch.setNodeId("node1");
@@ -253,7 +253,7 @@ class FileSyncServiceTest {
     void sendFilesForPull_targetNodeBelowVersionGate_fallsBackToSingleBatchLegacyFormat() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
         when(parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC)).thenReturn(Long.MAX_VALUE);
-        Node targetNode = targetNode("3.17.0");
+        Node targetNode = targetNode("3.18.0");
         OutgoingBatch batch1 = new OutgoingBatch();
         batch1.setBatchId(1);
         batch1.setNodeId("node1");
@@ -284,7 +284,7 @@ class FileSyncServiceTest {
     void sendFilesForPull_targetNodeAtVersionGate_bundlesMultipleBatchesWithEnvelope() throws IOException {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
         when(parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC)).thenReturn(Long.MAX_VALUE);
-        Node targetNode = targetNode("3.18.0");
+        Node targetNode = targetNode("3.19.0");
         OutgoingBatch batch1 = new OutgoingBatch();
         batch1.setBatchId(1);
         batch1.setNodeId("node1");

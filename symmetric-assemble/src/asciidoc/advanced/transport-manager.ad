@@ -95,7 +95,7 @@ as-is.
 the server falls back to a normal `200` response with the full batch, and the client discards its partial
 copy and starts over.
 
-Older peers (prior to version 3.18) simply do not send the resume request headers, so they always receive
+Older peers (prior to version 3.19) simply do not send the resume request headers, so they always receive
 full-batch behavior; the resume mechanism only activates when both sides support it.
 
 These `Range`/`If-ETag`/`Accept-Ranges` headers are a private convention between SymmetricDS nodes, not a
@@ -111,5 +111,5 @@ batches already are, so that any one batch can be resumed without affecting the 
 multiple batches into a single pull response (subject to `transport.max.bytes.to.sync`), SymmetricDS wraps
 each batch's zip in a small header — batch ID, byte length, and ETag — one after another in the response
 body. A `FileSync-Format` response header tells the client that this bundling format was used; it is only
-sent when the target node is version 3.18 or later, since older clients only know how to unzip a single,
+sent when the target node is version 3.19 or later, since older clients only know how to unzip a single,
 unwrapped zip file per response. When the header is absent, the response is a single, unwrapped zip file.
