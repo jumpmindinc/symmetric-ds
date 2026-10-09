@@ -38,8 +38,8 @@ import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.StringMapper;
-import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.db.util.BinaryEncoding;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -195,9 +195,15 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
             String triggerName) {
         catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null : platform.getDefaultCatalog()) : catalog;
         String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='" + SqlUtils.sanitizeIdentifier(catalog) + "'" : "";
-        return platform.getSqlTemplate().queryForInt(
-                "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
+        boolean exists = platform.getSqlTemplate().queryForInt(
+                "select count(*) from information_schema.triggers where trigger_name = ? and event_object_table = ?"
                         + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
+        if (!exists && platform.isMetadataIgnoreCase()) {
+            exists = platform.getSqlTemplate().queryForInt(
+                    "select count(*) from information_schema.triggers where trigger_name = ? and lower(event_object_table) = lower(?)"
+                            + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
+        }
+        return exists;
     }
 
     @Override
