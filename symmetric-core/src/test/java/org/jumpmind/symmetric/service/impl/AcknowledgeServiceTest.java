@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,6 +43,8 @@ import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.BatchAck;
@@ -99,6 +102,7 @@ class AcknowledgeServiceTest {
         dataExtractorService = mock(IDataExtractorService.class);
         configurationService = mock(IConfigurationService.class);
         when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.is(ParameterConstants.SYNC_EVENT_ENABLED)).thenReturn(true);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getRegistrationService()).thenReturn(registrationService);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
@@ -374,6 +378,69 @@ class AcknowledgeServiceTest {
         service.ack(batch);
         assertEquals(Status.ER, ob.getStatus());
         assertTrue(ob.isErrorFlag());
+    }
+
+    @Test
+    void testAck_withFirstTimeOkNotifiesListeners() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
+        OutgoingBatch ob = outgoingBatch(Status.SE);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        service.ack(batch);
+        verify(listener).outgoingBatchEnded(sqlTransaction, ob);
+    }
+
+    @Test
+    void testAck_withNonSuppressedErrorNotifiesListeners() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
+        OutgoingBatch ob = outgoingBatch(Status.SE);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        service.ack(batch);
+        verify(listener).outgoingBatchEnded(sqlTransaction, ob);
+        assertEquals(Status.ER, ob.getStatus());
+    }
+
+    @Test
+    void testAck_withSuppressedErrorSkipsListeners() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
+        batch.setErrorLine(1);
+        batch.setSqlCode(ErrorConstants.DEADLOCK_CODE);
+        OutgoingBatch ob = outgoingBatch(Status.SE);
+        ob.setFailedLineNumber(0);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(Arrays.asList(55L));
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        service.ack(batch);
+        verify(listener, never()).outgoingBatchEnded(any(), any());
+        assertEquals(Status.LD, ob.getStatus());
+    }
+
+    @Test
+    void testAck_withDuplicateOkSkipsListeners() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
+        OutgoingBatch ob = outgoingBatch(Status.OK);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        service.ack(batch);
+        verify(listener, never()).outgoingBatchEnded(any(), any());
+    }
+
+    @Test
+    void testAck_withFailingListenerStillCommits() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
+        OutgoingBatch ob = outgoingBatch(Status.SE);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        ISyncEventListener listener = mock(ISyncEventListener.class);
+        doThrow(new IllegalStateException("listener failure")).when(listener).outgoingBatchEnded(any(), any());
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
+        service.ack(batch);
+        verify(sqlTransaction).commit();
+        assertEquals(Status.OK, ob.getStatus());
     }
 
     @Test

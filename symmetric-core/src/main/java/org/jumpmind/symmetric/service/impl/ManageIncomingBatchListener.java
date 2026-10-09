@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.IDataProcessorListener;
@@ -170,6 +171,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
             } else if (this.currentBatch.isRetry()) {
                 incomingBatchService.deleteIncomingBatch(this.currentBatch);
             }
+            SyncEventNotifier.incomingBatchEnded(engine, null, this.currentBatch, null);
         } catch (RuntimeException ex) {
             this.currentBatch.setStatus(oldStatus);
             throw ex;
@@ -289,52 +291,52 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                 if (Boolean.TRUE.equals(context.get(AbstractDatabaseWriter.TRANSACTION_ABORTED))) {
                     transaction = null;
                 }
-                if (currentBatch.getStatus() == Status.ER) {
-                    if (context.getRelation() != null && context.getData() != null) {
-                        try {
-                            IncomingError error = new IncomingError();
-                            error.setBatchId(this.currentBatch.getBatchId());
-                            error.setNodeId(this.currentBatch.getNodeId());
-                            error.setTargetCatalogName(context.getRelation().getCatalog());
-                            error.setTargetSchemaName(context.getRelation().getSchema());
-                            error.setTargetTableName(context.getRelation().getName());
-                            error.setColumnNames(Relation.getCommaDeliminatedColumns(context
-                                    .getRelation().getColumns()));
-                            error.setPrimaryKeyColumnNames(Relation.getCommaDeliminatedColumns(context
-                                    .getRelation().getPrimaryKeyColumns()));
-                            error.setCsvData(context.getData());
-                            error.setCurData((String) context.get(DefaultDatabaseWriter.CUR_DATA));
-                            error.setBinaryEncoding(context.getBatch().getBinaryEncoding());
-                            error.setEventType(context.getData().getDataEventType());
-                            error.setFailedLineNumber(this.currentBatch.getFailedLineNumber());
-                            error.setFailedRowNumber(this.currentBatch.getFailedRowNumber());
-                            if (ex instanceof ConflictException) {
-                                ConflictException conflictEx = (ConflictException) ex;
-                                Conflict conflict = conflictEx.getConflict();
-                                if (conflict != null) {
-                                    error.setConflictId(conflict.getConflictId());
-                                }
+                IncomingError failedRowError = null;
+                if (currentBatch.getStatus() == Status.ER && context.getRelation() != null && context.getData() != null) {
+                    try {
+                        IncomingError error = new IncomingError();
+                        error.setBatchId(this.currentBatch.getBatchId());
+                        error.setNodeId(this.currentBatch.getNodeId());
+                        error.setTargetCatalogName(context.getRelation().getCatalog());
+                        error.setTargetSchemaName(context.getRelation().getSchema());
+                        error.setTargetTableName(context.getRelation().getName());
+                        error.setColumnNames(Relation.getCommaDeliminatedColumns(context
+                                .getRelation().getColumns()));
+                        error.setPrimaryKeyColumnNames(Relation.getCommaDeliminatedColumns(context
+                                .getRelation().getPrimaryKeyColumns()));
+                        error.setCsvData(context.getData());
+                        error.setCurData((String) context.get(DefaultDatabaseWriter.CUR_DATA));
+                        error.setBinaryEncoding(context.getBatch().getBinaryEncoding());
+                        error.setEventType(context.getData().getDataEventType());
+                        error.setFailedLineNumber(this.currentBatch.getFailedLineNumber());
+                        error.setFailedRowNumber(this.currentBatch.getFailedRowNumber());
+                        if (ex instanceof ConflictException) {
+                            ConflictException conflictEx = (ConflictException) ex;
+                            Conflict conflict = conflictEx.getConflict();
+                            if (conflict != null) {
+                                error.setConflictId(conflict.getConflictId());
                             }
-                            if (context.get(AbstractDatabaseWriter.CONFLICT_IGNORE) != null) {
+                        }
+                        if (context.get(AbstractDatabaseWriter.CONFLICT_IGNORE) != null) {
+                            error.setResolveIgnore(true);
+                        }
+                        failedRowError = error;
+                        if (transaction != null) {
+                            dataLoaderService.insertIncomingError(transaction, error);
+                        } else {
+                            dataLoaderService.insertIncomingError(error);
+                        }
+                    } catch (UniqueKeyException e) {
+                        // ignore. we already inserted an error for this row
+                        if (transaction != null) {
+                            transaction.rollback();
+                        }
+                        if (context.get(AbstractDatabaseWriter.CONFLICT_IGNORE) != null) {
+                            IncomingError error = dataLoaderService.getIncomingError(currentBatch.getBatchId(), currentBatch.getNodeId(),
+                                    currentBatch.getFailedRowNumber());
+                            if (error != null) {
                                 error.setResolveIgnore(true);
-                            }
-                            if (transaction != null) {
-                                dataLoaderService.insertIncomingError(transaction, error);
-                            } else {
-                                dataLoaderService.insertIncomingError(error);
-                            }
-                        } catch (UniqueKeyException e) {
-                            // ignore. we already inserted an error for this row
-                            if (transaction != null) {
-                                transaction.rollback();
-                            }
-                            if (context.get(AbstractDatabaseWriter.CONFLICT_IGNORE) != null) {
-                                IncomingError error = dataLoaderService.getIncomingError(currentBatch.getBatchId(), currentBatch.getNodeId(),
-                                        currentBatch.getFailedRowNumber());
-                                if (error != null) {
-                                    error.setResolveIgnore(true);
-                                    dataLoaderService.updateIncomingError(error);
-                                }
+                                dataLoaderService.updateIncomingError(error);
                             }
                         }
                     }
@@ -353,6 +355,9 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     } else {
                         incomingBatchService.insertIncomingBatch(this.currentBatch);
                     }
+                }
+                if (currentBatch.getStatus() == Status.ER) {
+                    SyncEventNotifier.incomingBatchEnded(engine, transaction, currentBatch, failedRowError);
                 }
             }
         } catch (Throwable e) {

@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.ext.SyncEventNotifier;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.BatchAck;
@@ -209,6 +210,9 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                 try {
                     transaction = sqlTemplate.startSqlTransaction();
                     outgoingBatchService.updateOutgoingBatch(transaction, outgoingBatch);
+                    if (isFirstTimeAsOkStatus || (isFirstTimeAsErStatus && outgoingBatch.getStatus() == Status.ER)) {
+                        SyncEventNotifier.outgoingBatchEnded(engine, transaction, outgoingBatch);
+                    }
                     if (status == Status.OK && outgoingBatch.getLoadId() > 0) {
                         if (isFirstTimeAsOkStatus) {
                             engine.getDataExtractorService().updateExtractRequestLoadTime(transaction, new Date(), outgoingBatch);
