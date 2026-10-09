@@ -72,7 +72,7 @@ public final class SyncEventNotifier {
         for (ISyncEventListener listener : engine.getExtensionService().getExtensionPointList(ISyncEventListener.class)) {
             try {
                 notification.accept(listener);
-            } catch (RuntimeException ex) {
+            } catch (Throwable ex) {
                 log.error("Sync event listener " + listener.getClass().getName() + " failed", ex);
             }
         }

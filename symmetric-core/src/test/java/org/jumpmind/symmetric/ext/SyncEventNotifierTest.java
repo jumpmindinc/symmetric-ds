@@ -144,6 +144,19 @@ class SyncEventNotifierTest {
     }
 
     @Test
+    void testLoadStarted_withListenerThrowingError_notifiesLaterListeners() {
+        ISyncEventListener failing = mock(ISyncEventListener.class);
+        ISyncEventListener later = mock(ISyncEventListener.class);
+        TableReloadStatus status = new TableReloadStatus();
+        doThrow(new NoClassDefFoundError("missing listener dependency")).when(failing).loadStarted(null, status, "target");
+        when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(failing, later));
+        SyncEventNotifier.loadStarted(engine, null, status, "target");
+        verify(later).loadStarted(null, status, "target");
+        assertEquals(1, logAppender.list.size());
+        assertEquals(Level.ERROR, logAppender.list.get(0).getLevel());
+    }
+
+    @Test
     void testLoadTerminated_withListener() {
         ISyncEventListener listener = mock(ISyncEventListener.class);
         when(extensionService.getExtensionPointList(ISyncEventListener.class)).thenReturn(List.of(listener));
