@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,12 +72,15 @@ class HttpIncomingTransportTest {
     private static final String NODE_ID = "node1";
     private static final String SECURITY_TOKEN = "token1";
     private HttpTransportManager httpTransportManager;
+    private ReservationCookieManager reservationCookieManager;
     private HttpConnection connection;
     private IParameterService parameterService;
 
     @BeforeEach
     void setUp() {
         httpTransportManager = mock(HttpTransportManager.class);
+        reservationCookieManager = mock(ReservationCookieManager.class);
+        when(httpTransportManager.getReservationCookieManager()).thenReturn(reservationCookieManager);
         connection = mock(HttpConnection.class);
         parameterService = mock(IParameterService.class);
         when(parameterService.getInt(ParameterConstants.TRANSPORT_HTTP_TIMEOUT)).thenReturn(30000);
@@ -192,6 +196,73 @@ class HttpIncomingTransportTest {
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         HttpIncomingTransport transport = newTransport();
         assertThrows(ConnectionRejectedException.class, transport::openStream);
+    }
+
+    @Test
+    void testOpenStream_withServiceBusy_handlesServiceBusy() throws Exception {
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        HttpIncomingTransport transport = newTransport();
+        assertThrows(ConnectionRejectedException.class, transport::openStream);
+        verify(reservationCookieManager).handleServiceBusy(connection);
+    }
+
+    @Test
+    void testOpenStream_withServiceBusy_doesNotBeginReservation() throws Exception {
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        HttpIncomingTransport transport = newTransport();
+        assertThrows(ConnectionRejectedException.class, transport::openStream);
+        verify(reservationCookieManager, never()).beginReservation(any());
+    }
+
+    @Test
+    void testOpenStream_onSuccess_beginsReservationForConnectionUrl() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        verify(reservationCookieManager).beginReservation(url);
+    }
+
+    @Test
+    void testOpenStream_calledTwiceOnSameInstance_beginsReservationOnlyOnce() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.openStream();
+        verify(reservationCookieManager, times(1)).beginReservation(url);
+    }
+
+    @Test
+    void testClose_afterSuccessfulOpenStream_endsReservationForConnectionUrl() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.close();
+        verify(reservationCookieManager).endReservation(url);
+    }
+
+    @Test
+    void testClose_withoutOpenStream_doesNotEndReservation() {
+        HttpIncomingTransport transport = newTransport();
+        transport.close();
+        verify(reservationCookieManager, never()).endReservation(any());
+    }
+
+    @Test
+    void testClose_calledTwiceAfterSuccessfulOpenStream_endsReservationOnlyOnce() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.close();
+        transport.close();
+        verify(reservationCookieManager, times(1)).endReservation(url);
     }
 
     @Test
