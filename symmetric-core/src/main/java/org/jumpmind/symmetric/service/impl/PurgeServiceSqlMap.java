@@ -170,7 +170,9 @@ public class PurgeServiceSqlMap extends AbstractSqlMap {
         
         putSql("countCommonBatchNotStatusForBatchId", "select count(*) from $(outgoing_batch) where batch_id = ? and status != ?");
         
-        putSql("deleteDataByBatchId", "delete from $(data) where data_id in (select data_id from $(data_event) where batch_id = ?)");
+        putSql("deleteDataByBatchId", "delete from $(data) where data_id in (select e.data_id from $(data_event) e where e.batch_id = ? " +
+                "and not exists (select 1 from $(data_event) o inner join $(outgoing_batch) b on b.batch_id = o.batch_id " +
+                "where o.data_id = e.data_id and b.status != ?))");
         
         putSql("deleteDataEventByBatchId", "delete from $(data_event) where batch_id = ?");
         

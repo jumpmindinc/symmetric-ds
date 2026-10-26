@@ -24,6 +24,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import java.nio.charset.Charset;
 import java.sql.DataTruncation;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -40,6 +41,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -4060,9 +4062,23 @@ public class DataService extends AbstractService implements IDataService {
      */
     @Override
     public int reCaptureData(long minDataId, long maxDataId) {
+        return reCaptureData(minDataId, maxDataId, this::findData);
+    }
+
+    @Override
+    public int reCaptureData(long minDataId, long maxDataId, Date createTimeCutoff) {
+        return reCaptureData(minDataId, maxDataId, (startDataId, endDataId) -> findDataOlderThan(startDataId, endDataId, createTimeCutoff));
+    }
+
+    protected List<Data> findDataOlderThan(long startDataId, long endDataId, Date createTimeCutoff) {
+        return sqlTemplateDirty.query(getSql("selectData", "whereDataIdBetweenOlderThan"), new DataMapper(), startDataId, endDataId,
+                new Timestamp(createTimeCutoff.getTime()));
+    }
+
+    protected int reCaptureData(long minDataId, long maxDataId, BiFunction<Long, Long, List<Data>> dataFinder) {
         long queryStartDataId = minDataId;
         long queryEndDataId = Long.min(minDataId + RECAPTURE_DATA_COMMIT_LIMIT - 1, maxDataId);
-        List<Data> dataList = findData(queryStartDataId, queryEndDataId);
+        List<Data> dataList = dataFinder.apply(queryStartDataId, queryEndDataId);
         if (dataList == null || dataList.size() < 1) {
             return 0;
         }
@@ -4076,7 +4092,7 @@ public class DataService extends AbstractService implements IDataService {
             if (queryStartDataId > maxDataId) {
                 break;
             }
-            dataList = findData(queryStartDataId, queryEndDataId);
+            dataList = dataFinder.apply(queryStartDataId, queryEndDataId);
         }
         return reCapturedCount;
     }
