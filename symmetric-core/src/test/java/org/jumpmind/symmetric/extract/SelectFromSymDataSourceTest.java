@@ -142,6 +142,7 @@ class SelectFromSymDataSourceTest {
         when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_DEFAULTS, false)).thenReturn(false);
         when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_FOREIGN_KEYS, false)).thenReturn(false);
         when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_INDEXES, false)).thenReturn(false);
+        when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PRIMARY_KEYS, false)).thenReturn(false);
         when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK, false)).thenReturn(false);
         when(parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false)).thenReturn(false);
         when(parameterService.is(ParameterConstants.MYSQL_TINYINT_DDL_TO_BOOLEAN, false)).thenReturn(false);
@@ -817,6 +818,34 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
+    void testProcessCreateEvent_withExcludePrimaryKeysParameter_stripsPrimaryKeysButKeepsIndexesAndForeignKeys() throws Exception {
+        when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PRIMARY_KEYS, false)).thenReturn(true);
+        SelectFromSymDataSource source = createSource();
+        source.sourceRelation = tableWithFksAndIndexes;
+        setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
+        TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
+        Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, Constants.CHANNEL_DEFAULT, null, null);
+        boolean result = source.processCreateEvent(hist, "router1", data);
+        assertTrue(result);
+        String xml = data.getRowData();
+        assertFalse(xml.contains("primaryKey="), "primary keys should be stripped");
+        assertTrue(xml.contains("index"), "indexes should be kept");
+        assertTrue(xml.contains("foreign-key"), "foreign keys should be kept");
+    }
+
+    @Test
+    void testProcessCreateEvent_withExcludePrimaryKeysDisabled_keepsPrimaryKeys() throws Exception {
+        SelectFromSymDataSource source = createSource();
+        source.sourceRelation = tableWithFksAndIndexes;
+        setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
+        TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
+        Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, Constants.CHANNEL_DEFAULT, null, null);
+        boolean result = source.processCreateEvent(hist, "router1", data);
+        assertTrue(result);
+        assertTrue(data.getRowData().contains("primaryKey="), "primary keys should be kept");
+    }
+
+    @Test
     void testProcessCreateEvent_withOldDataExcludeIndicesToken_stripsIndexesOnly() throws Exception {
         SelectFromSymDataSource source = createSource();
         source.sourceRelation = tableWithFksAndIndexes;
@@ -899,6 +928,19 @@ class SelectFromSymDataSourceTest {
         boolean result = source.processCreateEvent(hist, "router1", data);
         assertTrue(result);
         assertFalse(data.getRowData().contains("primaryKey="), "target table primary keys should be stripped");
+    }
+
+    @Test
+    void testProcessCreateEvent_withSourceWithoutPkParameterAndSourceWithPk_keepsPrimaryKeys() throws Exception {
+        when(parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK, false)).thenReturn(true);
+        SelectFromSymDataSource source = createSource();
+        source.sourceRelation = tableWithFksAndIndexes;
+        setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
+        TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
+        Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, Constants.CHANNEL_DEFAULT, null, null);
+        boolean result = source.processCreateEvent(hist, "router1", data);
+        assertTrue(result);
+        assertTrue(data.getRowData().contains("primaryKey="), "primary keys should be kept when the source has them");
     }
 
     @Test

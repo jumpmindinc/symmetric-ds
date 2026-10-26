@@ -180,6 +180,7 @@ final public class ParameterConstants {
     public static final String CREATE_TABLE_WITHOUT_DEFAULTS = "create.table.without.defaults";
     public static final String CREATE_TABLE_WITHOUT_FOREIGN_KEYS = "create.table.without.foreign.keys";
     public static final String CREATE_TABLE_WITHOUT_INDEXES = "create.table.without.indexes";
+    public static final String CREATE_TABLE_WITHOUT_PRIMARY_KEYS = "create.table.without.primary.keys";
     public static final String CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK = "create.table.without.pk.if.source.without.pk";
     public static final String CREATE_TABLE_NOT_NULL_COLUMNS = "create.table.not.null.columns.supported";
     public static final String CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS = "create.table.include.application.triggers";

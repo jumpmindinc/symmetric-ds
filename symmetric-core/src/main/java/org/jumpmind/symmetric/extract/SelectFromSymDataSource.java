@@ -313,6 +313,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         boolean excludeDefaults = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_DEFAULTS, false) | sendSchemaExcludeDefaults;
         boolean excludeForeignKeys = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_FOREIGN_KEYS, false) | sendSchemaExcludeForeignKeys;
         boolean excludeIndexes = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_INDEXES, false) | sendSchemaExcludeIndices;
+        boolean excludePrimaryKeys = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PRIMARY_KEYS, false);
         boolean deferConstraints = outgoingBatch.isLoadFlag() && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
         boolean deferTableLogging = evaluateDeferTableLogging(outgoingBatch, sendSchemaExcludeIndices);
         boolean includeTriggerDdl = parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false);
@@ -352,6 +353,11 @@ public class SelectFromSymDataSource extends SelectFromSource {
         }
         if (excludeIndexes || (deferConstraints && !sendSchemaExcludeForeignKeys)) {
             copyTargetTable.removeAllIndexes();
+        }
+        if (excludePrimaryKeys) {
+            for (Column column : copyTargetTable.getColumns()) {
+                column.setPrimaryKey(false);
+            }
         }
         if (includeTriggerDdl) {
             List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceRelation.getCatalog(), sourceRelation
@@ -394,7 +400,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         }
         String xml = DatabaseXmlUtil.toXml(db);
         data.setRowData(CsvUtils.escapeCsvData(xml));
-        if (excludeDefaults || excludeForeignKeys || excludeIndexes || deferConstraints || deferTableLogging) {
+        if (excludeDefaults || excludeForeignKeys || excludeIndexes || excludePrimaryKeys || deferConstraints || deferTableLogging) {
             log.debug("Adjusted batch {} channel {} table definition: {}", outgoingBatch.getNodeBatchId(), outgoingBatch.getChannelId(), xml);
         }
         return true;
