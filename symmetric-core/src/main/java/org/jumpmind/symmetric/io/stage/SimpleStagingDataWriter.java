@@ -285,7 +285,7 @@ public class SimpleStagingDataWriter {
                     ex.getClass().getName(), ex.getMessage());
         } finally {
             if (invalidLineCount > 0) {
-                throw new ProtocolException("Received {} invalid lines from node {} that were outside of a batch", invalidLineCount, sourceNodeId);
+                throw new ProtocolException("Received %d invalid lines from node %s that were outside of a batch", invalidLineCount, sourceNodeId);
             }
         }
     }
