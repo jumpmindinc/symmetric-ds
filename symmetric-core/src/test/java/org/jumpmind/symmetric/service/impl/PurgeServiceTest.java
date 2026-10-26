@@ -20,13 +20,9 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertEquals;
-=======
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
->>>>>>> f83e663540 (SYM-8203: Eligibility check for First/Fast Purge pass (#1210))
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -269,11 +265,12 @@ public class PurgeServiceTest {
     }
 
     @Test
-<<<<<<< HEAD
     public void testPurgeOutgoingPurgesNodeHost() {
         purgeService.purgeOutgoing(true);
         verify(sqlTemplate).update(eq(service.getSql("purgeNodeHostSql")), any(Date.class));
-=======
+    }
+
+    @Test
     public void testFirstPassEligibleWhenOutstandingBatchAheadOfPurgePosition() {
         setupFirstPassEligibleData();
         purgeService.purgeOutgoing(true);
@@ -427,7 +424,6 @@ public class PurgeServiceTest {
         assertEquals(19L, deleteArgs.getValue()[1]);
         verify(dataService).reCaptureData(11, 19, (Date) deleteArgs.getValue()[2]);
         verify(dataService, never()).reCaptureData(anyLong(), anyLong());
->>>>>>> f83e663540 (SYM-8203: Eligibility check for First/Fast Purge pass (#1210))
     }
 
     @Test
