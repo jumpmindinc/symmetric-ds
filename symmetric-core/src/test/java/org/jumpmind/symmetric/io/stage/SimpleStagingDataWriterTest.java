@@ -583,7 +583,7 @@ class SimpleStagingDataWriterTest {
     @Test
     void testProcess_reportsInvalidLineCountAndSourceNode() {
         String protocol = "insert,1,orphan\n" + batchProtocol(1);
-        ProtocolException e = assertThrows(ProtocolException.class, () -> process(protocol));
+        ProtocolException e = assertThrows(ProtocolException.class, () -> processProtocol(protocol));
         assertEquals("Received 1 invalid lines from node " + SOURCE_NODE_ID + " that were outside of a batch", e.getMessage());
     }
 
