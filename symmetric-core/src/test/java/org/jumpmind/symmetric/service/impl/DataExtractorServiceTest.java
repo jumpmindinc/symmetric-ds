@@ -193,7 +193,7 @@ class DataExtractorServiceTest {
         TableReloadRequest createTableLoad = new TableReloadRequest();
         createTableLoad.setCreateTable(true);
         when(dataService.getTableReloadRequest(anyLong())).thenReturn(createTableLoad);
-        when(sqlTemplateDirty.queryForLong(any(), any(), any())).thenReturn(0L);
+        when(sqlTemplateDirty.queryForLong(any(), anyLong(), any())).thenReturn(0L);
     }
 
     @Test
@@ -218,7 +218,7 @@ class DataExtractorServiceTest {
 
     @Test
     void checkSendDeferredForeignKeys_extractThreadsStillRunning_skipsWithoutConsumingClaim() {
-        when(sqlTemplateDirty.queryForLong(any(), any(), any())).thenReturn(3L).thenReturn(0L);
+        when(sqlTemplateDirty.queryForLong(any(), anyLong(), any())).thenReturn(3L).thenReturn(0L);
         service.checkSendDeferredForeignKeys(LOAD_ID, targetNode);
         assertEquals(0, service.sendPasses.get(), "should skip while other extract threads are incomplete");
         service.checkSendDeferredForeignKeys(LOAD_ID, targetNode);
