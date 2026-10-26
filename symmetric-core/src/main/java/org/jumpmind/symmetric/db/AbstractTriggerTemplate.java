@@ -413,8 +413,20 @@ abstract public class AbstractTriggerTemplate {
         }
         ddl = FormatUtils.replace("triggerName", triggerName, ddl);
         ddl = FormatUtils.replace("prefixName", tablePrefix, ddl);
+        ddl = FormatUtils.replace("ddlTableName", getDdlTableName(tablePrefix), ddl);
+        ddl = FormatUtils.replace("ddlChannelName", getDdlChannelName(), ddl);
         ddl = replaceDefaultSchemaAndCatalog(ddl, defaultCatalog, defaultSchema);
         return ddl;
+    }
+
+    protected String getDdlTableName(String tablePrefix) {
+        String tableName = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_TABLE);
+        return isBlank(tableName) ? tablePrefix + "_node" : FormatUtils.replace("prefixName", tablePrefix, tableName);
+    }
+
+    protected String getDdlChannelName() {
+        String channelName = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANNEL);
+        return isBlank(channelName) ? Constants.CHANNEL_CONFIG : channelName;
     }
 
     public String createPostDdlTriggerDDL(String tablePrefix, String triggerName) {

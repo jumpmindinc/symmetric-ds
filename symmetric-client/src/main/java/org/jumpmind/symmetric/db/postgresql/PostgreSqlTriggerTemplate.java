@@ -408,12 +408,12 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 "            select trigger_hist_id, source_table_name into histId, tableName from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
 "        end if;\n" +
 "        if (histId is null) then\n" +
-"            tableName := '$(prefixName)_node';\n" +
+"            tableName := '$(ddlTableName)';\n" +
 "            select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
 "        end if;\n" +
 "        select channel_id into channelId from $(defaultSchema)$(prefixName)_trigger where upper(source_table_name) = upper(tableName);\n" +
 "        if (channelId is null) then\n" +
-"            channelId := 'config';\n" +
+"            channelId := '$(ddlChannelName)';\n" +
 "        end if;\n" +
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
