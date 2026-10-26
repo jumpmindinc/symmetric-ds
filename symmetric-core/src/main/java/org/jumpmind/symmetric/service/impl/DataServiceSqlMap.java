@@ -231,6 +231,7 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                         "from $(data) ");
         putSql("whereDataId", "where data_id = ?");
         putSql("whereDataIdBetween", "where data_id between ? and ? order by data_id");
+        putSql("whereDataIdBetweenOlderThan", "where data_id between ? and ? and create_time < ? order by data_id");
         putSql("whereNewerData", "where table_name = ? and ((event_type = 'I' and row_data like ?) or " +
                 "(event_type in ('U', 'D') and pk_data like ?)) and create_time >= ? order by create_time desc");
         putSql("selectMaxDataEventDataIdSql", ""

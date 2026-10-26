@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.sql;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +48,10 @@ public interface ISqlTemplate {
     public String queryForString(String sql, Object... args);
 
     public long queryForLong(String sql, Object... args);
+
+    public default long queryForLong(String sql, Duration queryTimeout, Object... args) {
+        return queryForLong(sql, args);
+    }
 
     public Row queryForRow(String sql, Object... args);
 

@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -453,6 +454,19 @@ public class DataServiceTest {
         int recapturedCount = dataService.reCaptureData(1, 1);
         verify(sqlTransaction, times(1)).queryForObject("queryData", String.class);
         verify(sqlTransaction, times(1)).queryForObject("queryPk", String.class);
+        assertEquals(1, recapturedCount);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void recaptureStranded_Insert_ExistingRowOlderThanCutoff() throws Exception {
+        String strandedRowData = "I1, bobo, abc", pkData = "I1, bobo", actualRowData = "I1, bobo, abc";
+        setupRecapture(strandedTableName, strandedChannelId, strandedColumnNames, strandedPkNames, DataEventType.INSERT, strandedRowData, pkData, null,
+                actualRowData);
+        Timestamp createTimeCutoff = new Timestamp(1000L);
+        int recapturedCount = dataService.reCaptureData(1, 1, createTimeCutoff);
+        verify(sqlTemplate).query(ArgumentMatchers.eq(((DataService) dataService).getSql("selectData", "whereDataIdBetweenOlderThan")),
+                (ISqlRowMapper<Data>) ArgumentMatchers.any(), ArgumentMatchers.eq(1L), ArgumentMatchers.eq(1L), ArgumentMatchers.eq(createTimeCutoff));
         assertEquals(1, recapturedCount);
     }
 
@@ -905,6 +919,8 @@ public class DataServiceTest {
         datas.add(data);
         when(sqlTemplate.query(ArgumentMatchers.any(), (ISqlRowMapper<Data>) ArgumentMatchers.any(), ArgumentMatchers.anyLong(), ArgumentMatchers.anyLong()))
                 .thenReturn(datas);
+        when(sqlTemplate.query(ArgumentMatchers.any(), (ISqlRowMapper<Data>) ArgumentMatchers.any(), ArgumentMatchers.anyLong(), ArgumentMatchers.anyLong(),
+                ArgumentMatchers.any(Timestamp.class))).thenReturn(datas);
         String[] existingRowData = (existingRow != null) ? CsvUtils.tokenizeCsvData(existingRow) : (parsedRowData != null ? parsedRowData : parsedOldData);
         String existingRowDataAsString = (existingRow == null) ? null : CsvUtils.escapeCsvData(existingRowData);
         String existingRowPkDataAsString = (existingRow == null) ? null : pkData;
