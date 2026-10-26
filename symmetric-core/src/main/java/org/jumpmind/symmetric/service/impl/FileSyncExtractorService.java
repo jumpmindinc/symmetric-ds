@@ -74,6 +74,15 @@ public class FileSyncExtractorService extends DataExtractorService {
     protected void updateExtractRequestsForThreading() {
     }
 
+    /**
+     * Not applicable to file sync, for the same reason as {@link #updateExtractRequestsForThreading()}: this service inherits {@code queueWork} and would
+     * otherwise scan and restart ordinary data extract requests, then resolve their staging through the file-sync {@code getStagedResource} override.
+     */
+    @Override
+    public int recoverStuckExtractRequests(boolean force) {
+        return 0;
+    }
+
     @Override
     protected boolean canProcessExtractRequest(ExtractRequest request, CommunicationType communicationType) {
         return request.getTableName().equalsIgnoreCase(TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT));
