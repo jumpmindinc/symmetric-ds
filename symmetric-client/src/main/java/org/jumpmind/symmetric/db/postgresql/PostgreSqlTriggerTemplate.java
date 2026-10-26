@@ -384,6 +384,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 "declare channelId varchar(128);\n" +
 "declare rowData text;\n" +
 "begin\n" +
+"if $(syncOnIncomingBatchCondition) then\n" +
 "rowData = current_query();\n" +
 "for cmd in select * from pg_event_trigger_ddl_commands() loop\n" +
 "    if (upper(cmd.object_identity) not like upper('$(prefixName)%') and upper(cmd.object_identity) not like upper('%.$(prefixName)%') and" + 
@@ -422,6 +423,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 "        channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + currentTimestampAndZoneExpression + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
+"end if;\n" +
 "end;\n" +
 "$function$ language plpgsql" + invokerSecurityClause + ";" +
 "create or replace function f$(triggerName)_drop() returns event_trigger as\n" +

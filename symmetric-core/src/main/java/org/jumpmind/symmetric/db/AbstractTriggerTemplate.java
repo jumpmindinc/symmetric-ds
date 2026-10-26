@@ -415,6 +415,7 @@ abstract public class AbstractTriggerTemplate {
         ddl = FormatUtils.replace("prefixName", tablePrefix, ddl);
         ddl = FormatUtils.replace("ddlTableName", getDdlTableName(tablePrefix), ddl);
         ddl = FormatUtils.replace("ddlChannelName", getDdlChannelName(), ddl);
+        ddl = FormatUtils.replace("syncOnIncomingBatchCondition", symmetricDialect.getSyncTriggersExpression(), ddl);
         ddl = replaceDefaultSchemaAndCatalog(ddl, defaultCatalog, defaultSchema);
         return ddl;
     }
