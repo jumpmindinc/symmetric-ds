@@ -3,12 +3,21 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
+<<<<<<< HEAD
  * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
  * You should have received a copy of the GNU Affero General Public License,
  * version 3.0 (AGPLv3) along with this library; if not, see
+=======
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+>>>>>>> f83e663540 (SYM-8203: Eligibility check for First/Fast Purge pass (#1210))
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -20,6 +29,7 @@
  */
 package org.jumpmind.db.sql;
 
+<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -1962,5 +1972,23 @@ class JdbcSqlTemplateTest {
 
     private JdbcSqlTemplate createTemplate() {
         return new JdbcSqlTemplate(dataSourceMock, settings, lobHandler, databaseInfo);
+=======
+import static org.junit.Assert.assertEquals;
+
+import java.time.Duration;
+
+import org.junit.jupiter.api.Test;
+
+public class JdbcSqlTemplateTest {
+    @Test
+    public void testToQueryTimeoutSecondsWholeSeconds() {
+        assertEquals(33, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofSeconds(33)));
+    }
+
+    @Test
+    public void testToQueryTimeoutSecondsRoundsUp() {
+        assertEquals(34, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofMillis(33001)));
+        assertEquals(1, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofMillis(1)));
+>>>>>>> f83e663540 (SYM-8203: Eligibility check for First/Fast Purge pass (#1210))
     }
 }

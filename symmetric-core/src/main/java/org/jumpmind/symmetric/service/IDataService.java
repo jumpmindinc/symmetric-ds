@@ -280,4 +280,6 @@ public interface IDataService {
     public int resendDataAsReload(long minDataId, long maxDataId);
 
     public int reCaptureData(long minDataId, long maxDataId);
+
+    public int reCaptureData(long minDataId, long maxDataId, Date createTimeCutoff);
 }
