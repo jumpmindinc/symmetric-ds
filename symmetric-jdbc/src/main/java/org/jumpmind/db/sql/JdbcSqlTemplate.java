@@ -42,6 +42,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -178,6 +179,20 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
 
     @Override
     public <T> T queryForObject(final String sql, final Class<T> clazz, final Object... args) {
+        return queryForObjectWithTimeout(sql, clazz, settings.getQueryTimeout(), args);
+    }
+
+    @Override
+    public long queryForLong(String sql, Duration queryTimeout, Object... args) {
+        Long number = queryForObjectWithTimeout(sql, Long.class, toQueryTimeoutSeconds(queryTimeout), args);
+        return number != null ? number.longValue() : 0l;
+    }
+
+    protected static int toQueryTimeoutSeconds(Duration queryTimeout) {
+        return (int) Math.ceil(queryTimeout.toMillis() / 1000.0);
+    }
+
+    protected <T> T queryForObjectWithTimeout(final String sql, final Class<T> clazz, final int queryTimeoutSeconds, final Object... args) {
         return execute(new IConnectionCallback<T>() {
             @Override
             public T execute(Connection con) throws SQLException {
@@ -187,7 +202,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 String expandedSql = expandSql(sql, args);
                 try {
                     ps = con.prepareStatement(expandedSql);
-                    ps.setQueryTimeout(settings.getQueryTimeout());
+                    ps.setQueryTimeout(queryTimeoutSeconds);
                     setValues(ps, expandArgs(sql, args));
                     long startTime = System.currentTimeMillis();
                     rs = ps.executeQuery();
