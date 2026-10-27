@@ -281,6 +281,19 @@ by database.
 |
 |
 
+|Microsoft Fabric Warehouse *
+|Tested on 12.0.2000.8
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+
 |MySQL
 |5.0.2 and above
 |✔
@@ -652,6 +665,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |
 |
 
+|Microsoft Fabric Warehouse
+|
+|✔
+|select db_name()
+|✔
+|select schema_name()
+
 |MySQL
 | 
 |✔
@@ -796,6 +816,7 @@ include::{includedir}/appendix/ingres.ad[]
 include::{includedir}/appendix/interbase.ad[]
 include::{includedir}/appendix/kafka.ad[]
 include::{includedir}/appendix/mariadb.ad[]
+include::{includedir}/appendix/mssqlfabricwarehouse.ad[]
 include::{includedir}/appendix/mongodb.ad[]
 include::{includedir}/appendix/mysql.ad[]
 include::{includedir}/appendix/openedge.ad[]

@@ -295,27 +295,28 @@ public class SelectFromSymDataSource extends SelectFromSource {
             }
         }
         String oldData = data.getCsvData(CsvData.OLD_DATA);
-        boolean sendSchemaExcludeIndices = false;
-        boolean sendSchemaExcludeForeignKeys = false;
-        boolean sendSchemaExcludeDefaults = false;
+        boolean isSendSchemaExcludeIndices = false;
+        boolean isSendSchemaExcludeForeignKeys = false;
+        boolean isSendSchemaExcludeDefaults = false;
         if (oldData != null && oldData.length() > 0) {
             String[] excludes = data.getCsvData(CsvData.OLD_DATA).split(",");
             for (String exclude : excludes) {
                 if (Constants.SEND_SCHEMA_EXCLUDE_INDICES.equals(exclude)) {
-                    sendSchemaExcludeIndices = true;
+                    isSendSchemaExcludeIndices = true;
                 } else if (Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS.equals(exclude)) {
-                    sendSchemaExcludeForeignKeys = true;
+                    isSendSchemaExcludeForeignKeys = true;
                 } else if (Constants.SEND_SCHEMA_EXCLUDE_DEFAULTS.equals(exclude)) {
-                    sendSchemaExcludeDefaults = true;
+                    isSendSchemaExcludeDefaults = true;
                 }
             }
         }
-        boolean excludeDefaults = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_DEFAULTS, false) | sendSchemaExcludeDefaults;
-        boolean excludeForeignKeys = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_FOREIGN_KEYS, false) | sendSchemaExcludeForeignKeys;
-        boolean excludeIndexes = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_INDEXES, false) | sendSchemaExcludeIndices;
-        boolean deferConstraints = outgoingBatch.isLoadFlag() && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
-        boolean deferTableLogging = evaluateDeferTableLogging(outgoingBatch, sendSchemaExcludeIndices);
-        boolean includeTriggerDdl = parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false);
+        boolean isDefaultsExcluded = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_DEFAULTS, false) | isSendSchemaExcludeDefaults;
+        boolean isForeignKeysExcluded = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_FOREIGN_KEYS, false) | isSendSchemaExcludeForeignKeys;
+        boolean isIndexesExcluded = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_INDEXES, false) | isSendSchemaExcludeIndices;
+        boolean isPrimaryKeysExcluded = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PRIMARY_KEYS, false);
+        boolean isDeferConstraints = outgoingBatch.isLoadFlag() && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
+        boolean isDeferTableLogging = evaluateDeferTableLogging(outgoingBatch, isSendSchemaExcludeIndices);
+        boolean isTriggerDdlIncluded = parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false);
         if (outgoingBatch.getLoadId() > 0) {
             TableReloadStatus tableReloadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(outgoingBatch.getLoadId(), engine.getNodeId());
             if (tableReloadStatus != null && tableReloadStatus.isCompleted()) {
@@ -341,19 +342,24 @@ public class SelectFromSymDataSource extends SelectFromSource {
         db.setCatalog(copyTargetTable.getCatalog());
         db.setSchema(copyTargetTable.getSchema());
         db.addTable(copyTargetTable);
-        if (deferTableLogging) {
+        if (isDeferTableLogging) {
             copyTargetTable.setLogging(false);
         }
-        if (excludeDefaults) {
+        if (isDefaultsExcluded) {
             copyTargetTable.removeAllColumnDefaults();
         }
-        if (excludeForeignKeys || deferConstraints) {
+        if (isForeignKeysExcluded || isDeferConstraints) {
             copyTargetTable.removeAllForeignKeys();
         }
-        if (excludeIndexes || (deferConstraints && !sendSchemaExcludeForeignKeys)) {
+        if (isIndexesExcluded || (isDeferConstraints && !isSendSchemaExcludeForeignKeys)) {
             copyTargetTable.removeAllIndexes();
         }
-        if (includeTriggerDdl) {
+        if (isPrimaryKeysExcluded) {
+            for (Column column : copyTargetTable.getColumns()) {
+                column.setPrimaryKey(false);
+            }
+        }
+        if (isTriggerDdlIncluded) {
             List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceRelation.getCatalog(), sourceRelation
                     .getSchema(), sourceRelation.getName(), symmetricDialect.getTablePrefix());
             if (triggers != null && triggers.size() > 0) {
@@ -394,7 +400,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         }
         String xml = DatabaseXmlUtil.toXml(db);
         data.setRowData(CsvUtils.escapeCsvData(xml));
-        if (excludeDefaults || excludeForeignKeys || excludeIndexes || deferConstraints || deferTableLogging) {
+        if (isDefaultsExcluded || isForeignKeysExcluded || isIndexesExcluded || isPrimaryKeysExcluded || isDeferConstraints || isDeferTableLogging) {
             log.debug("Adjusted batch {} channel {} table definition: {}", outgoingBatch.getNodeBatchId(), outgoingBatch.getChannelId(), xml);
         }
         return true;

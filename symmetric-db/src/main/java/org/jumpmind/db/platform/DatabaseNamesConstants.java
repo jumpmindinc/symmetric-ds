@@ -42,6 +42,7 @@ final public class DatabaseNamesConstants {
     public final static String MSSQL2016 = "mssql2016";
     public final static String MSSQLAZURE = "mssqlazure";
     public final static String MSSQLFABRICSQLDB = "mssqlfabricsqldb";
+    public static final String MSSQLFABRICWAREHOUSE = "mssqlfabricwarehouse";
     public final static String ORACLE = "oracle";
     public final static String ORACLE122 = "oracle122";
     public final static String ORACLE23 = "oracle23";
