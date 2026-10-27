@@ -131,8 +131,9 @@ A warehouse can only add nullable columns, widen the size of a column, change a 
 change, such as making a column `NOT NULL`, making a column smaller, or changing its data type, is done by re-creating the table.  SymmetricDS copies the
 data into a table named `<table>_`, drops the table, creates it again, copies the data back and then drops the copy.  A warning is logged.
 
-If the copy back fails, for example because a column that was made `NOT NULL` contains `null`s, the data remains in the `<table>_` table and must be
-restored manually.  Adding a column that is `NOT NULL` and has no default value also re-creates the table, but the existing rows are not copied back.
-They remain in the `<table>_` table.
+The table is re-created in a single transaction.  If any step fails, for example because a column that was made `NOT NULL` contains `null`s, the transaction
+is rolled back.  The table keeps its original definition and its rows, and no `<table>_` table is left behind.  The batch fails with the error from the
+warehouse and is retried until the cause is fixed, for example by removing the `null`s.  Adding a column that is `NOT NULL` and has no default value also
+re-creates the table, but the existing rows are not copied back.  They remain in the `<table>_` table.
 
 endif::pro[]
