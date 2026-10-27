@@ -49,7 +49,7 @@ public interface ISqlTemplate {
 
     public long queryForLong(String sql, Object... args);
 
-    public default long queryForLong(String sql, Duration queryTimeout, Object... args) {
+    public default long queryForLongWithTimeout(String sql, Duration queryTimeout, Object... args) {
         return queryForLong(sql, args);
     }
 
