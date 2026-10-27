@@ -468,7 +468,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
     private OptionalLong queryForFirstPassLong(String queryName, String sqlName) {
         long ts = System.currentTimeMillis();
         try {
-            long value = sqlTemplateDirty.queryForLong(getSql(sqlName), FIRST_PASS_QUERY_TIMEOUT, OutgoingBatch.Status.OK.name());
+            long value = sqlTemplateDirty.queryForLongWithTimeout(getSql(sqlName), FIRST_PASS_QUERY_TIMEOUT, OutgoingBatch.Status.OK.name());
             return isLongOperation(queryName, Duration.ofMillis(System.currentTimeMillis() - ts)) ? OptionalLong.empty() : OptionalLong.of(value);
         } catch (SqlException e) {
             if (isLongOperation(queryName, Duration.ofMillis(System.currentTimeMillis() - ts))) {

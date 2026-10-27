@@ -178,7 +178,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     }
 
     @Override
-    public long queryForLong(String sql, Duration queryTimeout, Object... args) {
+    public long queryForLongWithTimeout(String sql, Duration queryTimeout, Object... args) {
         Long number = queryForObjectWithTimeout(sql, Long.class, toQueryTimeoutSeconds(queryTimeout), args);
         return number != null ? number.longValue() : 0l;
     }
