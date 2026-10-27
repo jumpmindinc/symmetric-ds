@@ -422,7 +422,8 @@ abstract public class AbstractTriggerTemplate {
 
     protected String getDdlTableName(String tablePrefix) {
         String tableName = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_TABLE);
-        return isBlank(tableName) ? tablePrefix + "_node" : FormatUtils.replace("prefixName", tablePrefix, tableName);
+        return isBlank(tableName) ? TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE)
+                : FormatUtils.replace("prefixName", tablePrefix, tableName);
     }
 
     protected String getDdlChannelName() {
