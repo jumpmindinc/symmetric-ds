@@ -49,27 +49,22 @@ public class DuckDbDdlReader extends AbstractJdbcDdlReader {
         query.append("unnest(expressions::varchar[]) as COLUMN_NAME, ");
         query.append("generate_subscripts(expressions::varchar[], 1) as ORDINAL_POSITION ");
         query.append("from duckdb_indexes() where table_name = ? and schema_name = ?");
-        PreparedStatement stmt = connection.prepareStatement(query.toString());
-        ResultSet indexData = null;
-        stmt.setString(1, tableName);
-        stmt.setString(2, metaData.getSchemaPattern());
-        try {
-            indexData = stmt.executeQuery();
-            while (indexData.next()) {
-                Map<String, Object> values = readMetaData(indexData, getColumnsForIndex());
-                // we have to reverse the meaning of the unique flag
-                values.put("NON_UNIQUE",
-                        Boolean.FALSE.equals(values.get("NON_UNIQUE")) ? Boolean.TRUE
-                                : Boolean.FALSE);
-                // and trim the names
-                values.put("INDEX_NAME", ((String) values.get("INDEX_NAME")).trim());
-                values.put("TABLE_NAME", ((String) values.get("TABLE_NAME")).trim());
-                values.put("COLUMN_NAME", ((String) values.get("COLUMN_NAME")).trim());
-                readIndex(metaData, values, indices);
-            }
-        } finally {
-            if (indexData != null) {
-                indexData.close();
+        try (PreparedStatement stmt = connection.prepareStatement(query.toString())) {
+            stmt.setString(1, tableName);
+            stmt.setString(2, metaData.getSchemaPattern());
+            try (ResultSet indexData = stmt.executeQuery()) {
+                while (indexData.next()) {
+                    Map<String, Object> values = readMetaData(indexData, getColumnsForIndex());
+                    // we have to reverse the meaning of the unique flag
+                    values.put("NON_UNIQUE",
+                            Boolean.FALSE.equals(values.get("NON_UNIQUE")) ? Boolean.TRUE
+                                    : Boolean.FALSE);
+                    // and trim the names
+                    values.put("INDEX_NAME", ((String) values.get("INDEX_NAME")).trim());
+                    values.put("TABLE_NAME", ((String) values.get("TABLE_NAME")).trim());
+                    values.put("COLUMN_NAME", ((String) values.get("COLUMN_NAME")).trim());
+                    readIndex(metaData, values, indices);
+                }
             }
         }
         return indices.values();

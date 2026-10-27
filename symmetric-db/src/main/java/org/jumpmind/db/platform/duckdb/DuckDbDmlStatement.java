@@ -44,11 +44,7 @@ public class DuckDbDmlStatement extends DmlStatement {
             sql.append(" where (select count(*) from ");
             sql.append(tableName);
             sql.append(" where  ");
-            if (keyColumns == null || keyColumns.length == 0) {
-                sql.append("1 != 1");
-            } else {
-                appendColumnsEquals(sql, keyColumns, " and ");
-            }
+            appendColumnsEquals(sql, keyColumns, " and ");
             sql.append(") = 0)");
             return sql.toString();
         } else {

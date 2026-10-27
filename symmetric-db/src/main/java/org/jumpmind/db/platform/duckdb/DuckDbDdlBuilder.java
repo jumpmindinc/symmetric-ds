@@ -30,22 +30,24 @@ import org.jumpmind.db.platform.AbstractDdlBuilder;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 
 public class DuckDbDdlBuilder extends AbstractDdlBuilder {
+    private static final String VARCHAR = "VARCHAR";
+
     public DuckDbDdlBuilder() {
         super(DatabaseNamesConstants.DUCKDB);
         databaseInfo.setTriggersSupported(false);
         databaseInfo.setForeignKeysSupported(false);
         databaseInfo.addNativeTypeMapping(Types.BIT, "BOOLEAN", Types.BOOLEAN);
-        databaseInfo.addNativeTypeMapping(Types.LONGVARCHAR, "VARCHAR", Types.VARCHAR);
-        databaseInfo.addNativeTypeMapping(Types.LONGNVARCHAR, "VARCHAR", Types.VARCHAR);
-        databaseInfo.addNativeTypeMapping(Types.CLOB, "VARCHAR", Types.VARCHAR);
-        databaseInfo.addNativeTypeMapping(Types.CHAR, "VARCHAR", Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.LONGVARCHAR, VARCHAR, Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.LONGNVARCHAR, VARCHAR, Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.CLOB, VARCHAR, Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.CHAR, VARCHAR, Types.VARCHAR);
         databaseInfo.addNativeTypeMapping(Types.BINARY, "BLOB", Types.BLOB);
         databaseInfo.addNativeTypeMapping(Types.VARBINARY, "BLOB", Types.BLOB);
         databaseInfo.addNativeTypeMapping(Types.LONGVARBINARY, "BLOB", Types.BLOB);
         databaseInfo.addNativeTypeMapping(Types.FLOAT, "DOUBLE", Types.DOUBLE);
         databaseInfo.addNativeTypeMapping(Types.NUMERIC, "DECIMAL", Types.DECIMAL);
-        databaseInfo.addNativeTypeMapping(Types.NCHAR, "VARCHAR", Types.VARCHAR);
-        databaseInfo.addNativeTypeMapping(Types.NVARCHAR, "VARCHAR", Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.NCHAR, VARCHAR, Types.VARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.NVARCHAR, VARCHAR, Types.VARCHAR);
         databaseInfo.addNativeTypeMapping(ColumnTypes.TIMESTAMPTZ, "TIMESTAMPTZ", ColumnTypes.TIMESTAMPTZ);
         databaseInfo.addNativeTypeMapping(Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMPTZ", ColumnTypes.TIMESTAMPTZ);
         databaseInfo.setMaxSize("DECIMAL", 38);
