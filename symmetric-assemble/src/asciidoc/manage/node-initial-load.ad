@@ -48,7 +48,10 @@ If the desired behavior is to create the table on the target if it is not presen
 doing the initial load. Note that individual create batches are created to represent each of the table creates.
 +
 Sometimes when creating tables across different database platforms default values do not translate.  You can turn off the use of default values
-during the table create by setting `create.table.without.defaults`.
+during the table create by setting `create.table.without.defaults`.  Likewise, `create.table.without.foreign.keys`, `create.table.without.indexes`,
+and `create.table.without.primary.keys` leave foreign keys, indexes, and primary keys out of the table create.  These parameters are read by the node
+that sends the table definition, so they apply to every target that node sends to.  When primary keys are left out, updates and deletes on the target
+still use the source's primary key columns as long as `dataloader.use.primary.keys.from.source` is `true`.
             
         
 

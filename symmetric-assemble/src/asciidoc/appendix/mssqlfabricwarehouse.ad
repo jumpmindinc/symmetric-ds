@@ -1,0 +1,138 @@
+
+=== Microsoft Fabric Warehouse
+
+ifndef::pro[]
+
+Microsoft Fabric Warehouse is only supported in the professional version of SymmetricDS.
+
+endif::pro[]
+
+ifdef::pro[]
+
+Microsoft Fabric Warehouse is supported as a write-only target.  See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
+It uses the https://learn.microsoft.com/en-us/sql/connect/jdbc/download-microsoft-jdbc-driver-for-sql-server[Microsoft JDBC driver].
+
+==== Setup
+
+Set up the node by using the <<Set Up New Replication,Configure Diagram>> or the <<Add Node,Connect Database>> wizard and selecting Microsoft Fabric
+Warehouse as the type.  Use the full host name of the warehouse for the endpoint and the name of the warehouse for the database name. The following is
+an example of the JDBC URL:
+
+----
+jdbc:sqlserver://<workspace>.datawarehouse.fabric.microsoft.com:1433;database={<warehouse_name>};sendTimeAsDateTime=false;encrypt=true;trustServerCertificate=false;authentication=ActiveDirectoryServicePrincipal
+----
+
+The `sendTimeAsDateTime=false` property is required.  Without it the JDBC driver sends a `TIME` value as a `DATETIME`, which the warehouse cannot compare
+with a `TIME` column, so an update or delete that compares a `TIME` column fails with the error "The data types time and datetime are incompatible in the
+equal to operator".  The web console adds the property to the example URL.
+
+Microsoft Fabric Warehouse accepts only Microsoft Entra ID authentication.  SymmetricDS uses the service principal of an Entra app registration.
+The credentials are entered in the User Id and Password fields:
+
+[horizontal]
+User Id:: The Application (client) ID of the app registration
+Password:: A client secret of the app registration
+
+WARNING: The connection string shown by the Fabric portal uses `Authentication=ActiveDirectoryInteractive`.  This mode needs to open a browser for
+sign-in whenever it opens a connection, which is not compatible with SymmetricDS.  Use `Authentication=ActiveDirectoryServicePrincipal` instead.
+
+The `azurekv` module contains the Microsoft Authentication Library that is required for Entra ID authentication.  The web console downloads it when
+the connection is tested, or you can run `symadmin module install azurekv` to install it.
+
+==== Permissions
+
+The app registration needs to be granted access in each of the following steps:
+
+. Create an app registration in Microsoft Entra ID and a client secret for it.  Depending on the tenant settings, service principals might need to be
+allowed to use Fabric APIs, which is a tenant setting in the Fabric admin portal.
+. Add the app registration to the workspace that contains the warehouse with the Contributor role.  Sharing the warehouse item is not enough, and the
+personal "My workspace" cannot grant roles, so use a standard workspace.
+. Grant the app registration the database permissions that SymmetricDS needs.  The `CREATE USER` statement is not supported by a warehouse.  The database
+user is created when the first `GRANT` or `ALTER ROLE` statement runs.  Connect to the warehouse as an administrator and run the following script,
+replacing `<app registration name>` with the display name of the app registration:
+
+[source, Sql]
+----
+ALTER ROLE db_ddladmin ADD MEMBER [<app registration name>];
+ALTER ROLE db_datareader ADD MEMBER [<app registration name>];
+ALTER ROLE db_datawriter ADD MEMBER [<app registration name>];
+----
+
+==== Bulk Loading
+
+Bulk loading is not available for Microsoft Fabric Warehouse.  Data is loaded using JDBC batch statements.
+
+==== Known Limitations
+
+Microsoft Fabric Warehouse supports a subset of the SQL Server features, so SymmetricDS adjusts the tables that it creates.
+
+===== Constraints
+
+Primary key, foreign key, and unique constraints cannot be part of a `CREATE TABLE` statement.  SymmetricDS creates the table and then adds each
+constraint with an `ALTER TABLE ... ADD CONSTRAINT` statement that ends in `NOT ENFORCED`.  A warehouse never enforces these constraints, so inserting
+a duplicate key succeeds.  Indexes other than unique constraints are not created.
+
+To leave the primary keys out of the tables that are created on the target, set the `create.table.without.primary.keys` parameter to `true` on the node
+that sends the table definition.  The parameter applies to every target of that node.  Updates and deletes are still applied by the primary key columns
+of the source table as long as the `dataloader.use.primary.keys.from.source` parameter is `true`.  If it is set to `false`, all columns of a table
+without a primary key are used to find the row.  A warehouse rejects a foreign key whose referenced columns are not a primary key or a unique constraint,
+so when you set `create.table.without.primary.keys` to `true`, it is recommended to also set `create.table.without.foreign.keys` to `true`.
+
+===== Other Unsupported Features
+
+* Default values are not created.
+* Computed columns are not created.
+* Triggers are not supported.
+* Identity columns are not created.  SymmetricDS loads the values from the source.
+
+===== Data Types
+
+The following data types are not supported by a warehouse.  SymmetricDS creates the replacement type instead:
+
+[cols="1,2"]
+|===
+|Source type |Type created
+
+|`NVARCHAR(n)`
+|`VARCHAR(n * 3)`, or `VARCHAR(MAX)` when that is more than 8000
+
+|`NCHAR(n)`
+|`CHAR(n * 3)`, or `VARCHAR(MAX)` when that is more than 8000
+
+|`NVARCHAR(MAX)`, `NCLOB`, `LONGNVARCHAR`, `XML`, `SQL_VARIANT`
+|`VARCHAR(MAX)`
+
+|`BINARY(n)`
+|`VARBINARY(n)`
+
+|`TINYINT`
+|`SMALLINT`
+
+|`TIMESTAMP` and `TIME` with a precision above 6
+|`DATETIME2(6)` and `TIME(6)`
+
+|`TIMESTAMP WITH TIME ZONE`, `DATETIMEOFFSET`
+|`DATETIME2(6)`
+|===
+
+The length of a `VARCHAR` column is counted in bytes of UTF-8 text instead of characters, which is why the length of a Unicode column is tripled.  The
+length of a `VARCHAR` column that is not a Unicode column is copied as it is, so it may need to be increased when the source stores single-byte characters
+that need more than one byte in UTF-8.
+
+WARNING: A time zone offset cannot be stored in a `DATETIME2` column.  The offset is not kept, and the value that is stored depends on the conversion
+that is done by the warehouse.
+
+NOTE: A `SQL_VARIANT` value is sent together with its base type, precision and scale, and SymmetricDS only removes them when the target column is a
+`SQL_VARIANT`.  The warehouse column is `VARCHAR(MAX)`, so the value is stored as text in the form `value|basetype|precision|scale`.
+
+===== Changing a Table
+
+A warehouse can only add nullable columns, widen the size of a column, change a column from `NOT NULL` to `NULL`, and drop a column.  Any other
+change, such as making a column `NOT NULL`, making a column smaller, or changing its data type, is done by re-creating the table.  SymmetricDS copies the
+data into a table named `<table>_`, drops the table, creates it again, copies the data back and then drops the copy.  A warning is logged.
+
+If the copy back fails, for example because a column that was made `NOT NULL` contains `null`s, the data remains in the `<table>_` table and must be
+restored manually.  Adding a column that is `NOT NULL` and has no default value also re-creates the table, but the existing rows are not copied back.
+They remain in the `<table>_` table.
+
+endif::pro[]
