@@ -32,6 +32,45 @@ https.need.client.auth=true
 
 The client will be required to send a valid certificate before HTTPS requests can be made.  During TLS negotiation, the server will send a list of certificate authorities to the client (See <<Certificate Authorities>>).  If the client has a certificate signed by one of the authorities, it will send it to the server as authentication (See <<Server Certificate>>).
 
+==== Post-Quantum Key Exchange
+
+Java 25.0.5 and later support the hybrid TLS 1.3 key exchange groups `X25519MLKEM768`, `SecP256r1MLKEM768`, and `SecP384r1MLKEM1024`.  These groups combine a classical key exchange with ML-KEM so that recorded traffic cannot be decrypted later by a quantum computer.  `X25519MLKEM768` is first in the default list, so no change to SymmetricDS or its configuration is needed.  The hybrid group is negotiated for HTTPS between nodes and for the console when all of the following are true:
+
+- Both ends use a Java build that supports the hybrid groups (Java 25.0.5 or later), or an external client such as OpenSSL 3.5 or later.
+- Both ends negotiate TLS 1.3.  A TLS 1.2 connection never uses a hybrid group.
+- Neither end has restricted the named groups.
+
+If either end does not support a hybrid group, the handshake falls back to a classical group such as `x25519` and still succeeds.  Nodes running Java 17 or 21, or an older version of SymmetricDS, can connect to a server running Java 25.0.5.  Only the key exchange is protected.  Certificates and signatures are not post-quantum.
+
+To confirm which group was negotiated, start the server with the following system property (See below for where Java options are set), connect a client, and look in the log for `key_share` in the ServerHello message:
+
+[source, cli]
+----
+-Djavax.net.debug=ssl:handshake
+----
+
+The `named group` shown for the key share is `X25519MLKEM768` when the hybrid group was used.  An external client can also be used.  With OpenSSL 3.5 or later, the output of the following command reports `Negotiated TLS1.3 group: X25519MLKEM768`:
+
+[source, cli]
+----
+openssl s_client -connect HOST:PORT -groups X25519MLKEM768
+----
+
+Make sure TLS 1.3 is not disabled.  Check that `symmetric.ssl.ignore.protocols` (default `SSLv3`), `jdk.tls.disabledAlgorithms`, and `https.protocols` do not exclude `TLSv1.3`.
+
+Java system properties are set with a `wrapper.java.additional=` line in `conf/sym_service.conf` when running as a service, or by adding them to `SYM_OPTIONS` in `bin/setenv` (`bin/setenv.bat` on Windows) when running `bin/sym` from a command line.  Named groups can be restricted with the `jdk.tls.namedGroups` system property.  The value is a comma-separated list in order of preference.
+
+[source, cli]
+----
+# Disable the hybrid groups, for example to work around a device that mishandles the larger ClientHello
+-Djdk.tls.namedGroups=x25519,secp256r1,secp384r1
+
+# Require the hybrid group; clients that offer only classical groups will fail to connect
+-Djdk.tls.namedGroups=X25519MLKEM768
+----
+
+The hybrid key share makes the ClientHello larger.  Firewalls, proxies, TLS-inspecting appliances, and load balancers between nodes that mishandle a larger ClientHello can cause handshakes to fail or time out.  If that happens, update the device or exclude the hybrid groups as shown above.  Connections that do not use the JDK TLS stack, such as a JDBC driver with its own TLS implementation, use their own key exchange and are not affected by these settings.
+
 ==== Console Client Authentication
 
 Authentication of console users using client certificates can be enabled with parameter `console.auth.client.cert`.  The console username is parsed from the distinguished name of the certificate's subject using the first matching group of a regular expression specified by parameter `console.auth.client.cert.subject.regex`.  By default, it will match on the common name of the subject.
