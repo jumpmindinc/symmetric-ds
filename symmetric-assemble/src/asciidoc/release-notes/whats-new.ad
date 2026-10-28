@@ -6,9 +6,9 @@ SymmetricDS now runs on Java 25 as well as Java 21. Java 21 is still the minimum
 
 The software is compiled for Java 21, so the same installation runs on either version. The official Docker images are now based on Java 25, including the SymmetricDS Pro hardened image, which uses the Java 25 JRE.
 
-<<<<<<< HEAD
 See also: <<System Requirements>>.
-=======
+--
+
 ifdef::pro[]
 
 === Analytics
@@ -239,7 +239,6 @@ SymmetricDS 3.18 upgrades to Spring Framework 7.x, which is a major version chan
 * Spring Security 7.1.x
 
 Note: Java 21 or newer is now required; See also: <<System Requirements>>.
->>>>>>> cea61acb32 (SYM-7488: Document HikariCP connection pool (default) in user-facing docs (#1201))
 --
 
 ifdef::pro[]
@@ -254,3 +253,12 @@ Data is loaded with JDBC batch statements. Bulk loading is not available for Mic
 --
 
 endif::pro[]
+
+=== Post-Quantum Key Exchange
+--
+On Java 25.0.5 and later, HTTPS connections between nodes use the hybrid TLS 1.3 key exchange groups `X25519MLKEM768`, `SecP256r1MLKEM768`, and `SecP384r1MLKEM1024`, which protect recorded traffic against future quantum computers. No configuration change is needed. When either side does not support a hybrid group, such as a node running Java 21, the connection falls back to a classical group and still succeeds.
+
+ifdef::pro[]
+For how to verify the negotiated group and how to restrict the groups, see link:user-guide.html#_post_quantum_key_exchange[Post-Quantum Key Exchange].
+endif::pro[]
+--
