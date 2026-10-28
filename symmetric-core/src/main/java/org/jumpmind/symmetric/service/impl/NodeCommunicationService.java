@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.RemoteNodeStatus;
+import org.jumpmind.symmetric.model.RemoteNodeStatus.Status;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -65,6 +67,9 @@ import org.jumpmind.util.RandomTimeSlot;
 import org.slf4j.MDC;
 
 public class NodeCommunicationService extends AbstractService implements INodeCommunicationService {
+    static final long RETRY_DELAY_BASE_MS = 1000;
+    static final long DEFAULT_JOB_PERIOD_TIME_MS = 10000;
+    private static final int MAX_RETRY_DELAY_EXPONENT = 30;
     private Map<CommunicationType, ThreadPoolExecutor> executors = new HashMap<NodeCommunication.CommunicationType, ThreadPoolExecutor>();
     private INodeService nodeService;
     private IClusterService clusterService;
@@ -73,6 +78,7 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
     private boolean initialized = false;
     private Map<CommunicationType, Set<String>> currentlyExecuting;
     private Map<CommunicationType, Map<String, NodeCommunication>> lockCache;
+    private Map<CommunicationType, Map<String, Long>> nextAttemptTimeByIdentifier;
     private volatile long lastHeartbeatTouchMs;
 
     public NodeCommunicationService(ISymmetricEngine engine) {
@@ -90,6 +96,10 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
         lockCache = new HashMap<CommunicationType, Map<String, NodeCommunication>>();
         for (CommunicationType type : types) {
             lockCache.put(type, new HashMap<String, NodeCommunication>());
+        }
+        nextAttemptTimeByIdentifier = new HashMap<CommunicationType, Map<String, Long>>();
+        for (CommunicationType type : types) {
+            nextAttemptTimeByIdentifier.put(type, new ConcurrentHashMap<String, Long>());
         }
     }
 
@@ -561,6 +571,7 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                             status.setComplete(true);
                             executing.remove(nodeCommunication.getIdentifier());
                             unlock(nodeCommunication, failed, ts);
+                            updateNextAttemptTime(nodeCommunication, status, ts);
                         }
                     }
                 };
@@ -682,6 +693,60 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                 attempts++;
             }
         } while (!unlocked);
+    }
+
+    @Override
+    public boolean isDueForAttempt(NodeCommunication nodeCommunication) {
+        Long nextAttemptTime = nextAttemptTimeByIdentifier.get(nodeCommunication.getCommunicationType())
+                .get(nodeCommunication.getIdentifier());
+        return nextAttemptTime == null || System.currentTimeMillis() >= nextAttemptTime;
+    }
+
+    protected void updateNextAttemptTime(NodeCommunication nodeCommunication, RemoteNodeStatus status, long attemptStartTime) {
+        Map<String, Long> nextAttemptTimes = nextAttemptTimeByIdentifier.get(nodeCommunication.getCommunicationType());
+        if (isRejected(status) && !nodeCommunication.isDeleteOnUnlock()) {
+            Long retryDelayMs = getRetryDelayMs(nodeCommunication);
+            if (retryDelayMs != null) {
+                nextAttemptTimes.put(nodeCommunication.getIdentifier(), attemptStartTime + retryDelayMs);
+                log.debug("Delaying next {} for node {} queue {} by {} ms after {} response", nodeCommunication.getCommunicationType().name(),
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), retryDelayMs, status.getStatus());
+            }
+        } else {
+            nextAttemptTimes.remove(nodeCommunication.getIdentifier());
+        }
+    }
+
+    protected boolean isRejected(RemoteNodeStatus status) {
+        return status != null && (status.getStatus() == Status.BUSY || status.getStatus() == Status.OFFLINE);
+    }
+
+    protected Long getRetryDelayMs(NodeCommunication nodeCommunication) {
+        String minimumPeriodParameter;
+        String jobPeriodParameter;
+        switch (nodeCommunication.getCommunicationType()) {
+            case PULL:
+                minimumPeriodParameter = ParameterConstants.PULL_MINIMUM_PERIOD_MS;
+                jobPeriodParameter = ParameterConstants.JOB_PULL_PERIOD_TIME_MS;
+                break;
+            case PUSH:
+                minimumPeriodParameter = ParameterConstants.PUSH_MINIMUM_PERIOD_MS;
+                jobPeriodParameter = ParameterConstants.JOB_PUSH_PERIOD_TIME_MS;
+                break;
+            default:
+                return null;
+        }
+        long minimumPeriodMs = Math.max(0, parameterService.getLong(minimumPeriodParameter, 0));
+        long jobPeriodMs = parameterService.getLong(jobPeriodParameter, DEFAULT_JOB_PERIOD_TIME_MS);
+        if (jobPeriodMs <= 0) {
+            jobPeriodMs = DEFAULT_JOB_PERIOD_TIME_MS;
+        }
+        long maxRandomDelayMs = getMaxRandomRetryDelayMs(nodeCommunication.getFailCount(), jobPeriodMs);
+        return minimumPeriodMs + ThreadLocalRandom.current().nextLong(maxRandomDelayMs + 1);
+    }
+
+    static long getMaxRandomRetryDelayMs(long failCount, long jobPeriodMs) {
+        int exponent = (int) Math.min(Math.max(failCount, 0), MAX_RETRY_DELAY_EXPONENT);
+        return Math.min(RETRY_DELAY_BASE_MS << exponent, 2 * jobPeriodMs);
     }
 
     @Override

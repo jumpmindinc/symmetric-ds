@@ -93,6 +93,7 @@ public class PullService extends AbstractOfflineDetectorService implements IPull
                                     (System.currentTimeMillis() - nodeCommunication.getLastLockTime().getTime()) < minimumPeriodMs) {
                                 meetsMinimumTime = false;
                             }
+                            meetsMinimumTime = meetsMinimumTime && nodeCommunicationService.isDueForAttempt(nodeCommunication);
                             boolean m2mLockout = false;
                             if (m2mLoadInProgress) {
                                 m2mLockout = identity.getCreatedAtNodeId() != null && "registration".equals(nodeSecurity.getInitialLoadCreateBy()) &&

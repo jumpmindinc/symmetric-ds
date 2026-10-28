@@ -20,11 +20,14 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -40,6 +43,8 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
+import org.jumpmind.symmetric.model.RemoteNodeStatus;
+import org.jumpmind.symmetric.model.RemoteNodeStatus.Status;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -186,6 +191,139 @@ class NodeCommunicationServiceTest {
         NodeCommunication nc = nodeCommunication(null, null);
         service.lock(nc, new Date());
         verify(nodeService, never()).updateNodeHostForCurrentNode(any(Boolean.class));
+    }
+
+    @Test
+    void testIsDueForAttempt_noPreviousAttempt_isDue() {
+        assertTrue(service.isDueForAttempt(nodeCommunication(null, null)));
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_busyPull_delaysNextAttempt() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(1);
+        RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+        status.setStatus(Status.BUSY);
+        service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+        assertFalse(service.isDueForAttempt(nc));
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_offlinePush_delaysNextAttempt() {
+        when(parameterService.getLong(eq(ParameterConstants.PUSH_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PUSH_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setCommunicationType(CommunicationType.PUSH);
+        nc.setFailCount(1);
+        RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+        status.setStatus(Status.OFFLINE);
+        service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+        assertFalse(service.isDueForAttempt(nc));
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_delayElapsed_isDue() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(1);
+        long attemptStartTime = System.currentTimeMillis() - 3000 - 2 * NodeCommunicationService.RETRY_DELAY_BASE_MS - 1;
+        RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+        status.setStatus(Status.BUSY);
+        service.updateNextAttemptTime(nc, status, attemptStartTime);
+        assertTrue(service.isDueForAttempt(nc));
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_successAfterBusy_clearsDelay() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(1);
+        RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+        status.setStatus(Status.BUSY);
+        service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+        status.setStatus(Status.DATA_PROCESSED);
+        service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+        assertTrue(service.isDueForAttempt(nc));
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_failuresOtherThanRejection_keepCurrentBehavior() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(1);
+        for (Status otherStatus : new Status[] { Status.DATA_ERROR, Status.NOT_AUTHORIZED, Status.REGISTRATION_REQUIRED,
+                Status.UNKNOWN_ERROR }) {
+            RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+            status.setStatus(otherStatus);
+            service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+            assertTrue(service.isDueForAttempt(nc), otherStatus.name());
+        }
+    }
+
+    @Test
+    void testUpdateNextAttemptTime_otherCommunicationType_isDue() {
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setCommunicationType(CommunicationType.FILE_PULL);
+        RemoteNodeStatus status = new RemoteNodeStatus("node1", "default", null);
+        status.setStatus(Status.BUSY);
+        service.updateNextAttemptTime(nc, status, System.currentTimeMillis());
+        assertTrue(service.isDueForAttempt(nc));
+    }
+
+    @Test
+    void testGetRetryDelayMs_staysWithinMinimumPlusRandomRange() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(3000L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(3);
+        for (int i = 0; i < 1000; i++) {
+            long delayMs = service.getRetryDelayMs(nc);
+            assertTrue(delayMs >= 3000 && delayMs <= 11000, String.valueOf(delayMs));
+        }
+    }
+
+    @Test
+    void testGetRetryDelayMs_minimumPeriodZero_usesRandomPartOnly() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(0L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(10000L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(1);
+        for (int i = 0; i < 1000; i++) {
+            long delayMs = service.getRetryDelayMs(nc);
+            assertTrue(delayMs >= 0 && delayMs <= 2000, String.valueOf(delayMs));
+        }
+    }
+
+    @Test
+    void testGetMaxRandomRetryDelayMs_growsWithFailCount() {
+        assertEquals(1000L, NodeCommunicationService.getMaxRandomRetryDelayMs(0, 10000));
+        assertEquals(2000L, NodeCommunicationService.getMaxRandomRetryDelayMs(1, 10000));
+        assertEquals(4000L, NodeCommunicationService.getMaxRandomRetryDelayMs(2, 10000));
+        assertEquals(8000L, NodeCommunicationService.getMaxRandomRetryDelayMs(3, 10000));
+        assertEquals(16000L, NodeCommunicationService.getMaxRandomRetryDelayMs(4, 10000));
+    }
+
+    @Test
+    void testGetMaxRandomRetryDelayMs_cappedAtTwiceJobPeriod() {
+        assertEquals(20000L, NodeCommunicationService.getMaxRandomRetryDelayMs(5, 10000));
+        assertEquals(20000L, NodeCommunicationService.getMaxRandomRetryDelayMs(Long.MAX_VALUE, 10000));
+    }
+
+    @Test
+    void testGetRetryDelayMs_jobPeriodNotSet_usesDefaultJobPeriodForCap() {
+        when(parameterService.getLong(eq(ParameterConstants.PULL_MINIMUM_PERIOD_MS), anyLong())).thenReturn(0L);
+        when(parameterService.getLong(eq(ParameterConstants.JOB_PULL_PERIOD_TIME_MS), anyLong())).thenReturn(0L);
+        NodeCommunication nc = nodeCommunication(null, null);
+        nc.setFailCount(10);
+        for (int i = 0; i < 1000; i++) {
+            long delayMs = service.getRetryDelayMs(nc);
+            assertTrue(delayMs <= 2 * NodeCommunicationService.DEFAULT_JOB_PERIOD_TIME_MS, String.valueOf(delayMs));
+        }
     }
 
     private NodeCommunication nodeCommunication(String lockingServerId, Date lockTime) {

@@ -116,6 +116,7 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
                                     (System.currentTimeMillis() - nodeCommunication.getLastLockTime().getTime()) < minimumPeriodMs) {
                                 meetsMinimumTime = false;
                             }
+                            meetsMinimumTime = meetsMinimumTime && nodeCommunicationService.isDueForAttempt(nodeCommunication);
                             boolean m2mLoadInProgress = false;
                             if (isMasterToMaster && nodeService.isDataLoadStarted(nodeCommunication.getNodeId())) {
                                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeCommunication.getNodeId(), true);

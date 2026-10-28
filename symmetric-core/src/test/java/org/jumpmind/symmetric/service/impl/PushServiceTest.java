@@ -123,6 +123,7 @@ class PushServiceTest {
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
         when(parameterService.getLong(ParameterConstants.PUSH_MINIMUM_PERIOD_MS, -1)).thenReturn(-1L);
+        when(nodeCommunicationService.isDueForAttempt(any())).thenReturn(true);
         when(parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES)).thenReturn(false);
         when(configurationService.getChannels(false)).thenReturn(new HashMap<>());
         pushService = new PushService(engine);
@@ -205,6 +206,19 @@ class PushServiceTest {
         remoteSecurity.setInitialLoadCreateBy("registration");
         remoteSecurity.setCreatedAtNodeId("node3");
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
+        pushService.pushData(false);
+        verify(nodeCommunicationService, never()).execute(any(), any(), any());
+    }
+
+    @Test
+    void testPushDataSkipsNodeNotDueForAttempt() {
+        Node identity = newNode("node1", "group1");
+        when(nodeService.findIdentity()).thenReturn(identity);
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
+        when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
+        when(nodeService.findNodeSecurity("node1", true)).thenReturn(newNodeSecurity("node1"));
+        when(nodeCommunicationService.getAvailableThreads(CommunicationType.PUSH)).thenReturn(1);
+        when(nodeCommunicationService.isDueForAttempt(nc)).thenReturn(false);
         pushService.pushData(false);
         verify(nodeCommunicationService, never()).execute(any(), any(), any());
     }

@@ -49,6 +49,8 @@ public interface INodeCommunicationService {
 
     public void clearLocksForServer(String serverId);
 
+    public boolean isDueForAttempt(NodeCommunication nodeCommunication);
+
     public interface INodeCommunicationExecutor {
         public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status);
     }
