@@ -46,7 +46,15 @@ jobs:
       - name: Style check with Gradle
         if: ${{ inputs.skip-style-check != 'true' }}
         run: |
-          ./gradlew spotlessJavaCheck
+          set -o pipefail
+          if ./gradlew spotlessJavaCheck 2>&1 | tee spotless.log; then
+            exit 0
+          fi
+          if grep -q "Failed to load eclipse jdt formatter" spotless.log; then
+            echo "::warning title=Style check skipped::Could not load the Eclipse formatter from download.eclipse.org, so the style check did not run."
+            exit 0
+          fi
+          exit 1
         working-directory: symmetric-assemble
 
       - name: Upload JaCoCo unit test coverage report

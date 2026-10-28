@@ -63,6 +63,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Duration;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
@@ -1958,6 +1959,17 @@ class JdbcSqlTemplateTest {
         template.clearThreadLocalConnectionHandler();
         template.execute(con -> "value");
         verify(handlerMock, never()).before(any(Connection.class));
+    }
+
+    @Test
+    public void testToQueryTimeoutSecondsWholeSeconds() {
+        assertEquals(33, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofSeconds(33)));
+    }
+
+    @Test
+    public void testToQueryTimeoutSecondsRoundsUp() {
+        assertEquals(34, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofMillis(33001)));
+        assertEquals(1, JdbcSqlTemplate.toQueryTimeoutSeconds(Duration.ofMillis(1)));
     }
 
     private JdbcSqlTemplate createTemplate() {
