@@ -154,11 +154,13 @@ class DuckDbDdlBuilderTest {
     void testCreateTable_withAutoIncrementColumn_createsSequenceBeforeTable() {
         StringBuilder ddl = new StringBuilder();
         ddlBuilder.createTable(tableWithAutoIncrementId(), ddl, false, false);
-        assertEquals("CREATE SEQUENCE \"item_id_seq\";\n"
-                + "CREATE TABLE \"item\"(\n"
-                + "    \"id\" INTEGER NOT NULL  DEFAULT nextval('\"item_id_seq\"'),\n"
-                + "    PRIMARY KEY (\"id\")\n"
-                + ");\n", ddl.toString());
+        assertEquals("""
+                CREATE SEQUENCE "item_id_seq";
+                CREATE TABLE "item"(
+                    "id" INTEGER NOT NULL  DEFAULT nextval('"item_id_seq"'),
+                    PRIMARY KEY ("id")
+                );
+                """, ddl.toString());
     }
 
     @Test
@@ -167,11 +169,13 @@ class DuckDbDdlBuilderTest {
         table.setSchema("sales");
         StringBuilder ddl = new StringBuilder();
         ddlBuilder.createTable(table, ddl, false, false);
-        assertEquals("CREATE SEQUENCE \"sales\".\"item_id_seq\";\n"
-                + "CREATE TABLE \"sales\".\"item\"(\n"
-                + "    \"id\" INTEGER NOT NULL  DEFAULT nextval('\"sales\".\"item_id_seq\"'),\n"
-                + "    PRIMARY KEY (\"id\")\n"
-                + ");\n", ddl.toString());
+        assertEquals("""
+                CREATE SEQUENCE "sales"."item_id_seq";
+                CREATE TABLE "sales"."item"(
+                    "id" INTEGER NOT NULL  DEFAULT nextval('"sales"."item_id_seq"'),
+                    PRIMARY KEY ("id")
+                );
+                """, ddl.toString());
     }
 
     @Test

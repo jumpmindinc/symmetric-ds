@@ -35,14 +35,17 @@ public class DuckDbSymmetricDialect extends AbstractSymmetricDialect implements 
 
     @Override
     public void cleanDatabase() {
+        // DuckDB is target-only
     }
 
     @Override
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
+        // DuckDB is target-only
     }
 
     @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
+        // DuckDB is target-only
     }
 
     @Override
@@ -52,6 +55,7 @@ public class DuckDbSymmetricDialect extends AbstractSymmetricDialect implements 
 
     @Override
     public void dropRequiredDatabaseObjects() {
+        // DuckDB is target-only
     }
 
     @Override
