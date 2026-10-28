@@ -50,14 +50,10 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class JettyTlsNamedGroupTest {
     private static final String PASSWORD = "changeit";
-
     @TempDir
     static Path tempDir;
-
     static Server server;
-
     static int port;
-
     static File keystore;
 
     @BeforeAll
