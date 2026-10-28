@@ -1,0 +1,27 @@
+
+=== DuckDB
+
+Use `symadmin module install duckdb` to install driver files, or copy your own files into the `lib` sub-directory.
+
+DuckDB is an embedded, in-process analytical database. SymmetricDS supports DuckDB as a target platform where data
+can be loaded, but it does not support data capture because DuckDB does not support triggers.
+
+See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
+
+In the engine properties file, set the following properties:
+----
+load.only=true
+target.db.driver=org.duckdb.DuckDBDriver
+target.db.url=jdbc:duckdb:/path/to/database.db
+target.db.user=
+target.db.password=
+----
+
+If a table has a primary key or unique index, DuckDB rejects rows with duplicate keys. Before inserting a row,
+SymmetricDS checks whether a row with the same key already exists. If it does, the row is not inserted, and it is
+handled as a conflict using the conflict resolution settings for the table, such as fallback to update. Foreign keys
+are not created on DuckDB tables because DuckDB does not support adding them with ALTER TABLE. Auto increment columns are
+created with a sequence and a default value that calls nextval() on that sequence.
+
+Character types (char, varchar, nchar, nvarchar, and clob) are created as varchar without a size. Binary types are
+created as blob. Float is created as double, and the maximum precision for decimal and numeric is 38.

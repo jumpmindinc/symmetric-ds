@@ -138,6 +138,19 @@ by database.
 |
 |
 
+|DuckDB
+|1.5.6
+|
+|
+|
+|
+|✔
+|
+|
+|
+|
+|
+
 |Elasticsearch *
 |7.13.2
 |
@@ -586,6 +599,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |
 |✔
 |values current schema   
+
+|DuckDB
+|
+|✔
+|select current_catalog()
+|✔
+|select current_schema()  
  
 |Elasticsearch
 |
@@ -804,6 +824,7 @@ include::{includedir}/appendix/bigquery.ad[]
 include::{includedir}/appendix/databricks.ad[]
 include::{includedir}/appendix/db2.ad[]
 include::{includedir}/appendix/derby.ad[]
+include::{includedir}/appendix/duckdb.ad[]
 include::{includedir}/appendix/elasticsearch.ad[]
 include::{includedir}/appendix/firebird.ad[]
 include::{includedir}/appendix/greenplum.ad[]

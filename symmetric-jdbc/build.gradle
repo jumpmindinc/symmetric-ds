@@ -40,7 +40,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "net.sf.jt400:jt400:10.7"
         testImplementation "com.singlestore:singlestore-jdbc-client:1.0.2"
         testImplementation "net.snowflake:snowflake-jdbc:3.13.34"
-        testImplementation "org.duckdb:duckdb_jdbc:1.1.2"
+        testImplementation "org.duckdb:duckdb_jdbc:1.5.6.0"
         testImplementation "com.exasol:exasol-jdbc:25.2.2"
         testImplementation "org.apache.hive:hive-jdbc:4.0.1"
         testImplementation "com.databricks:databricks-jdbc:2.7.3"

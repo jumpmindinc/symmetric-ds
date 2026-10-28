@@ -24,6 +24,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.db2.Db2DatabasePlatform;
 import org.jumpmind.db.platform.derby.DerbyDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDatabasePlatform;
 import org.jumpmind.db.platform.greenplum.GreenplumPlatform;
 import org.jumpmind.db.platform.h2.H2DatabasePlatform;
@@ -47,6 +48,7 @@ import org.jumpmind.symmetric.db.ase.AseSymmetricDialect;
 import org.jumpmind.symmetric.db.db2.Db2SymmetricDialect;
 import org.jumpmind.symmetric.db.db2.Db2v9SymmetricDialect;
 import org.jumpmind.symmetric.db.derby.DerbySymmetricDialect;
+import org.jumpmind.symmetric.db.duckdb.DuckDbSymmetricDialect;
 import org.jumpmind.symmetric.db.firebird.Firebird20SymmetricDialect;
 import org.jumpmind.symmetric.db.firebird.Firebird21SymmetricDialect;
 import org.jumpmind.symmetric.db.firebird.FirebirdSymmetricDialect;
@@ -106,6 +108,8 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
             dialect = new PostgreSqlSymmetricDialect(parameterService, platform);
         } else if (platform instanceof DerbyDatabasePlatform) {
             dialect = new DerbySymmetricDialect(parameterService, platform);
+        } else if (platform instanceof DuckDbDatabasePlatform) {
+            dialect = new DuckDbSymmetricDialect(parameterService, platform);
         } else if (platform instanceof H2DatabasePlatform) {
             dialect = new H2SymmetricDialect(parameterService, platform);
         } else if (platform instanceof HsqlDbDatabasePlatform) {

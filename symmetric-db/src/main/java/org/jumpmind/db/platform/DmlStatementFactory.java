@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform;
 
 import org.jumpmind.db.platform.ase.AseDmlStatement;
+import org.jumpmind.db.platform.duckdb.DuckDbDmlStatement;
 import org.jumpmind.db.platform.hbase.HbaseDmlStatement;
 import org.jumpmind.db.platform.mysql.MySqlDmlStatement;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDmlStatement;
@@ -65,6 +66,8 @@ public class DmlStatementFactory implements IDmlStatementFactory {
             return new HbaseDmlStatement(options);
         } else if (DatabaseNamesConstants.ASE.equals(databaseName)) {
             return new AseDmlStatement(options);
+        } else if (DatabaseNamesConstants.DUCKDB.equals(databaseName)) {
+            return new DuckDbDmlStatement(options);
         } else {
             return new DmlStatement(options);
         }

@@ -23,6 +23,7 @@ package org.jumpmind.db.platform;
 import org.jumpmind.db.platform.ase.AseDdlBuilder;
 import org.jumpmind.db.platform.db2.Db2DdlBuilder;
 import org.jumpmind.db.platform.derby.DerbyDdlBuilder;
+import org.jumpmind.db.platform.duckdb.DuckDbDdlBuilder;
 import org.jumpmind.db.platform.firebird.FirebirdDdlBuilder;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DdlBuilder;
 import org.jumpmind.db.platform.greenplum.GreenplumDdlBuilder;
@@ -64,6 +65,8 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new Db2DdlBuilder();
         } else if (DatabaseNamesConstants.DERBY.equalsIgnoreCase(databaseName)) {
             return new DerbyDdlBuilder();
+        } else if (DatabaseNamesConstants.DUCKDB.equalsIgnoreCase(databaseName)) {
+            return new DuckDbDdlBuilder();
         } else if (DatabaseNamesConstants.FIREBIRD.equalsIgnoreCase(databaseName)) {
             return new FirebirdDdlBuilder();
         } else if (DatabaseNamesConstants.FIREBIRD_DIALECT1.equalsIgnoreCase(databaseName)) {

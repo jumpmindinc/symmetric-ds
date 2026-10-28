@@ -1,5 +1,12 @@
 == What's New
 
+=== DuckDB Replication
+--
+DuckDB database was added as a target-only replication platform.
+Data can be loaded into DuckDB, but changes cannot be captured from it because DuckDB does not support triggers.
+
+--
+
 === Java 25 Support
 --
 SymmetricDS now runs on Java 25 as well as Java 21. Java 21 is still the minimum required version, so existing installations do not need to change. The supported versions are Java 21 and Java 25, both long-term support releases.

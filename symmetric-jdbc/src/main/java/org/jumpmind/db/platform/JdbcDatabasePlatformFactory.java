@@ -59,6 +59,7 @@ import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.cassandra.CassandraPlatform;
 import org.jumpmind.db.platform.db2.Db2DatabasePlatform;
 import org.jumpmind.db.platform.derby.DerbyDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DatabasePlatform;
 import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
@@ -116,6 +117,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         addPlatform(platforms, DatabaseNamesConstants.CASSANDRA, CassandraPlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.DB2, Db2DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.DERBY, DerbyDatabasePlatform.class);
+        addPlatform(platforms, DatabaseNamesConstants.DUCKDB, DuckDbDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.FIREBIRD, FirebirdDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.FIREBIRD_DIALECT1, FirebirdDialect1DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.GENERIC, GenericJdbcDatabasePlatform.class);
@@ -155,6 +157,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         jdbcSubProtocolToPlatform.put(AseDatabasePlatform.JDBC_SUBPROTOCOL, AseDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(Db2DatabasePlatform.JDBC_SUBPROTOCOL, Db2DatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(DerbyDatabasePlatform.JDBC_SUBPROTOCOL, DerbyDatabasePlatform.class);
+        jdbcSubProtocolToPlatform.put(DuckDbDatabasePlatform.JDBC_SUBPROTOCOL, DuckDbDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(FirebirdDatabasePlatform.JDBC_SUBPROTOCOL, FirebirdDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(H2DatabasePlatform.JDBC_SUBPROTOCOL, H2DatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(HanaDatabasePlatform.JDBC_SUBPROTOCOL, HanaDatabasePlatform.class);
