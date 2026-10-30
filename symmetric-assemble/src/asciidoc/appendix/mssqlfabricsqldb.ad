@@ -32,8 +32,8 @@ Password:: A client secret of the app registration
 WARNING: The connection string shown by the Fabric portal uses `Authentication=ActiveDirectoryInteractive`.  This mode needs to open a browser for
 sign-in whenever it opens a connection, which is not compatible with SymmetricDS.  Use `Authentication=ActiveDirectoryServicePrincipal` instead.
 
-The `azurekv` module contains the Microsoft Authentication Library that is required for Entra ID authentication.  The web console downloads it when
-the connection is tested, or you can run `symadmin module install azurekv` to install it.
+The `fabric` module contains the Microsoft Authentication Library that is required for Entra ID authentication.  The web console downloads it when
+the connection is tested, or you can run `symadmin module install fabric` to install it.
 
 ==== Permissions
 
@@ -55,6 +55,11 @@ ALTER ROLE db_datawriter ADD MEMBER [<app registration name>];
 
 ==== Bulk Loading
 
-Bulk loading is not available for SQL Database in Microsoft Fabric.  Data is loaded using JDBC batch statements.
+SymmetricDS can bulk load SQL Database in Microsoft Fabric with the bulk copy API of the Microsoft JDBC driver.  When a channel uses the bulk data
+loader, which the reload channel does by default, SymmetricDS writes the rows of a batch to a staging file and streams them to the database in groups of
+10,000 rows.  The rows are copied in the same transaction as the SymmetricDS batch, so a failed batch doesn't leave part of its rows in the table.
+
+No extra setup is needed.  The bulk copy uses the same connection and service principal as the rest of SymmetricDS, and nothing is uploaded to OneLake.
+Values of identity columns are loaded as they are sent, and empty strings stay distinct from null values.
 
 endif::pro[]
