@@ -399,7 +399,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                 Iterator<Column> it = lookupKeys.iterator();
                 while (it.hasNext()) {
                     Column col = it.next();
-                    if ((getPlatform().isLob(col) && data.isNoBinaryOldData())
+                    if ((isLobColumn(col) && data.isNoBinaryOldData())
                             || !getPlatform().canColumnBeUsedInWhereClause(col)) {
                         it.remove();
                     }
@@ -556,7 +556,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     Iterator<Column> it = lookupKeys.iterator();
                     while (it.hasNext()) {
                         Column col = it.next();
-                        if ((getPlatform().isLob(col) && data.isNoBinaryOldData())
+                        if ((isLobColumn(col) && data.isNoBinaryOldData())
                                 || !getPlatform().canColumnBeUsedInWhereClause(col)) {
                             it.remove();
                         }
@@ -1189,7 +1189,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
              * previously null. The mapped type is checked in addition to the target platform's isLob(), because a platform may classify a large text type as an
              * ordinary string (SQL Server does this for varchar(max)) while the source trigger still could not capture its old value.
              */
-            boolean containsEmptyLobColumn = (getPlatform().isLob(column) || isClobMappedType(column))
+            boolean containsEmptyLobColumn = (isLobColumn(column))
                     && StringUtils.isBlank(oldData[targetColumnIndex]);
             needsUpdated = !Strings.CS.equals(rowData[targetColumnIndex], oldData[targetColumnIndex])
                     || data.getParsedData(CsvData.OLD_DATA) == null
@@ -1403,5 +1403,9 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         String catalogSeparator = dbInfo.getCatalogSeparator();
         String schemaSeparator = dbInfo.getSchemaSeparator();
         getTransaction(table).allowInsertIntoAutoIncrementColumns(value, table, quote, catalogSeparator, schemaSeparator);
+    }
+
+    private boolean isLobColumn(Column column) {
+        return getPlatform().isLob(column) || isClobMappedType(column);
     }
 }
