@@ -38,6 +38,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Stream;
 
@@ -396,11 +397,13 @@ class AbstractJobTest {
     void testInvoke_multipleExecutions_accumulatesStatistics() {
         setupSuccessfulInvoke();
         testJob.setDoJobSleepMs(10);
-        testJob.invoke(false);
-        testJob.invoke(false);
-        testJob.invoke(false);
+        long expectedTotalExecutionTimeInMs = 0;
+        for (int run = 0; run < 3; run++) {
+            testJob.invoke(false);
+            expectedTotalExecutionTimeInMs += testJob.getLastExecutionTimeInMs();
+        }
         assertEquals(3, testJob.getNumberOfRuns());
-        assertTrue(testJob.getTotalExecutionTimeInMs() >= 30);
+        assertEquals(expectedTotalExecutionTimeInMs, testJob.getTotalExecutionTimeInMs());
     }
 
     @Test
@@ -631,8 +634,10 @@ class AbstractJobTest {
 
         @Override
         protected void doJob(boolean force) throws Exception {
-            if (doJobSleepMs > 0) {
-                LockSupport.parkNanos(doJobSleepMs * 1_000_000L);
+            long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(doJobSleepMs);
+            // parkNanos may return early, so park until the deadline passes
+            for (long remainingNanos = deadlineNanos - System.nanoTime(); remainingNanos > 0; remainingNanos = deadlineNanos - System.nanoTime()) {
+                LockSupport.parkNanos(remainingNanos);
             }
             if (throwException) {
                 throw new RuntimeException("Test exception");
