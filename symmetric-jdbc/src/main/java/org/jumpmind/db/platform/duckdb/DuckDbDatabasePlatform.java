@@ -23,6 +23,7 @@ package org.jumpmind.db.platform.duckdb;
 import java.sql.Connection;
 import java.sql.Time;
 import java.sql.Types;
+import java.util.Date;
 
 import javax.sql.DataSource;
 
@@ -103,7 +104,7 @@ public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
-    public java.util.Date parseDate(int type, String value, boolean useVariableDates) {
+    public Date parseDate(int type, String value, boolean useVariableDates) {
         if (StringUtils.isNotBlank(value)) {
             if (type == Types.TIME) {
                 return Time.valueOf(formatTimeValue(value));
