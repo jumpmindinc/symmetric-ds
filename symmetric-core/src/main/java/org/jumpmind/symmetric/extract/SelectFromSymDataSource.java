@@ -91,10 +91,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         columnsAccordingToTriggerHistory = new ColumnsAccordingToTriggerHistory(engine, sourceNode, targetNode);
         outgoingBatch.resetExtractRowStats();
         triggerRoutersByTriggerHist = triggerRouterService.getTriggerRoutersByTriggerHist(targetNode.getNodeGroupId(), false);
-        dialectHasNoOldBinaryData = symmetricDialect.getName().equals(DatabaseNamesConstants.MSSQL2000)
-                || symmetricDialect.getName().equals(DatabaseNamesConstants.MSSQL2005)
-                || symmetricDialect.getName().equals(DatabaseNamesConstants.MSSQL2008)
-                || symmetricDialect.getName().equals(DatabaseNamesConstants.MSSQL2016);
+        dialectHasNoOldBinaryData = symmetricDialect.needsToSelectLobData();
     }
 
     @Override
