@@ -396,11 +396,13 @@ class AbstractJobTest {
     void testInvoke_multipleExecutions_accumulatesStatistics() {
         setupSuccessfulInvoke();
         testJob.setDoJobSleepMs(10);
-        testJob.invoke(false);
-        testJob.invoke(false);
-        testJob.invoke(false);
+        long expectedTotalExecutionTimeInMs = 0;
+        for (int run = 0; run < 3; run++) {
+            testJob.invoke(false);
+            expectedTotalExecutionTimeInMs += testJob.getLastExecutionTimeInMs();
+        }
         assertEquals(3, testJob.getNumberOfRuns());
-        assertTrue(testJob.getTotalExecutionTimeInMs() >= 30);
+        assertEquals(expectedTotalExecutionTimeInMs, testJob.getTotalExecutionTimeInMs());
     }
 
     @Test
