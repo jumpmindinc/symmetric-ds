@@ -21,6 +21,8 @@
 package org.jumpmind.db.platform.duckdb;
 
 import java.sql.Connection;
+import java.sql.Time;
+import java.sql.Types;
 
 import javax.sql.DataSource;
 
@@ -98,5 +100,28 @@ public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
             sql = sql.substring(0, sql.length() - 1);
         }
         return sql + " limit " + limit + " offset " + offset;
+    }
+
+    @Override
+    public java.util.Date parseDate(int type, String value, boolean useVariableDates) {
+        if (StringUtils.isNotBlank(value)) {
+            if (type == Types.TIME) {
+                return Time.valueOf(formatTimeValue(value));
+            } else {
+                return super.parseDate(type, value, useVariableDates);
+            }
+        } else {
+            return null;
+        }
+    }
+
+    protected String formatTimeValue(String t) {
+        if (t == null) {
+            return null;
+        }
+        if (t.indexOf(" ") > 0) {
+            t = t.substring(t.indexOf(" ") + 1, t.length());
+        }
+        return t.substring(0, t.indexOf(".") > 0 ? t.indexOf(".") : t.length());
     }
 }
