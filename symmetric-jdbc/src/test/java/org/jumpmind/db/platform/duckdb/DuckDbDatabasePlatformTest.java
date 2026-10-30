@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform.duckdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -29,8 +30,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
-import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Date;
 
 import javax.sql.DataSource;
 
@@ -39,10 +41,7 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 class DuckDbDatabasePlatformTest {
     private DataSource dataSourceMock;
@@ -142,59 +141,30 @@ class DuckDbDatabasePlatformTest {
     }
 
     @Test
-    void testParseDateTimeWithDatePrefix() {
-        assertEquals(Time.valueOf("13:46:56"), platform.parseDate(Types.TIME, "2026-10-29 13:46:56.496", false));
+    void testParseDate_timeKeepsFractionalSeconds() {
+        Date result = platform.parseDate(Types.TIME, "13:14:15.1234567", false);
+        assertInstanceOf(Timestamp.class, result);
+        assertEquals("1970-01-01 13:14:15.1234567", result.toString());
     }
 
     @Test
-    void testParseDateTimeBlank() {
+    void testParseDate_timeWithoutFractionalSeconds() {
+        assertEquals("1970-01-01 13:14:15.0", platform.parseDate(Types.TIME, "13:14:15", false).toString());
+    }
+
+    @Test
+    void testParseDate_timeWithDatePrefixUsesTimeOfDay() {
+        assertEquals("1970-01-01 12:45:30.5", platform.parseDate(Types.TIME, "2000-06-15 12:45:30.5", false).toString());
+    }
+
+    @Test
+    void testParseDate_blankTimeIsNull() {
         assertNull(platform.parseDate(Types.TIME, " ", false));
     }
 
     @Test
-    void testFormatTimeValueWithNull() {
-        assertNull(platform.formatTimeValue(null));
-    }
-
-    @Test
-    void testFormatTimeValueSimpleTime() {
-        assertEquals("02:30:00", platform.formatTimeValue("02:30:00"));
-    }
-
-    @Test
-    void testFormatTimeValueStripsMilliseconds() {
-        assertEquals("18:00:00", platform.formatTimeValue("18:00:00.000"));
-    }
-
-    @Test
-    void testFormatTimeValueExtractsTimeFromDatetime() {
-        assertEquals("12:45:00", platform.formatTimeValue("1970-01-01 12:45:00.000"));
-    }
-
-    @Test
-    void testFormatTimeValueDatePrefixNoMilliseconds() {
-        assertEquals("15:30:00", platform.formatTimeValue("2000-06-15 15:30:00"));
-    }
-
-    @Test
-    void testFormatTimeValueDecimalEdgeCases() {
-        assertEquals("09:15:30", platform.formatTimeValue("09:15:30.1"));
-        assertEquals("09:15:30", platform.formatTimeValue("09:15:30.12"));
-        assertEquals("09:15:30", platform.formatTimeValue("09:15:30.123456789"));
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "02:30:00, 02:30:00",
-            "18:00:00.000, 18:00:00",
-            "1970-01-01 12:45:00.000, 12:45:00",
-            "23:59:59, 23:59:59",
-            "00:00:00, 00:00:00",
-            "12:00:00.123, 12:00:00",
-            "2023-12-25 08:30:45.999, 08:30:45",
-            "1999-01-01 00:00:00.000, 00:00:00"
-    })
-    void testFormatTimeValueParameterized(String input, String expected) {
-        assertEquals(expected, platform.formatTimeValue(input));
+    void testParseDate_timestampStillUsesInheritedParsing() {
+        Date result = platform.parseDate(Types.TIMESTAMP, "2026-10-23 09:30:15.123", false);
+        assertEquals(Timestamp.valueOf("2026-10-23 09:30:15.123"), result);
     }
 }

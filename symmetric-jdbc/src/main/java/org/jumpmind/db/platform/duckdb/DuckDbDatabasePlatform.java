@@ -21,7 +21,7 @@
 package org.jumpmind.db.platform.duckdb;
 
 import java.sql.Connection;
-import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Date;
 
@@ -37,6 +37,7 @@ import org.jumpmind.db.sql.SqlTemplateSettings;
 public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
     public static final String JDBC_DRIVER = "org.duckdb.DuckDBDriver";
     public static final String JDBC_SUBPROTOCOL = "duckdb";
+    private static final String EPOCH_DATE_PREFIX = "1970-01-01 ";
 
     public DuckDbDatabasePlatform(DataSource dataSource, SqlTemplateSettings settings) {
         super(dataSource, settings);
@@ -105,24 +106,11 @@ public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public Date parseDate(int type, String value, boolean useVariableDates) {
-        if (StringUtils.isNotBlank(value)) {
-            if (type == Types.TIME) {
-                return Time.valueOf(formatTimeValue(value));
-            } else {
-                return super.parseDate(type, value, useVariableDates);
-            }
-        } else {
-            return null;
+        if (type == Types.TIME && StringUtils.isNotBlank(value)) {
+            int datePartEnd = value.indexOf(' ');
+            String time = datePartEnd > 0 ? value.substring(datePartEnd + 1) : value;
+            return Timestamp.valueOf(EPOCH_DATE_PREFIX + time);
         }
-    }
-
-    protected String formatTimeValue(String t) {
-        if (t == null) {
-            return null;
-        }
-        if (t.indexOf(" ") > 0) {
-            t = t.substring(t.indexOf(" ") + 1, t.length());
-        }
-        return t.substring(0, t.indexOf(".") > 0 ? t.indexOf(".") : t.length());
+        return super.parseDate(type, value, useVariableDates);
     }
 }
