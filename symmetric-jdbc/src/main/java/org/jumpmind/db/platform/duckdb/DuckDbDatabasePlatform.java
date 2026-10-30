@@ -21,6 +21,9 @@
 package org.jumpmind.db.platform.duckdb;
 
 import java.sql.Connection;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Date;
 
 import javax.sql.DataSource;
 
@@ -34,6 +37,7 @@ import org.jumpmind.db.sql.SqlTemplateSettings;
 public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
     public static final String JDBC_DRIVER = "org.duckdb.DuckDBDriver";
     public static final String JDBC_SUBPROTOCOL = "duckdb";
+    private static final String EPOCH_DATE_PREFIX = "1970-01-01 ";
 
     public DuckDbDatabasePlatform(DataSource dataSource, SqlTemplateSettings settings) {
         super(dataSource, settings);
@@ -98,5 +102,15 @@ public class DuckDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
             sql = sql.substring(0, sql.length() - 1);
         }
         return sql + " limit " + limit + " offset " + offset;
+    }
+
+    @Override
+    public Date parseDate(int type, String value, boolean useVariableDates) {
+        if (type == Types.TIME && StringUtils.isNotBlank(value)) {
+            int datePartEnd = value.indexOf(' ');
+            String time = datePartEnd > 0 ? value.substring(datePartEnd + 1) : value;
+            return Timestamp.valueOf(EPOCH_DATE_PREFIX + time);
+        }
+        return super.parseDate(type, value, useVariableDates);
     }
 }

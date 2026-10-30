@@ -21,6 +21,8 @@
 package org.jumpmind.db.platform.duckdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -28,6 +30,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Date;
+
 import javax.sql.DataSource;
 
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -132,5 +138,33 @@ class DuckDbDatabasePlatformTest {
     @Test
     void testMassageForLimitOffset_stripsTrailingSemicolon() {
         assertEquals("select * from item limit 10 offset 20", platform.massageForLimitOffset("select * from item;", 10, 20));
+    }
+
+    @Test
+    void testParseDate_timeKeepsFractionalSeconds() {
+        Date result = platform.parseDate(Types.TIME, "13:14:15.1234567", false);
+        assertInstanceOf(Timestamp.class, result);
+        assertEquals("1970-01-01 13:14:15.1234567", result.toString());
+    }
+
+    @Test
+    void testParseDate_timeWithoutFractionalSeconds() {
+        assertEquals("1970-01-01 13:14:15.0", platform.parseDate(Types.TIME, "13:14:15", false).toString());
+    }
+
+    @Test
+    void testParseDate_timeWithDatePrefixUsesTimeOfDay() {
+        assertEquals("1970-01-01 12:45:30.5", platform.parseDate(Types.TIME, "2000-06-15 12:45:30.5", false).toString());
+    }
+
+    @Test
+    void testParseDate_blankTimeIsNull() {
+        assertNull(platform.parseDate(Types.TIME, " ", false));
+    }
+
+    @Test
+    void testParseDate_timestampStillUsesInheritedParsing() {
+        Date result = platform.parseDate(Types.TIMESTAMP, "2026-10-23 09:30:15.123", false);
+        assertEquals(Timestamp.valueOf("2026-10-23 09:30:15.123"), result);
     }
 }
