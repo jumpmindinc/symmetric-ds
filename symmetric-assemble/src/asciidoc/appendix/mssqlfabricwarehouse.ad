@@ -36,8 +36,8 @@ Password:: A client secret of the app registration
 WARNING: The connection string shown by the Fabric portal uses `Authentication=ActiveDirectoryInteractive`.  This mode needs to open a browser for
 sign-in whenever it opens a connection, which is not compatible with SymmetricDS.  Use `Authentication=ActiveDirectoryServicePrincipal` instead.
 
-The `azurekv` module contains the Microsoft Authentication Library that is required for Entra ID authentication.  The web console downloads it when
-the connection is tested, or you can run `symadmin module install azurekv` to install it.
+The `fabric` module contains the Microsoft Authentication Library that is required for Entra ID authentication and the libraries that bulk loading uses to
+upload files to OneLake.  The web console downloads it when the connection is tested, or you can run `symadmin module install fabric` to install it.
 
 ==== Permissions
 
@@ -60,7 +60,45 @@ ALTER ROLE db_datawriter ADD MEMBER [<app registration name>];
 
 ==== Bulk Loading
 
-Bulk loading is not available for Microsoft Fabric Warehouse.  Data is loaded using JDBC batch statements.
+SymmetricDS can bulk load a warehouse with the `COPY INTO` statement.  When a channel uses the bulk data loader, which the reload channel does by default,
+SymmetricDS writes the rows of a batch to a CSV file, uploads the file to a lakehouse in OneLake, loads it with `COPY INTO`, and deletes the file.
+
+Bulk loading is used when the following parameters are set.  Until they are, data is loaded using JDBC batch statements.  The web console asks for these
+values when the node is added.  The tenant, workspace and lakehouse IDs must be GUIDs.  If one of them is set to something else, the web console doesn't
+accept it, and a node that was configured by other means logs a warning that names the parameter and loads with JDBC batch statements.
+
+[horizontal]
+cloud.bulk.load.onelake.tenant.id:: The Directory (tenant) ID of the Microsoft Entra tenant that owns the app registration
+cloud.bulk.load.onelake.workspace.id:: The ID of the workspace that contains the lakehouse
+cloud.bulk.load.onelake.lakehouse.id:: The ID of the lakehouse where the files are staged
+cloud.bulk.load.onelake.folder:: The folder under *Files* in the lakehouse where the files are staged.  The default is `symmetricds`.
+
+Enter the IDs, which are GUIDs instead of the names because OneLake doesn't accept a name that contains a space.  SymmetricDS signs in to OneLake with
+the node's `target.db.user` and `target.db.password`, so the app registration needs access to the lakehouse as well as to the warehouse.
+The workspace role in the Permissions section applies to every item in the workspace.
+
+To find the values:
+
+[horizontal]
+Tenant ID:: In the Microsoft Entra admin center, open the app registration and copy the *Directory (tenant) ID* from the Overview page.
+Workspace ID and lakehouse ID:: In the Fabric portal, open the lakehouse.  The address of the page has the form
+`+https://app.fabric.microsoft.com/groups/<workspace ID>/lakehouses/<lakehouse ID>+`.
+
+WARNING: Do not copy the values from the host name of the warehouse endpoint, `<tenant>-<workspace>.datawarehouse.fabric.microsoft.com`.  Its two parts are
+shortened encodings of the tenant ID and the workspace ID, not GUIDs, and neither is the ID of a lakehouse.  OneLake rejects them with the error "Required
+item type extension is missing in the item name".
+
+Each batch of a table is loaded with its own `COPY INTO` statement, which has a fixed cost.  Larger batches therefore are more efficient.  Set the max
+batch size of a channel that uses the bulk loader accordingly.  Because each batch is uploaded to OneLake over the network, the speed of the connection
+between SymmetricDS and OneLake also affects how long a load takes.
+
+A table with an identity column that SymmetricDS didn't create is loaded with `IDENTITY_INSERT` turned on for the `COPY INTO` statement, so the identity
+values of the source are kept.  SymmetricDS doesn't reseed the identity column afterward.  If rows are also inserted into the table outside of
+SymmetricDS, run `DBCC CHECKIDENT ('<table>', RESEED)` after a load so that the values the warehouse generates don't collide with the loaded values.  A
+warehouse doesn't accept a new value for `RESEED`, and the values it generates are unique but not sequential, so they can be much larger than the values of
+the source.
+
+If SymmetricDS stops while it uploads or loads a file, the file might be left in the `cloud.bulk.load.onelake.folder`, and it can be deleted.
 
 ==== Known Limitations
 

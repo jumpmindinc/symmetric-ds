@@ -24,7 +24,12 @@ SymmetricDS Pro can now replicate data into a https://learn.microsoft.com/en-us/
 
 A warehouse supports only a subset of SQL Server's data types and table definitions, so SymmetricDS adapts each table it creates or alters. Unsupported data types are converted to the closest supported type, and primary key, foreign key, and unique constraints are created with `NOT ENFORCED`, because a warehouse never enforces them. A change that a warehouse cannot apply to an existing column, such as making it required or shrinking it, is handled by rebuilding the table, with the existing rows backed up to a `<table>_` table while it runs.
 
-Data is loaded with JDBC batch statements. Bulk loading is not available for Microsoft Fabric Warehouse.
+Data is loaded with JDBC batch statements by default. When the tenant, workspace, and lakehouse IDs of a OneLake lakehouse are set, a bulk channel uploads each batch to the lakehouse and loads it with the `COPY INTO` statement, which is faster for large loads.
+--
+
+=== Microsoft Fabric SQL Database Bulk Loading
+--
+A bulk channel that targets a https://learn.microsoft.com/en-us/fabric/database/sql/overview[SQL database in Microsoft Fabric] now loads inserts with the bulk copy API of the Microsoft JDBC driver instead of JDBC batch statements. No additional configuration is needed.
 --
 
 endif::pro[]
