@@ -163,6 +163,7 @@ class SelectFromSymDataSourceTest {
 
     @Test
     void testNew_withNonMsSqlDialect_initializesFieldsAndDialectHasNoOldBinaryDataFalse() throws Exception {
+        when(symmetricDialect.needsToSelectLobData()).thenReturn(false);
         SelectFromSymDataSource source = createSource();
         assertSame(sourceNode.getNodeId(), source.getBatch().getSourceNodeId());
         verify(outgoingBatch).resetExtractRowStats();
@@ -171,7 +172,7 @@ class SelectFromSymDataSourceTest {
 
     @Test
     void testNew_withMsSqlDialect_setsDialectHasNoOldBinaryDataTrue() throws Exception {
-        when(symmetricDialect.getName()).thenReturn(DatabaseNamesConstants.MSSQL2008);
+        when(symmetricDialect.needsToSelectLobData()).thenReturn(true);
         SelectFromSymDataSource source = createSource();
         assertTrue(getBoolean(source, "dialectHasNoOldBinaryData"));
     }
