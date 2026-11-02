@@ -25,6 +25,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.security.UnrecoverableKeyException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,7 +38,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
-import java.security.UnrecoverableKeyException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -46,7 +46,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.util.DataSourceProperties;
-import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.SortedProperties;
 import org.jumpmind.properties.TypedProperties;
@@ -62,10 +61,8 @@ import org.jumpmind.symmetric.ServiceRegistry;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusterPeerServerState;
-import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.EngineAndPeerStateMap;
-import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -80,12 +77,13 @@ import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IRegistrationService;
-import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.IStartupParameterService;
+import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.CustomizableThreadFactory;
+import org.jumpmind.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -124,7 +122,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             coreServerProperties = fetchStaticServerProperties();
         }
         if (securityService == null) {
-            securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
+            securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null); // server - runs integrity check
         }
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN));
     }
@@ -463,7 +461,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             try {
                 ISecurityService service = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
                 properties.setProperty(DataSourceProperties.DB_POOL_PASSWORD,
-                        SecurityConstants.PREFIX_ENC + service.encrypt(password));
+                        SecurityConstants.PREFIX_ENC + service.encrypt(password)); // encrypts db pw
             } catch (Exception ex) {
                 log.warn("Could not encrypt password", ex);
             }

@@ -166,7 +166,7 @@ public class TransportManagerFactory {
         } catch (Exception e) {
             log.warn("No key managers found: " + e.getMessage());
         }
-        context.init(keyManagers, new TrustManager[] { trustManager }, new SecureRandom());
+        context.init(keyManagers, new TrustManager[] { trustManager }, new SecureRandom()); // client, sets truststore and keystore for https
         SSLSocketFactory sslSocketFactory = context.getSocketFactory();
         HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
     }

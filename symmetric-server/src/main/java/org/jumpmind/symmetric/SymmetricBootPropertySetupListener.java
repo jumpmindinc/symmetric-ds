@@ -92,7 +92,7 @@ public class SymmetricBootPropertySetupListener implements ApplicationListener<A
                 bootProps.put("server.ssl.trust-store-type", SecurityConstants.KEYSTORE_TYPE_JKS);
             }
         }
-        environment.getPropertySources().addFirst(new PropertiesPropertySource("symBootProps", bootProps));
+        environment.getPropertySources().addFirst(new PropertiesPropertySource("symBootProps", bootProps)); // server sets properties for web server
         if (sysProps.is(ServerConstants.SERVER_HTTP_COOKIES_ENABLED)) {
             if (CookieHandler.getDefault() == null) {
                 CookieHandler.setDefault(new CookieManager());

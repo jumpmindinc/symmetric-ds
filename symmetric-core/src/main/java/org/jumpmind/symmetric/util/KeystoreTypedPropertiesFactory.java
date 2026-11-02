@@ -28,8 +28,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang3.Strings;
-import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
+import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -101,7 +101,7 @@ public class KeystoreTypedPropertiesFactory extends TypedPropertiesFactory {
                 if (valueString.length() > 0) {
                     try {
                         securityService.setKeystoreEntry(keystoreKey, valueString);
-                        valueString = SecurityConstants.PREFIX_KEYSTORE_STORAGE + keystoreKey;
+                        valueString = SecurityConstants.PREFIX_KEYSTORE_STORAGE + keystoreKey; // CLIENT - saves props from keystore
                         properties.put(key, valueString);
                     } catch (Exception e) {
                         if (e instanceof RuntimeException) {

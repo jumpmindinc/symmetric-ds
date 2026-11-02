@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.security.UnrecoverableKeyException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,7 +40,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.security.UnrecoverableKeyException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
@@ -60,17 +61,13 @@ import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
-import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
-import org.jumpmind.symmetric.model.DbHealthCheckResult;
-import org.jumpmind.symmetric.model.NodeHost;
-import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.common.Constants;
-import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.INodeIdCreator;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
@@ -82,7 +79,9 @@ import org.jumpmind.symmetric.io.IOfflineClientListener;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.DefaultOfflineServerListener;
 import org.jumpmind.symmetric.job.IJobManager;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.ProcessInfo;
@@ -90,20 +89,19 @@ import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
+import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
-import org.jumpmind.symmetric.service.IStartupParameterMetaDataProvider;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
-import org.jumpmind.symmetric.service.IStartupParameterService;
-import org.jumpmind.symmetric.service.IExternalParameterSource;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.IDataLoaderService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IExternalParameterSource;
 import org.jumpmind.symmetric.service.IFileSyncService;
 import org.jumpmind.symmetric.service.IGroupletService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
@@ -121,6 +119,8 @@ import org.jumpmind.symmetric.service.IPushService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.service.ISequenceService;
+import org.jumpmind.symmetric.service.IStartupParameterMetaDataProvider;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.IStatisticService;
 import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
@@ -156,7 +156,6 @@ import org.jumpmind.symmetric.service.impl.TransformService;
 import org.jumpmind.symmetric.service.impl.TriggerRouterService;
 import org.jumpmind.symmetric.service.impl.UpdateService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
-
 import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
@@ -331,7 +330,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private void ensureSecurityServiceIsCreated() {
         if (securityService == null) {
             this.securityService = SecurityServiceFactory.create(getSecurityServiceType(),
-                    propertiesFactory.reload());
+                    propertiesFactory.reload()); // Server - sets up security service
         }
     }
 
