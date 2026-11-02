@@ -40,13 +40,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class KeystoreSecretKeyProviderTest {
-    private static final String PASSWORD = "changeit";
     private InMemoryKeyStoreRepository repository;
     private KeystoreSecretKeyProvider provider;
 
     @BeforeEach
     void setUp() throws Exception {
-        repository = new InMemoryKeyStoreRepository(true);
+        repository = InMemoryKeyStoreRepository.fileBased();
         provider = new KeystoreSecretKeyProvider(repository, new SecureRandom());
     }
 
@@ -59,11 +58,11 @@ class KeystoreSecretKeyProviderTest {
     @Test
     void testGetSecretKey_returnsExistingEntryWithoutSaving() throws Exception {
         SecretKey existing = new SecretKeySpec(new byte[32], "AES");
-        repository.keyStore.setEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, new KeyStore.SecretKeyEntry(existing),
-                new KeyStore.PasswordProtection(PASSWORD.toCharArray()));
+        repository.load().setEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, new KeyStore.SecretKeyEntry(existing),
+                new KeyStore.PasswordProtection(InMemoryKeyStoreRepository.PASSWORD.toCharArray()));
         SecretKey key = provider.getSecretKey();
         assertArrayEquals(existing.getEncoded(), key.getEncoded());
-        assertEquals(0, repository.saveCount);
+        assertEquals(0, repository.getSaveCount());
     }
 
     @Test
@@ -74,16 +73,16 @@ class KeystoreSecretKeyProviderTest {
         SecretKey key = provider.getSecretKey();
         assertEquals("AES", key.getAlgorithm());
         assertArrayEquals(seedBytes, key.getEncoded());
-        assertEquals(1, repository.saveCount);
-        assertTrue(repository.keyStore.containsAlias(SecurityConstants.ALIAS_SYM_SECRET_KEY));
+        assertEquals(1, repository.getSaveCount());
+        assertTrue(repository.load().containsAlias(SecurityConstants.ALIAS_SYM_SECRET_KEY));
     }
 
     @Test
     void testGetSecretKey_whenMissingGeneratesAndSaves() throws Exception {
         SecretKey key = provider.getSecretKey();
         assertNotNull(key);
-        assertEquals(1, repository.saveCount);
-        assertTrue(repository.keyStore.containsAlias(SecurityConstants.ALIAS_SYM_SECRET_KEY));
+        assertEquals(1, repository.getSaveCount());
+        assertTrue(repository.load().containsAlias(SecurityConstants.ALIAS_SYM_SECRET_KEY));
     }
 
     @Test
@@ -91,12 +90,12 @@ class KeystoreSecretKeyProviderTest {
         SecretKey first = provider.getSecretKey();
         SecretKey second = provider.getSecretKey();
         assertArrayEquals(first.getEncoded(), second.getEncoded());
-        assertEquals(1, repository.saveCount);
+        assertEquals(1, repository.getSaveCount());
     }
 
     @Test
     void testGetSecretKey_throwsWhenSaveFails() {
-        repository.failOnSave = true;
+        repository.failOnSave();
         assertThrows(IllegalStateException.class, () -> provider.getSecretKey());
     }
 
@@ -110,13 +109,13 @@ class KeystoreSecretKeyProviderTest {
 
     @Test
     void testGetKeyBytes_withoutFileBasedKeystoreDerivesFromPassword() throws Exception {
-        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(new InMemoryKeyStoreRepository(false), new SecureRandom());
+        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.withoutFile(), new SecureRandom());
         assertArrayEquals("changeittt".getBytes(), passwordProvider.getKeyBytes(10));
     }
 
     @Test
     void testGetKeyBytes_withShortLengthTruncatesPassword() throws Exception {
-        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(new InMemoryKeyStoreRepository(false), new SecureRandom());
+        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.withoutFile(), new SecureRandom());
         assertArrayEquals("chan".getBytes(), passwordProvider.getKeyBytes(4));
     }
 
@@ -124,41 +123,5 @@ class KeystoreSecretKeyProviderTest {
     void testIsValidAesKeyLength() {
         assertTrue(provider.isValidAesKeyLength(new byte[24]));
         assertFalse(provider.isValidAesKeyLength(new byte[20]));
-    }
-
-    private static class InMemoryKeyStoreRepository implements IKeyStoreRepository {
-        private final KeyStore keyStore;
-        private final boolean fileBased;
-        private int saveCount;
-        private boolean failOnSave;
-
-        private InMemoryKeyStoreRepository(boolean fileBased) throws Exception {
-            this.fileBased = fileBased;
-            keyStore = KeyStore.getInstance(SecurityConstants.KEYSTORE_TYPE_PKCS12);
-            keyStore.load(null, PASSWORD.toCharArray());
-        }
-
-        @Override
-        public KeyStore load() {
-            return keyStore;
-        }
-
-        @Override
-        public void save(KeyStore ks) {
-            if (failOnSave) {
-                throw new IllegalStateException("save failed");
-            }
-            saveCount++;
-        }
-
-        @Override
-        public String getPassword() {
-            return PASSWORD;
-        }
-
-        @Override
-        public boolean isFileBased() {
-            return fileBased;
-        }
     }
 }

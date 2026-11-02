@@ -29,14 +29,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.security.KeyStore;
+import java.security.KeyStore.TrustedCertificateEntry;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.KeyManagerFactory;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.NotImplementedException;
@@ -56,6 +61,14 @@ class SecurityServiceTest {
             super(secretKeyProvider);
         }
 
+        private TestSecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore) {
+            super(secretKeyProvider, secretStore);
+        }
+
+        private TestSecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore, ITlsMaterialProvider tlsMaterialProvider) {
+            super(secretKeyProvider, secretStore, tlsMaterialProvider);
+        }
+
         private static void clearCachedSecretKey() {
             secretKey = null;
         }
@@ -70,6 +83,7 @@ class SecurityServiceTest {
         private KeyStore savedKeyStore;
         private String savedPassword;
         private int saveCount;
+        private int loadCount;
 
         private InMemoryKeyStoreSecurityService() throws Exception {
             keyStore = KeyStore.getInstance(SecurityConstants.KEYSTORE_TYPE_PKCS12);
@@ -78,6 +92,7 @@ class SecurityServiceTest {
 
         @Override
         public KeyStore getKeyStore() {
+            loadCount++;
             return keyStore;
         }
 
@@ -265,5 +280,122 @@ class SecurityServiceTest {
         assertEquals(1, securityService.saveCount);
         assertTrue(securityService.savedKeyStore.containsAlias(SecurityConstants.ALIAS_SYM_SECRET_KEY));
         assertEquals(securityService.getKeyStorePassword(), securityService.savedPassword);
+    }
+
+    @Test
+    void testGetSecretStore_defaultsToKeystoreStore() {
+        assertInstanceOf(KeystoreSecretStore.class, new TestSecurityService().getSecretStore());
+    }
+
+    @Test
+    void testGetSecretStore_withOnlyProviderInjectedStaysKeystoreStore() {
+        assertInstanceOf(KeystoreSecretStore.class, new TestSecurityService(FIXED_KEY_PROVIDER).getSecretStore());
+    }
+
+    @Test
+    void testGetSecretStore_returnsInjectedStore() {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        assertSame(secretStore, new TestSecurityService(FIXED_KEY_PROVIDER, secretStore).getSecretStore());
+    }
+
+    @Test
+    void testGetKeystoreEntry_delegatesToSecretStore() throws Exception {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        when(secretStore.getEntry("db.password")).thenReturn("s3cret");
+        assertEquals("s3cret", new TestSecurityService(FIXED_KEY_PROVIDER, secretStore).getKeystoreEntry("db.password"));
+    }
+
+    @Test
+    void testSetKeystoreEntry_delegatesToSecretStore() throws Exception {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        new TestSecurityService(FIXED_KEY_PROVIDER, secretStore).setKeystoreEntry("db.password", "s3cret");
+        verify(secretStore).setEntry("db.password", "s3cret");
+    }
+
+    @Test
+    void testDeleteKeystoreEntry_delegatesToSecretStore() throws Exception {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        new TestSecurityService(FIXED_KEY_PROVIDER, secretStore).deleteKeystoreEntry("db.password");
+        verify(secretStore).deleteEntry("db.password");
+    }
+
+    @Test
+    void testSetKeystoreEntry_withDefaultStoreSavesThroughOverriddenSaveKeyStore() throws Exception {
+        InMemoryKeyStoreSecurityService securityService = new InMemoryKeyStoreSecurityService();
+        securityService.setKeystoreEntry("db.password", "s3cret");
+        assertEquals(1, securityService.saveCount);
+        assertEquals("s3cret", securityService.getKeystoreEntry("db.password"));
+    }
+
+    @Test
+    void testGetTlsMaterialProvider_defaultsToKeystoreProvider() {
+        assertInstanceOf(KeystoreTlsMaterialProvider.class, new TestSecurityService().getTlsMaterialProvider());
+    }
+
+    @Test
+    void testGetTlsMaterialProvider_withKeyProviderAndStoreInjectedStaysKeystoreProvider() {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        assertInstanceOf(KeystoreTlsMaterialProvider.class, new TestSecurityService(FIXED_KEY_PROVIDER, secretStore).getTlsMaterialProvider());
+    }
+
+    @Test
+    void testGetTlsMaterialProvider_returnsInjectedProvider() {
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        assertSame(tlsMaterialProvider, newServiceWithTlsMaterialProvider(tlsMaterialProvider).getTlsMaterialProvider());
+    }
+
+    @Test
+    void testGetKeyManagerFactory_delegatesToTlsMaterialProvider() throws Exception {
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        when(tlsMaterialProvider.getKeyManagerFactory()).thenReturn(keyManagerFactory);
+        assertSame(keyManagerFactory, newServiceWithTlsMaterialProvider(tlsMaterialProvider).getKeyManagerFactory());
+    }
+
+    @Test
+    void testGetTrustStore_delegatesToTlsMaterialProvider() throws Exception {
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        KeyStore trustStore = KeyStore.getInstance(SecurityConstants.KEYSTORE_TYPE_PKCS12);
+        when(tlsMaterialProvider.getTrustStore()).thenReturn(trustStore);
+        assertSame(trustStore, newServiceWithTlsMaterialProvider(tlsMaterialProvider).getTrustStore());
+    }
+
+    @Test
+    void testSaveTrustStore_delegatesToTlsMaterialProvider() throws Exception {
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        KeyStore trustStore = KeyStore.getInstance(SecurityConstants.KEYSTORE_TYPE_PKCS12);
+        newServiceWithTlsMaterialProvider(tlsMaterialProvider).saveTrustStore(trustStore);
+        verify(tlsMaterialProvider).saveTrustStore(trustStore);
+    }
+
+    @Test
+    void testInstallTrustedCert_delegatesToTlsMaterialProvider() {
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        TrustedCertificateEntry entry = mock(TrustedCertificateEntry.class);
+        newServiceWithTlsMaterialProvider(tlsMaterialProvider).installTrustedCert(entry);
+        verify(tlsMaterialProvider).installTrustedCert(entry);
+    }
+
+    @Test
+    void testGetKeyManagerFactoryAlgorithm_withKeystoreProvider() {
+        assertEquals(KeyManagerFactory.getDefaultAlgorithm(), new TestSecurityService().getKeyManagerFactoryAlgorithm());
+    }
+
+    @Test
+    void testGetKeyManagerFactoryAlgorithm_throwsWithNonKeystoreProvider() {
+        TestSecurityService securityService = newServiceWithTlsMaterialProvider(mock(ITlsMaterialProvider.class));
+        assertThrows(NotImplementedException.class, () -> securityService.getKeyManagerFactoryAlgorithm());
+    }
+
+    @Test
+    void testGetKeyManagerFactory_withDefaultProviderReadsOverriddenGetKeyStore() throws Exception {
+        InMemoryKeyStoreSecurityService securityService = new InMemoryKeyStoreSecurityService();
+        securityService.getKeyManagerFactory();
+        assertEquals(1, securityService.loadCount);
+    }
+
+    private TestSecurityService newServiceWithTlsMaterialProvider(ITlsMaterialProvider tlsMaterialProvider) {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        return new TestSecurityService(FIXED_KEY_PROVIDER, secretStore, tlsMaterialProvider);
     }
 }

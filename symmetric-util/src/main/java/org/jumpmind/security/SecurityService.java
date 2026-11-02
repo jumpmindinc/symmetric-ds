@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.KeyStoreException;
@@ -38,7 +37,6 @@ import java.security.cert.X509Certificate;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.KeyManagerFactory;
 
 import org.apache.commons.codec.binary.Base64;
@@ -62,6 +60,8 @@ public class SecurityService implements ISecurityService {
     protected static SecureRandom random;
     protected static volatile boolean isKeystoreInitialized;
     private final ISecretKeyProvider secretKeyProvider;
+    private final ISecretStore secretStore;
+    private final ITlsMaterialProvider tlsMaterialProvider;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -82,23 +82,75 @@ public class SecurityService implements ISecurityService {
     protected SecurityService() {
         isKeystoreInitialized = false;
         secretKeyProvider = newKeystoreSecretKeyProvider();
+        secretStore = newKeystoreSecretStore();
+        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
     }
 
     /**
+     * Keystore entries and TLS material stay in the local keystore and truststore.
+     *
      * @param secretKeyProvider
      *            supplies the secret key instead of the local keystore, for example a cloud key management service
      */
     protected SecurityService(ISecretKeyProvider secretKeyProvider) {
         isKeystoreInitialized = false;
         this.secretKeyProvider = secretKeyProvider;
+        secretStore = newKeystoreSecretStore();
+        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
+    }
+
+    /**
+     * TLS material stays in the local keystore and truststore.
+     *
+     * @param secretKeyProvider
+     *            supplies the secret key instead of the local keystore, for example a cloud key management service
+     * @param secretStore
+     *            holds keystore entries instead of the local keystore, for example a cloud secrets manager
+     */
+    protected SecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore) {
+        isKeystoreInitialized = false;
+        this.secretKeyProvider = secretKeyProvider;
+        this.secretStore = secretStore;
+        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
+    }
+
+    /**
+     * @param secretKeyProvider
+     *            supplies the secret key instead of the local keystore, for example a cloud key management service
+     * @param secretStore
+     *            holds keystore entries instead of the local keystore, for example a cloud secrets manager
+     * @param tlsMaterialProvider
+     *            supplies key managers and trusted certificates instead of the local keystore and truststore
+     */
+    protected SecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore, ITlsMaterialProvider tlsMaterialProvider) {
+        isKeystoreInitialized = false;
+        this.secretKeyProvider = secretKeyProvider;
+        this.secretStore = secretStore;
+        this.tlsMaterialProvider = tlsMaterialProvider;
     }
 
     private KeystoreSecretKeyProvider newKeystoreSecretKeyProvider() {
         return new KeystoreSecretKeyProvider(new LocalKeyStoreRepository(), random);
     }
 
+    private KeystoreSecretStore newKeystoreSecretStore() {
+        return new KeystoreSecretStore(new LocalKeyStoreRepository());
+    }
+
+    private KeystoreTlsMaterialProvider newKeystoreTlsMaterialProvider() {
+        return new KeystoreTlsMaterialProvider(new LocalKeyStoreRepository(), new LocalTrustStoreRepository());
+    }
+
     protected ISecretKeyProvider getSecretKeyProvider() {
         return secretKeyProvider;
+    }
+
+    protected ISecretStore getSecretStore() {
+        return secretStore;
+    }
+
+    protected ITlsMaterialProvider getTlsMaterialProvider() {
+        return tlsMaterialProvider;
     }
 
     /**
@@ -156,24 +208,7 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public KeyStore getTrustStore() {
-        try {
-            String keyStoreType = System.getProperty(SecurityConstants.SYSPROP_TRUSTSTORE_TYPE, KeyStore.getDefaultType());
-            KeyStore ks = KeyStore.getInstance(keyStoreType);
-            if (trustStoreFileName != null) {
-                try (FileInputStream is = new FileInputStream(trustStoreFileName)) {
-                    ks.load(is, getTrustStorePassword().toCharArray());
-                }
-            } else if (trustStoreURL != null) {
-                try (InputStream is = trustStoreURL.openStream()) {
-                    ks.load(is, getTrustStorePassword().toCharArray());
-                }
-            }
-            return ks;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return tlsMaterialProvider.getTrustStore();
     }
 
     @Override
@@ -233,38 +268,12 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public KeyManagerFactory getKeyManagerFactory() {
-        KeyManagerFactory keyManagerFactory;
-        try {
-            keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerFactoryAlgorithm());
-            keyManagerFactory.init(getKeyStore(), getKeyStorePassword().toCharArray());
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return keyManagerFactory;
+        return tlsMaterialProvider.getKeyManagerFactory();
     }
 
     @Override
     public void installTrustedCert(TrustedCertificateEntry entry) {
-        try {
-            KeyStore keyStore = getTrustStore();
-            String alias = keyStore.getCertificateAlias(entry.getTrustedCertificate());
-            if (alias == null) {
-                alias = String.valueOf(entry.getTrustedCertificate().hashCode());
-                keyStore.setEntry(alias, entry, null);
-                log.info("Installing trusted certificate: {}",
-                        ((X509Certificate) entry.getTrustedCertificate()).getSubjectX500Principal().getName());
-                saveTrustStore(keyStore);
-            } else {
-                log.info("Trusted certificate already installed: {}",
-                        ((X509Certificate) entry.getTrustedCertificate()).getSubjectX500Principal().getName());
-            }
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        tlsMaterialProvider.installTrustedCert(entry);
     }
 
     @Override
@@ -442,15 +451,18 @@ public class SecurityService implements ISecurityService {
         return StringUtils.defaultIfBlank(unobfuscateIfNeeded(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
     }
 
+    /**
+     * @deprecated Overriding this no longer changes which algorithm {@link #getKeyManagerFactory()} uses. Supply an {@link ITlsMaterialProvider} instead.
+     * @throws NotImplementedException
+     *             when TLS material does not come from the local keystore
+     */
+    @Deprecated
     protected String getKeyManagerFactoryAlgorithm() {
-        String algorithm = System.getProperty(SecurityConstants.SYSPROP_KEY_MANAGER_FACTORY_ALGORITHM);
-        if (algorithm == null) {
-            algorithm = KeyManagerFactory.getDefaultAlgorithm();
+        if (tlsMaterialProvider instanceof KeystoreTlsMaterialProvider) {
+            return ((KeystoreTlsMaterialProvider) tlsMaterialProvider).getKeyManagerFactoryAlgorithm();
         }
-        if (algorithm == null) {
-            algorithm = "SunX509";
-        }
-        return algorithm;
+        throw new NotImplementedException(String.format("%s gets TLS material from %s, not the local keystore", getClass().getSimpleName(),
+                tlsMaterialProvider.getClass().getSimpleName()));
     }
 
     protected void initializeSecretKey() throws Exception {
@@ -495,31 +507,17 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public String getKeystoreEntry(String alias) throws Exception {
-        String password = getKeyStorePassword();
-        KeyStore ks = getKeyStore();
-        Key entry = ks.getKey(alias, password.toCharArray());
-        return entry == null ? null : new String(entry.getEncoded());
+        return secretStore.getEntry(alias);
     }
 
     @Override
     public void setKeystoreEntry(String alias, String value) throws Exception {
-        String password = getKeyStorePassword();
-        SecretKey mySecretKey = new SecretKeySpec(value.getBytes(), "AES");
-        KeyStore ks = getKeyStore();
-        ks.setKeyEntry(alias, mySecretKey, password.toCharArray(), null);
-        saveKeyStore(ks, password);
+        secretStore.setEntry(alias, value);
     }
 
     @Override
     public void deleteKeystoreEntry(String alias) throws Exception {
-        String password = getKeyStorePassword();
-        KeyStore ks = getKeyStore();
-        try {
-            ks.deleteEntry(alias);
-        } catch (KeyStoreException e) {
-            log.info("Unable to delete keystore entry with name {}", alias);
-        }
-        saveKeyStore(ks, password);
+        secretStore.deleteEntry(alias);
     }
 
     @Override
@@ -562,12 +560,7 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public void saveTrustStore(KeyStore ks) throws Exception {
-        if (trustStoreFileName != null) {
-            log.info("Saving truststore {}", trustStoreFileName);
-            try (FileOutputStream os = new FileOutputStream(trustStoreFileName)) {
-                ks.store(os, getTrustStorePassword().toCharArray());
-            }
-        }
+        tlsMaterialProvider.saveTrustStore(ks);
     }
 
     protected void saveKeyStore(KeyStore ks, String password) throws Exception {
@@ -586,7 +579,7 @@ public class SecurityService implements ISecurityService {
 
     /**
      * Adapts this service's overridable keystore methods to {@link IKeyStoreRepository}, so subclasses that override {@link #getKeyStore()} or
-     * {@link #saveKeyStore(KeyStore, String)} still control where the secret key is stored.
+     * {@link #saveKeyStore(KeyStore, String)} still control where the secret key, keystore entries and TLS key material are read and stored.
      */
     private class LocalKeyStoreRepository implements IKeyStoreRepository {
         @Override
@@ -607,6 +600,52 @@ public class SecurityService implements ISecurityService {
         @Override
         public boolean isFileBased() {
             return keyStoreFileName != null;
+        }
+    }
+
+    /**
+     * Reads the truststore from {@link SecurityConstants#SYSPROP_TRUSTSTORE}, or from the classpath when that is not set, and writes it back to the file.
+     */
+    private class LocalTrustStoreRepository implements IKeyStoreRepository {
+        @Override
+        public KeyStore load() {
+            try {
+                KeyStore ks = KeyStore.getInstance(System.getProperty(SecurityConstants.SYSPROP_TRUSTSTORE_TYPE, KeyStore.getDefaultType()));
+                if (trustStoreFileName != null) {
+                    try (FileInputStream is = new FileInputStream(trustStoreFileName)) {
+                        ks.load(is, getPassword().toCharArray());
+                    }
+                } else if (trustStoreURL != null) {
+                    try (InputStream is = trustStoreURL.openStream()) {
+                        ks.load(is, getPassword().toCharArray());
+                    }
+                }
+                return ks;
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void save(KeyStore trustStore) throws Exception {
+            if (trustStoreFileName != null) {
+                log.info("Saving truststore {}", trustStoreFileName);
+                try (FileOutputStream os = new FileOutputStream(trustStoreFileName)) {
+                    trustStore.store(os, getPassword().toCharArray());
+                }
+            }
+        }
+
+        @Override
+        public String getPassword() {
+            return getTrustStorePassword();
+        }
+
+        @Override
+        public boolean isFileBased() {
+            return trustStoreFileName != null;
         }
     }
 }
