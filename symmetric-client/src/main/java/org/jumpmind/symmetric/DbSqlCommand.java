@@ -134,7 +134,7 @@ public class DbSqlCommand extends AbstractCommandLauncher {
     private String decryptIfEncrypted(TypedProperties properties, String value) {
         if (value != null && value.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
-                ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties); // decrypts values
+                ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
                 return securityService.decrypt(value.substring(SecurityConstants.PREFIX_ENC.length()));
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to decrypt a database credential in " + propertiesFile + ". Please re-encrypt the value.", e);

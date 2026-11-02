@@ -68,7 +68,7 @@ public class DataSourceFactory {
     }
 
     public static DataSource create(TypedProperties properties) {
-        return create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties)); // Client - gets db prop and decrypts it
+        return create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
     }
 
     public static DataSource create(TypedProperties properties, ISecurityService securityService) {

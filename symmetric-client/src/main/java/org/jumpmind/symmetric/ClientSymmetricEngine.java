@@ -42,6 +42,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.jumpmind.db.util.DataSourceUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -53,8 +54,6 @@ import org.jumpmind.db.sql.LogSqlBuilder;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.DataSourceFactory;
 import org.jumpmind.db.util.DataSourceProperties;
-import org.jumpmind.db.util.DataSourceUtils;
-import org.jumpmind.db.util.IPooledDataSource;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -68,14 +67,14 @@ import org.jumpmind.symmetric.io.stage.BatchStagingManager;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
 import org.jumpmind.symmetric.job.JobManager;
-import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
-import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
-import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.impl.ClientExtensionService;
 import org.jumpmind.symmetric.service.impl.NodeService;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
+import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticManager;
 import org.jumpmind.symmetric.util.ConfigImportHelper;
@@ -84,6 +83,7 @@ import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SnapshotUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.db.util.IPooledDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -279,7 +279,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static DataSource createDataSource(File propsFile) {
         TypedProperties properties = PropertiesUtil.createTypedPropertiesFactory(propsFile, null).reload();
-        return DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties)); // Client - db pw decrypts
+        return DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
     }
 
     /**

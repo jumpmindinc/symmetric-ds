@@ -124,7 +124,7 @@ public class SymmetricBoot extends SpringBootServletInitializer {
         TransportManagerFactory.initHttps(allowServerNames, allowSelfSignedCerts, https2Enabled);
         if (httpsEnabled) {
             ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, sysProps);
-            securityService.installDefaultSslCert(sysProps.get(ServerConstants.HOST_BIND_NAME)); // installDefaultSslCert to support HTTPS
+            securityService.installDefaultSslCert(sysProps.get(ServerConstants.HOST_BIND_NAME));
         }
         return new SpringApplicationBuilder().registerShutdownHook(false)
                 .listeners(new SymmetricBootPropertySetupListener(), new SymmetricBootStartedListener())

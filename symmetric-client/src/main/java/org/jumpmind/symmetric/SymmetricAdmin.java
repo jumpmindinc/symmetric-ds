@@ -839,7 +839,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     .getGlobalString(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD);
             if (StringUtils.isNotBlank(keystorePassword)) {
                 ISecurityService service = createSecurityService();
-                String password = SecurityConstants.PREFIX_OBF + service.obfuscate(keystorePassword); // obfuscates ks pw
+                String password = SecurityConstants.PREFIX_OBF + service.obfuscate(keystorePassword);
                 prop.put(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD, password);
             }
             try (FileOutputStream out = new FileOutputStream(new File(workingDirectory, "WEB-INF/classes/symmetric-server.properties"))) {
