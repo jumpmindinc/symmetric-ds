@@ -9,7 +9,8 @@ endif::pro[]
 
 ifdef::pro[]
 
-SQL Database in Microsoft Fabric is supported as a write-only target.  See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
+SQL Database in Microsoft Fabric is supported as a source and as a target.  SymmetricDS captures changes in it with database triggers, see
+<<Capturing Changes>>.
 It uses the https://learn.microsoft.com/en-us/sql/connect/jdbc/download-microsoft-jdbc-driver-for-sql-server[Microsoft JDBC driver].
 
 ==== Setup
@@ -53,6 +54,23 @@ ALTER ROLE db_datareader ADD MEMBER [<app registration name>];
 ALTER ROLE db_datawriter ADD MEMBER [<app registration name>];
 ----
 
+These roles are enough for SymmetricDS to create its tables, functions, and triggers, capture changes, and load data.
+
+==== Capturing Changes
+
+SymmetricDS captures changes in SQL Database in Microsoft Fabric with database triggers.  When adding the node, the capture type is trigger-based by default.
+Time-based capture is also available, but log mining is not.
+
+Only changes to data (inserts, updates, and deletes) are captured.  Changes to the structure of a table are not captured, so the `trigger.capture.ddl.changes`
+parameter has no effect on this database.
+
+The triggers run as the user that changes the table (`EXECUTE AS CALLER`).  A user or application that changes a captured table needs permission on that table
+only.  No permission on the SymmetricDS tables is needed.  A user or application that connects to the database also needs the Read permission on the
+database item, as described in the Permissions section above.
+
+IMPORTANT: Keep the `mssql.trigger.execute.as` parameter set to `caller`, which is the default.  SQL Database in Microsoft Fabric does not support
+`EXECUTE AS` with `self` or `owner`, and creating the triggers fails with error 22607.
+
 ==== Bulk Loading
 
 SymmetricDS can bulk load SQL Database in Microsoft Fabric with the bulk copy API of the Microsoft JDBC driver.  When a channel uses the bulk data
@@ -61,5 +79,24 @@ loader, which the reload channel does by default, SymmetricDS writes the rows of
 
 No extra setup is needed.  The bulk copy uses the same connection and service principal as the rest of SymmetricDS, and nothing is uploaded to OneLake.
 Values of identity columns are loaded as they are sent, and empty strings stay distinct from null values.
+
+==== Known Limitations
+
+===== Unicode Text
+
+By default, SymmetricDS captures text as non-Unicode.  Characters that are not in the code page of the database collation are affected as follows:
+
+* In `NCHAR`, `NVARCHAR`, `NTEXT`, and `NVARCHAR(MAX)` columns, the characters are replaced with `?`.
+* In `XML` columns, the statement that inserts the value fails with error 6355 because the trigger cannot convert the document, and the row is not saved.
+
+Characters that are in the code page, such as `é` in a Latin1 collation, are captured unchanged.
+
+To capture these columns as Unicode, set the `mssql.use.ntypes.for.sync` parameter to `true`, restart the node, and rebuild the triggers of the tables.
+
+===== Spatial Data Types
+
+Values of `GEOGRAPHY` and `GEOMETRY` columns are captured as text in the well-known text format, without the spatial reference identifier (SRID).  When
+SymmetricDS creates a table on a SQL Server target, it creates these columns as `VARCHAR(MAX)`.  `HIERARCHYID` values are captured and loaded as binary
+values.
 
 endif::pro[]
