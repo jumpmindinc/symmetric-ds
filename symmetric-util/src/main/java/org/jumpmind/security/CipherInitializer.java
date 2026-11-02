@@ -37,6 +37,9 @@ final class CipherInitializer {
     private static final String PASSWORD_BASED_ALGORITHM_PREFIX = "PBE";
     private static final int IV_LENGTH_IN_BYTES = 8;
 
+    /**
+     * Private access constructor to prevent instantiation.
+     */
     private CipherInitializer() {
     }
 
