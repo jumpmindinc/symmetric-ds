@@ -111,7 +111,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public synchronized boolean addPeer(String serverId, Date historicalHeartbeat, String peerClusterPartitionId) {
-        if (!isInitialized() || serverId == null || isOwnServerId(serverId)) {
+        if (!isPeerCommunicationStarted() || serverId == null || isOwnServerId(serverId)) {
             return false;
         }
         if (peerClusterPartitionId != null && !peerClusterPartitionId.equals(myClusterPartitionId)) {
@@ -171,7 +171,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
-        if (serverId == null || isOwnServerId(serverId)) {
+        if (!isPeerCommunicationStarted() || serverId == null || isOwnServerId(serverId)) {
             return false;
         }
         return peerNetworkCoordinator.announceDiscoveredPeer(serverId, address);
@@ -213,6 +213,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             }
         }
         return active;
+    }
+
+    private boolean isPeerCommunicationStarted() {
+        return isInitialized() && isClusterLockingEnabled && peerNetworkCoordinator != null;
     }
 
     /**

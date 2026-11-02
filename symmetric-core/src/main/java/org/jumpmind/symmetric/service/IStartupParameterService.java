@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
@@ -110,6 +111,13 @@ public interface IStartupParameterService {
      * has no engine-name parameter because a JVM system property change is inherently process-wide.
      */
     void refreshSystemProperty(String key);
+
+    /**
+     * Copies the resolved global value of each key into the JVM system properties, for readers that still use {@code System.getProperty} (security service,
+     * HTTPS setup). Only missing system properties are set: an existing one already came from {@code -D} or an imported environment variable, both of which
+     * outrank {@code symmetric-server.properties}.
+     */
+    void exportGlobalToSystemProperties(Collection<String> keys);
 
     /**
      * A human-readable dump of an engine's resolved parameters (name, value, source, default), with sensitive values masked. Intended for debug-level

@@ -175,11 +175,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         try {
             ccManager = serviceRegistry.getClusteredCacheManager();
             String clusterPartitionId = ClusterPartitionGenerator.resolve(startupParameterService);
-            String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
-            isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
-            log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={} (raw property value='{}')", clusterPartitionId, serverId,
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled,
-                    coreServerProperties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
+            String serverId = ClusterPartitionGenerator.resolveServerId(startupParameterService);
+            isClusterLockingEnabled = isClusterLockingEnabledAtStartup(startupParameterService);
+            log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={}", clusterPartitionId, serverId,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled);
             ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this,
                     startupParameterService);
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
@@ -192,6 +191,11 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             }
         }
         return ccManager;
+    }
+
+    boolean isClusterLockingEnabledAtStartup(IStartupParameterService startupParameterService) {
+        return startupParameterService.isGlobal(ParameterConstants.CLUSTER_LOCKING_ENABLED,
+                ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties));
     }
 
     public void start() {

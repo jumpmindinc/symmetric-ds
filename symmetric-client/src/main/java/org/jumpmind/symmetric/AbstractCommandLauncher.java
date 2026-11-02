@@ -111,28 +111,27 @@ public abstract class AbstractCommandLauncher {
 
     protected static void initFromServerProperties() {
         if (!serverPropertiesInitialized) {
-            IStartupParameterService startupParameterService = ServiceRegistry.getInstance().getStartupParameterService();
-            File serverPropertiesFile = new File(DEFAULT_SERVER_PROPERTIES);
-            if (!serverPropertiesFile.exists()) {
-                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". File does not exist.");
-                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
-                return;
-            }
-            if (!serverPropertiesFile.isFile()) {
-                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
-                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
-                return;
-            }
-            TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
-            Set<String> keysFromServerPropertiesFile = new HashSet<String>(serverProperties.stringPropertyNames());
-            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
-            Map<String, Source> knownFileSources = new HashMap<String, Source>();
-            for (String key : keysFromServerPropertiesFile) {
-                knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
-            }
-            startupParameterService.registerGlobal(serverProperties, knownFileSources);
-            serverPropertiesInitialized = true;
+            serverPropertiesInitialized = registerServerProperties(new File(DEFAULT_SERVER_PROPERTIES),
+                    ServiceRegistry.getInstance().getStartupParameterService());
         }
+    }
+
+    static boolean registerServerProperties(File serverPropertiesFile, IStartupParameterService startupParameterService) {
+        if (!serverPropertiesFile.isFile()) {
+            log.debug("Failed to load {}. {}", serverPropertiesFile, serverPropertiesFile.exists() ? "Object is not a file." : "File does not exist.");
+            startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
+            return false;
+        }
+        TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
+        Set<String> keysFromServerPropertiesFile = new HashSet<String>(serverProperties.stringPropertyNames());
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
+        Map<String, Source> knownFileSources = new HashMap<String, Source>();
+        for (String key : keysFromServerPropertiesFile) {
+            knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
+        }
+        startupParameterService.registerGlobal(serverProperties, knownFileSources);
+        startupParameterService.exportGlobalToSystemProperties(ServerConstants.SYSTEM_PROPERTY_STARTUP_PARAMETERS);
+        return true;
     }
 
     abstract protected boolean printHelpIfNoOptionsAreProvided();

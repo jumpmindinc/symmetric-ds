@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -429,6 +430,17 @@ public class StartupParameterService implements IStartupParameterService {
         for (EngineParameters engineParameters : parametersByEngine.values()) {
             engineParameters.mergedProperties.setProperty(key, value);
             engineParameters.parameters.put(key, resolve(engineParameters, key));
+        }
+    }
+
+    @Override
+    public synchronized void exportGlobalToSystemProperties(Collection<String> keys) {
+        for (String key : keys) {
+            String value = getGlobalString(key);
+            if (StringUtils.isNotBlank(value) && StringUtils.isBlank(System.getProperty(key))) {
+                System.setProperty(key, value);
+                jvmProperties.setProperty(key, value);
+            }
         }
     }
 

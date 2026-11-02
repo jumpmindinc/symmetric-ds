@@ -532,6 +532,67 @@ class StartupParameterServiceTest {
     }
 
     @Test
+    void exportGlobalToSystemProperties_valueOnlyInServerProperties_setsSystemProperty() {
+        String key = "test.export.file.only." + UUID.randomUUID();
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(key, "from-server-properties");
+        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
+        try {
+            service.exportGlobalToSystemProperties(List.of(key));
+            assertEquals("from-server-properties", System.getProperty(key));
+        } finally {
+            System.clearProperty(key);
+        }
+    }
+
+    @Test
+    void exportGlobalToSystemProperties_existingSystemProperty_keepsSystemPropertyValue() {
+        String key = "test.export.jvm.wins." + UUID.randomUUID();
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(key, "from-server-properties");
+        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
+        try {
+            System.setProperty(key, "from-jvm");
+            service.exportGlobalToSystemProperties(List.of(key));
+            assertEquals("from-jvm", System.getProperty(key));
+        } finally {
+            System.clearProperty(key);
+        }
+    }
+
+    @Test
+    void exportGlobalToSystemProperties_blankValue_leavesSystemPropertyUnset() {
+        String key = "test.export.blank." + UUID.randomUUID();
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(key, "");
+        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
+        service.exportGlobalToSystemProperties(List.of(key));
+        assertNull(System.getProperty(key));
+    }
+
+    @Test
+    void exportGlobalToSystemProperties_globalNotRegistered_leavesSystemPropertyUnset() {
+        String key = "test.export.unregistered." + UUID.randomUUID();
+        service.exportGlobalToSystemProperties(List.of(key));
+        assertNull(System.getProperty(key));
+    }
+
+    @Test
+    void exportGlobalToSystemProperties_exportedValue_isVisibleAsJvmSystemPropertyAfterRefresh() {
+        String key = "test.export.refresh." + UUID.randomUUID();
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(key, "from-server-properties");
+        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
+        try {
+            service.exportGlobalToSystemProperties(List.of(key));
+            String engineName = registerEngine(new TypedProperties(), Map.of());
+            assertEquals("from-server-properties", service.getString(engineName, key));
+        } finally {
+            System.clearProperty(key);
+        }
+    }
+
+    @Test
     void testRefreshSources_withUnregisteredEngine_returnsFalse() {
         assertFalse(service.refreshExternalSource("engine-" + UUID.randomUUID()));
     }
