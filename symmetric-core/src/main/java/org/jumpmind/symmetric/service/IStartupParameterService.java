@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.service;
 
-import java.util.Collection;
 import java.util.Map;
 
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
@@ -70,6 +69,13 @@ public interface IStartupParameterService {
     void registerGlobal(TypedProperties mergedProperties, Map<String, Source> knownFileSources);
 
     /**
+     * Registers the contents of {@code symmetric-server.properties} (empty when the file is absent) as the global parameters, merged with environment variables
+     * and JVM system properties. Shared by the command-line launcher and the servlet container deployment. Returns the merged properties without modifying the
+     * JVM system properties.
+     */
+    TypedProperties registerServerProperties(TypedProperties serverProperties);
+
+    /**
      * Removes a previously registered engine's parameters, so a long-running process that stops/restarts an engine doesn't leak entries.
      */
     void unregisterEngine(String engineName);
@@ -111,13 +117,6 @@ public interface IStartupParameterService {
      * has no engine-name parameter because a JVM system property change is inherently process-wide.
      */
     void refreshSystemProperty(String key);
-
-    /**
-     * Copies the resolved global value of each key into the JVM system properties, for readers that still use {@code System.getProperty} (security service,
-     * HTTPS setup). Only missing system properties are set: an existing one already came from {@code -D} or an imported environment variable, both of which
-     * outrank {@code symmetric-server.properties}.
-     */
-    void exportGlobalToSystemProperties(Collection<String> keys);
 
     /**
      * A human-readable dump of an engine's resolved parameters (name, value, source, default), with sensitive values masked. Intended for debug-level

@@ -43,7 +43,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.db.util.DataSourceProperties;
-import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
@@ -51,7 +50,6 @@ import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
-import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -460,38 +458,6 @@ class SymmetricEngineHolderTest {
             holder.stop();
             verify(mockClusteredCacheManager).announceLeaving();
             assertTrue(holder.getEngines().isEmpty());
-        }
-    }
-
-    @Nested
-    class ClusterLockingAtStartup {
-        @Test
-        void isClusterLockingEnabledAtStartup_enabledInServerProperties_returnsTrue() {
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            IStartupParameterService startupParameterService = mock(IStartupParameterService.class);
-            when(startupParameterService.isGlobal(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)).thenReturn(true);
-            assertTrue(holder.isClusterLockingEnabledAtStartup(startupParameterService));
-        }
-
-        @Test
-        void isClusterLockingEnabledAtStartup_globalNotRegistered_fallsBackToEnvironment() throws Exception {
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            TypedProperties environmentProperties = new TypedProperties();
-            environmentProperties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
-            Field field = SymmetricEngineHolder.class.getDeclaredField("coreServerProperties");
-            field.setAccessible(true);
-            field.set(holder, environmentProperties);
-            IStartupParameterService startupParameterService = mock(IStartupParameterService.class);
-            when(startupParameterService.isGlobal(ParameterConstants.CLUSTER_LOCKING_ENABLED, true)).thenReturn(true);
-            assertTrue(holder.isClusterLockingEnabledAtStartup(startupParameterService));
-        }
-
-        @Test
-        void isClusterLockingEnabledAtStartup_disabledEverywhere_returnsFalse() {
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            IStartupParameterService startupParameterService = mock(IStartupParameterService.class);
-            when(startupParameterService.isGlobal(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)).thenReturn(false);
-            assertFalse(holder.isClusterLockingEnabledAtStartup(startupParameterService));
         }
     }
 

@@ -55,12 +55,17 @@ class AbstractCommandLauncherTest {
     }
 
     private void clearSystemProperties() {
-        System.clearProperty(ServerConstants.CONTAINER_MODE_ENABLED);
-        System.clearProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
-        System.clearProperty(ServerConstants.CLUSTER_SERVER_ID);
-        System.clearProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
-        System.clearProperty(ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS);
-        System.clearProperty("test.unlisted.server.property");
+        clearSystemProperty(ServerConstants.CONTAINER_MODE_ENABLED);
+        clearSystemProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        clearSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
+        clearSystemProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+        clearSystemProperty(ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS);
+        clearSystemProperty("test.unlisted.server.property");
+    }
+
+    private void clearSystemProperty(String key) {
+        System.clearProperty(key);
+        StartupParameterService.getInstance().refreshSystemProperty(key);
     }
 
     @Test
@@ -104,6 +109,7 @@ class AbstractCommandLauncherTest {
             fileContents.store(out, null);
         }
         System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "false");
+        StartupParameterService.getInstance().refreshSystemProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
         assertTrue(AbstractCommandLauncher.registerServerProperties(serverPropertiesFile, StartupParameterService.getInstance()));
         assertEquals("false", System.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
     }

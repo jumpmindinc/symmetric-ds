@@ -105,6 +105,7 @@ class StartupParameterServiceTest {
             assertEquals(Source.JVM_SYSTEM_PROPERTY, service.getParameter(first, key).source());
         } finally {
             System.clearProperty(key);
+            service.refreshSystemProperty(key);
         }
     }
 
@@ -160,6 +161,7 @@ class StartupParameterServiceTest {
             assertEquals(Source.EXTERNAL, service.getParameter(name, key).source());
         } finally {
             System.clearProperty(key);
+            service.refreshSystemProperty(key);
         }
     }
 
@@ -532,64 +534,53 @@ class StartupParameterServiceTest {
     }
 
     @Test
-    void exportGlobalToSystemProperties_valueOnlyInServerProperties_setsSystemProperty() {
-        String key = "test.export.file.only." + UUID.randomUUID();
+    void refreshSystemProperty_clearedProperty_isNoLongerResolvedFromJvm() {
+        String key = "test.jvm.cleared." + UUID.randomUUID();
+        service.registerGlobal(new TypedProperties(), Map.of());
+        System.setProperty(key, "from-jvm");
+        service.refreshSystemProperty(key);
+        assertEquals("from-jvm", service.getGlobalString(key));
+        System.clearProperty(key);
+        service.refreshSystemProperty(key);
+        assertNull(service.getGlobalString(key));
+    }
+
+    @Test
+    void registerServerProperties_fileValues_areTaggedAsServerProperties() {
         TypedProperties serverProperties = new TypedProperties();
-        serverProperties.setProperty(key, "from-server-properties");
-        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
+        serverProperties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-a");
+        service.registerServerProperties(serverProperties);
+        assertEquals("pod-a", service.getGlobalString(ServerConstants.CLUSTER_SERVER_ID));
+        assertEquals(Source.SYMMETRIC_SERVER_PROPERTIES, service.getGlobalParameter(ServerConstants.CLUSTER_SERVER_ID).source());
+    }
+
+    @Test
+    void registerServerProperties_leavesSystemPropertiesUnchanged() {
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-a");
+        service.registerServerProperties(serverProperties);
+        assertNull(System.getProperty(ServerConstants.CLUSTER_SERVER_ID));
+    }
+
+    @Test
+    void registerServerProperties_emptyProperties_resolvesFromJvmSystemProperty() {
         try {
-            service.exportGlobalToSystemProperties(List.of(key));
-            assertEquals("from-server-properties", System.getProperty(key));
+            System.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-b");
+            service.refreshSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
+            service.registerServerProperties(new TypedProperties());
+            assertEquals("pod-b", service.getGlobalString(ServerConstants.CLUSTER_SERVER_ID));
         } finally {
-            System.clearProperty(key);
+            System.clearProperty(ServerConstants.CLUSTER_SERVER_ID);
+            service.refreshSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
         }
     }
 
     @Test
-    void exportGlobalToSystemProperties_existingSystemProperty_keepsSystemPropertyValue() {
-        String key = "test.export.jvm.wins." + UUID.randomUUID();
+    void registerServerProperties_doesNotModifyCallerProperties() {
         TypedProperties serverProperties = new TypedProperties();
-        serverProperties.setProperty(key, "from-server-properties");
-        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
-        try {
-            System.setProperty(key, "from-jvm");
-            service.exportGlobalToSystemProperties(List.of(key));
-            assertEquals("from-jvm", System.getProperty(key));
-        } finally {
-            System.clearProperty(key);
-        }
-    }
-
-    @Test
-    void exportGlobalToSystemProperties_blankValue_leavesSystemPropertyUnset() {
-        String key = "test.export.blank." + UUID.randomUUID();
-        TypedProperties serverProperties = new TypedProperties();
-        serverProperties.setProperty(key, "");
-        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
-        service.exportGlobalToSystemProperties(List.of(key));
-        assertNull(System.getProperty(key));
-    }
-
-    @Test
-    void exportGlobalToSystemProperties_globalNotRegistered_leavesSystemPropertyUnset() {
-        String key = "test.export.unregistered." + UUID.randomUUID();
-        service.exportGlobalToSystemProperties(List.of(key));
-        assertNull(System.getProperty(key));
-    }
-
-    @Test
-    void exportGlobalToSystemProperties_exportedValue_isVisibleAsJvmSystemPropertyAfterRefresh() {
-        String key = "test.export.refresh." + UUID.randomUUID();
-        TypedProperties serverProperties = new TypedProperties();
-        serverProperties.setProperty(key, "from-server-properties");
-        service.registerGlobal(serverProperties, Map.of(key, Source.SYMMETRIC_SERVER_PROPERTIES));
-        try {
-            service.exportGlobalToSystemProperties(List.of(key));
-            String engineName = registerEngine(new TypedProperties(), Map.of());
-            assertEquals("from-server-properties", service.getString(engineName, key));
-        } finally {
-            System.clearProperty(key);
-        }
+        serverProperties.setProperty("test.server.only.key", "value");
+        service.registerServerProperties(serverProperties);
+        assertEquals(1, serverProperties.size());
     }
 
     @Test

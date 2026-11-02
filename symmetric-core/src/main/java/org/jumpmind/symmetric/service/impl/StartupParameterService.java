@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -149,6 +148,20 @@ public class StartupParameterService implements IStartupParameterService {
                 ParameterConstants.getParameterMetaData(), null, null);
         resolveAll(engineParameters);
         parametersByEngine.put(GLOBAL_ENGINE_NAME, engineParameters);
+    }
+
+    @Override
+    public synchronized TypedProperties registerServerProperties(TypedProperties serverProperties) {
+        Map<String, Source> knownFileSources = new HashMap<>();
+        for (String key : serverProperties.stringPropertyNames()) {
+            knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
+        }
+        TypedProperties mergedProperties = serverProperties.copy();
+        if (!mergedProperties.isEmpty()) {
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(mergedProperties, false);
+        }
+        registerGlobal(mergedProperties, knownFileSources);
+        return mergedProperties;
     }
 
     @Override
@@ -426,21 +439,19 @@ public class StartupParameterService implements IStartupParameterService {
     @Override
     public synchronized void refreshSystemProperty(String key) {
         String value = System.getProperty(key);
-        jvmProperties.setProperty(key, value);
-        for (EngineParameters engineParameters : parametersByEngine.values()) {
-            engineParameters.mergedProperties.setProperty(key, value);
-            engineParameters.parameters.put(key, resolve(engineParameters, key));
+        String previousValue = jvmProperties.getProperty(key);
+        if (value == null) {
+            jvmProperties.remove(key);
+        } else {
+            jvmProperties.setProperty(key, value);
         }
-    }
-
-    @Override
-    public synchronized void exportGlobalToSystemProperties(Collection<String> keys) {
-        for (String key : keys) {
-            String value = getGlobalString(key);
-            if (StringUtils.isNotBlank(value) && StringUtils.isBlank(System.getProperty(key))) {
-                System.setProperty(key, value);
-                jvmProperties.setProperty(key, value);
+        for (EngineParameters engineParameters : parametersByEngine.values()) {
+            if (value != null) {
+                engineParameters.mergedProperties.setProperty(key, value);
+            } else if (previousValue != null && previousValue.equals(engineParameters.mergedProperties.getProperty(key))) {
+                engineParameters.mergedProperties.remove(key);
             }
+            engineParameters.parameters.put(key, resolve(engineParameters, key));
         }
     }
 
