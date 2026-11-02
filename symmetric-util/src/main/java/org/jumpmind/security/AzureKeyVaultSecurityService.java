@@ -244,6 +244,15 @@ public class AzureKeyVaultSecurityService extends BouncyCastleSecurityService im
         }
     }
 
+    /**
+     * Certificates other than the SSL certificate are saved to the vault as secrets by {@link #saveKeyStore(KeyStore, String)}, so they are removed the same
+     * way as other secrets.
+     */
+    @Override
+    public void deleteCertificate(String alias) {
+        deleteKeystoreEntry(alias);
+    }
+
     @Override
     public synchronized void installDefaultSslCert(String host) {
         host = host == null ? AppUtils.getHostName() : host;

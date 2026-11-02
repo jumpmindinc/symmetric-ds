@@ -62,6 +62,7 @@ public class SecurityService implements ISecurityService {
     private final ISecretKeyProvider secretKeyProvider;
     private final ISecretStore secretStore;
     private final ITlsMaterialProvider tlsMaterialProvider;
+    private final ICertificateManager certificateManager;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -84,6 +85,7 @@ public class SecurityService implements ISecurityService {
         secretKeyProvider = newKeystoreSecretKeyProvider();
         secretStore = newKeystoreSecretStore();
         tlsMaterialProvider = newKeystoreTlsMaterialProvider();
+        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
     }
 
     /**
@@ -97,6 +99,7 @@ public class SecurityService implements ISecurityService {
         this.secretKeyProvider = secretKeyProvider;
         secretStore = newKeystoreSecretStore();
         tlsMaterialProvider = newKeystoreTlsMaterialProvider();
+        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
     }
 
     /**
@@ -112,6 +115,7 @@ public class SecurityService implements ISecurityService {
         this.secretKeyProvider = secretKeyProvider;
         this.secretStore = secretStore;
         tlsMaterialProvider = newKeystoreTlsMaterialProvider();
+        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
     }
 
     /**
@@ -127,6 +131,7 @@ public class SecurityService implements ISecurityService {
         this.secretKeyProvider = secretKeyProvider;
         this.secretStore = secretStore;
         this.tlsMaterialProvider = tlsMaterialProvider;
+        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
     }
 
     private KeystoreSecretKeyProvider newKeystoreSecretKeyProvider() {
@@ -151,6 +156,18 @@ public class SecurityService implements ISecurityService {
 
     protected ITlsMaterialProvider getTlsMaterialProvider() {
         return tlsMaterialProvider;
+    }
+
+    protected ICertificateManager getCertificateManager() {
+        return certificateManager;
+    }
+
+    /**
+     * Factory Method for the certificate manager, called from the constructor after the TLS material provider is set. The default does not manage certificates;
+     * subclasses with Bouncy Castle available return a manager that does. Overrides must not use the subclass's own fields, because they are not assigned yet.
+     */
+    protected ICertificateManager createCertificateManager(IKeyStoreRepository keyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
+        return new UnsupportedCertificateManager();
     }
 
     /**
@@ -278,75 +295,82 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public TrustedCertificateEntry createTrustedCert(byte[] content, String fileType, String alias, String password) {
-        return null;
+        return certificateManager.createTrustedCert(content, fileType, alias, password);
     }
 
     @Override
     public void installDefaultSslCert(String host) {
+        certificateManager.installDefaultSslCert(host);
     }
 
     @Override
     public void installDefaultSamlSslCert(String host, int lifetimeInDays) {
+        certificateManager.installDefaultSamlSslCert(host, lifetimeInDays);
     }
 
     @Override
     public void installSslCert(KeyStore.PrivateKeyEntry entry) {
-        throw new NotImplementedException();
+        certificateManager.installSslCert(entry);
     }
 
     @Override
     public void installSslCert(KeyStore.PrivateKeyEntry entry, String alias) {
-        throw new NotImplementedException();
+        certificateManager.installSslCert(entry, alias);
     }
 
     @Override
     public KeyStore.PrivateKeyEntry createDefaultSslCert(String host) {
-        throw new NotImplementedException();
+        return certificateManager.createDefaultSslCert(host);
     }
 
     @Override
     public KeyStore.PrivateKeyEntry createSslCert(byte[] content, String fileType, String alias, String password) {
-        throw new NotImplementedException();
+        return certificateManager.createSslCert(content, fileType, alias, password);
     }
 
     @Override
     public X509Certificate getCurrentSslCert() {
-        throw new NotImplementedException();
+        return certificateManager.getCurrentSslCert();
     }
 
     @Override
     public X509Certificate getCurrentSamlSslCert() {
-        throw new NotImplementedException();
+        return certificateManager.getCurrentSamlSslCert();
     }
 
     @Override
     public String exportCurrentSslCert(boolean includePrivateKey) {
-        throw new NotImplementedException();
+        return certificateManager.exportCurrentSslCert(includePrivateKey);
     }
 
     @Override
     public String exportTrustedCert(String alias) {
-        throw new NotImplementedException();
+        return certificateManager.exportTrustedCert(alias);
+    }
+
+    @Override
+    public void deleteCertificate(String alias) throws Exception {
+        certificateManager.deleteCertificate(alias);
     }
 
     @Override
     public boolean supportsExportCertificate() {
-        return false;
+        return certificateManager.supportsExportCertificate();
     }
 
     @Override
     public boolean supportsImportCertificate() {
-        return false;
+        return certificateManager.supportsImportCertificate();
     }
 
     @Override
     public boolean supportsBackupCertificate() {
-        return false;
+        return certificateManager.supportsBackupCertificate();
     }
 
     @Override
     public boolean supportsGenerateSelfSignedCertificate() {
-        return false;
+        return certificateManager.supportsGenerateSelfSignedCertificate();
     }
 
     protected void checkThatKeystoreFileExists() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {

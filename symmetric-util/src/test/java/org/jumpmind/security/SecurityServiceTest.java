@@ -22,6 +22,7 @@ package org.jumpmind.security;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -29,12 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.security.KeyStore;
 import java.security.KeyStore.TrustedCertificateEntry;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -392,6 +396,136 @@ class SecurityServiceTest {
         InMemoryKeyStoreSecurityService securityService = new InMemoryKeyStoreSecurityService();
         securityService.getKeyManagerFactory();
         assertEquals(1, securityService.loadCount);
+    }
+
+    @Test
+    void testGetCertificateManager_defaultsToUnsupportedManager() {
+        assertInstanceOf(UnsupportedCertificateManager.class, new TestSecurityService().getCertificateManager());
+    }
+
+    @Test
+    void testInstallDefaultSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).installDefaultSslCert("host");
+        verify(certificateManager).installDefaultSslCert("host");
+    }
+
+    @Test
+    void testInstallDefaultSamlSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).installDefaultSamlSslCert("host", 10);
+        verify(certificateManager).installDefaultSamlSslCert("host", 10);
+    }
+
+    @Test
+    void testInstallSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).installSslCert(null);
+        verify(certificateManager).installSslCert(null);
+    }
+
+    @Test
+    void testInstallSslCert_withAliasDelegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).installSslCert(null, "alias");
+        verify(certificateManager).installSslCert(null, "alias");
+    }
+
+    @Test
+    void testCreateDefaultSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).createDefaultSslCert("host");
+        verify(certificateManager).createDefaultSslCert("host");
+    }
+
+    @Test
+    void testCreateSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        byte[] content = new byte[0];
+        newServiceWithCertificateManager(certificateManager).createSslCert(content, "pem", "alias", "password");
+        verify(certificateManager).createSslCert(content, "pem", "alias", "password");
+    }
+
+    @Test
+    void testCreateTrustedCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        byte[] content = new byte[0];
+        newServiceWithCertificateManager(certificateManager).createTrustedCert(content, "pem", "alias", "password");
+        verify(certificateManager).createTrustedCert(content, "pem", "alias", "password");
+    }
+
+    @Test
+    void testGetCurrentSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        X509Certificate cert = mock(X509Certificate.class);
+        when(certificateManager.getCurrentSslCert()).thenReturn(cert);
+        assertSame(cert, newServiceWithCertificateManager(certificateManager).getCurrentSslCert());
+    }
+
+    @Test
+    void testGetCurrentSamlSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        X509Certificate cert = mock(X509Certificate.class);
+        when(certificateManager.getCurrentSamlSslCert()).thenReturn(cert);
+        assertSame(cert, newServiceWithCertificateManager(certificateManager).getCurrentSamlSslCert());
+    }
+
+    @Test
+    void testExportCurrentSslCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        when(certificateManager.exportCurrentSslCert(true)).thenReturn("pem");
+        assertEquals("pem", newServiceWithCertificateManager(certificateManager).exportCurrentSslCert(true));
+    }
+
+    @Test
+    void testExportTrustedCert_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        when(certificateManager.exportTrustedCert("ca")).thenReturn("pem");
+        assertEquals("pem", newServiceWithCertificateManager(certificateManager).exportTrustedCert("ca"));
+    }
+
+    @Test
+    void testDeleteCertificate_delegatesToCertificateManager() throws Exception {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        newServiceWithCertificateManager(certificateManager).deleteCertificate(SecurityConstants.ALIAS_SAML_PRIVATE_KEY);
+        verify(certificateManager).deleteCertificate(SecurityConstants.ALIAS_SAML_PRIVATE_KEY);
+    }
+
+    @Test
+    void testSupports_delegatesToCertificateManager() {
+        ICertificateManager certificateManager = mock(ICertificateManager.class);
+        when(certificateManager.supportsExportCertificate()).thenReturn(true);
+        when(certificateManager.supportsBackupCertificate()).thenReturn(true);
+        SecurityService securityService = newServiceWithCertificateManager(certificateManager);
+        assertTrue(securityService.supportsExportCertificate());
+        assertFalse(securityService.supportsImportCertificate());
+        assertTrue(securityService.supportsBackupCertificate());
+        assertFalse(securityService.supportsGenerateSelfSignedCertificate());
+    }
+
+    @Test
+    void testDeleteCertificate_removesSamlCertFromKeystoreNotSecretStore() throws Exception {
+        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.fileBased();
+        ISecretStore secretStore = mock(ISecretStore.class);
+        SecurityService securityService = new SecurityService(FIXED_KEY_PROVIDER, secretStore) {
+            @Override
+            protected ICertificateManager createCertificateManager(IKeyStoreRepository localKeyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
+                return new BouncyCastleCertificateManager(keyStoreRepository, tlsMaterialProvider);
+            }
+        };
+        securityService.installDefaultSamlSslCert("test-host", 10);
+        securityService.deleteCertificate(SecurityConstants.ALIAS_SAML_PRIVATE_KEY);
+        assertNull(securityService.getCurrentSamlSslCert());
+        verify(secretStore, never()).deleteEntry(anyString());
+    }
+
+    private SecurityService newServiceWithCertificateManager(ICertificateManager certificateManager) {
+        return new SecurityService(FIXED_KEY_PROVIDER) {
+            @Override
+            protected ICertificateManager createCertificateManager(IKeyStoreRepository keyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
+                return certificateManager;
+            }
+        };
     }
 
     private TestSecurityService newServiceWithTlsMaterialProvider(ITlsMaterialProvider tlsMaterialProvider) {

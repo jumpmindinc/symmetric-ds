@@ -11,6 +11,8 @@ apply from: symAssembleDir + '/common.gradle'
         api "com.google.code.gson:gson:$gsonVersion"
         compileOnly "org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion"
         compileOnly "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
+        testImplementation "org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion"
+        testImplementation "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
         compileOnly "org.codehaus.mojo:animal-sniffer-annotations:$animalSnifferVersion"
         compileOnly "tools.jackson.core:jackson-core:$jacksonVersion"
         compileOnly ("com.azure:azure-core:1.60.0") {
