@@ -792,7 +792,10 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                         }
                     }
                     Matcher alterMatcher = alterPattern.matcher(sql);
-                    hasUncommittedDdl |= alterMatcher.matches();
+                    if (alterMatcher.matches()) {
+                        hasUncommittedDdl = true;
+                        getTargetPlatform().resetCachedRelationModel();
+                    }
                 } catch (Error ex) {
                     log.error("Failed to run the following sql: {}", sql);
                     if (newTransaction != null) {
