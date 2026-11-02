@@ -34,6 +34,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Objects;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -63,6 +64,8 @@ public class SecurityService implements ISecurityService {
     private final ISecretStore secretStore;
     private final ITlsMaterialProvider tlsMaterialProvider;
     private final ICertificateManager certificateManager;
+    private final boolean usesLocalKeyStore;
+    private final boolean usesLocalTrustStore;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -81,57 +84,26 @@ public class SecurityService implements ISecurityService {
     }
 
     protected SecurityService() {
-        isKeystoreInitialized = false;
-        secretKeyProvider = newKeystoreSecretKeyProvider();
-        secretStore = newKeystoreSecretStore();
-        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
-        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
+        this(SecurityServiceParts.builder().build());
     }
 
     /**
-     * Keystore entries and TLS material stay in the local keystore and truststore.
-     *
-     * @param secretKeyProvider
-     *            supplies the secret key instead of the local keystore, for example a cloud key management service
+     * @param parts
+     *            the parts that replace the local keystore and truststore; parts left unset use them
      */
-    protected SecurityService(ISecretKeyProvider secretKeyProvider) {
+    protected SecurityService(SecurityServiceParts parts) {
         isKeystoreInitialized = false;
-        this.secretKeyProvider = secretKeyProvider;
-        secretStore = newKeystoreSecretStore();
-        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
-        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
+        secretKeyProvider = parts.getSecretKeyProvider().orElseGet(this::newKeystoreSecretKeyProvider);
+        secretStore = parts.getSecretStore().orElseGet(this::newKeystoreSecretStore);
+        tlsMaterialProvider = parts.getTlsMaterialProvider().orElseGet(this::newKeystoreTlsMaterialProvider);
+        certificateManager = parts.getCertificateManagerFactory().map(this::createCertificateManager).orElseGet(UnsupportedCertificateManager::new);
+        usesLocalTrustStore = !parts.getTlsMaterialProvider().isPresent();
+        usesLocalKeyStore = usesLocalTrustStore || !parts.getSecretKeyProvider().isPresent() || !parts.getSecretStore().isPresent()
+                || parts.getCertificateManagerFactory().isPresent();
     }
 
-    /**
-     * TLS material stays in the local keystore and truststore.
-     *
-     * @param secretKeyProvider
-     *            supplies the secret key instead of the local keystore, for example a cloud key management service
-     * @param secretStore
-     *            holds keystore entries instead of the local keystore, for example a cloud secrets manager
-     */
-    protected SecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore) {
-        isKeystoreInitialized = false;
-        this.secretKeyProvider = secretKeyProvider;
-        this.secretStore = secretStore;
-        tlsMaterialProvider = newKeystoreTlsMaterialProvider();
-        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
-    }
-
-    /**
-     * @param secretKeyProvider
-     *            supplies the secret key instead of the local keystore, for example a cloud key management service
-     * @param secretStore
-     *            holds keystore entries instead of the local keystore, for example a cloud secrets manager
-     * @param tlsMaterialProvider
-     *            supplies key managers and trusted certificates instead of the local keystore and truststore
-     */
-    protected SecurityService(ISecretKeyProvider secretKeyProvider, ISecretStore secretStore, ITlsMaterialProvider tlsMaterialProvider) {
-        isKeystoreInitialized = false;
-        this.secretKeyProvider = secretKeyProvider;
-        this.secretStore = secretStore;
-        this.tlsMaterialProvider = tlsMaterialProvider;
-        certificateManager = createCertificateManager(new LocalKeyStoreRepository(), this.tlsMaterialProvider);
+    private ICertificateManager createCertificateManager(SecurityServiceParts.CertificateManagerFactory factory) {
+        return Objects.requireNonNull(factory.create(new LocalKeyStoreRepository(), tlsMaterialProvider), "certificateManagerFactory returned null");
     }
 
     private KeystoreSecretKeyProvider newKeystoreSecretKeyProvider() {
@@ -163,14 +135,6 @@ public class SecurityService implements ISecurityService {
     }
 
     /**
-     * Factory Method for the certificate manager, called from the constructor after the TLS material provider is set. The default does not manage certificates;
-     * subclasses with Bouncy Castle available return a manager that does. Overrides must not use the subclass's own fields, because they are not assigned yet.
-     */
-    protected ICertificateManager createCertificateManager(IKeyStoreRepository keyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
-        return new UnsupportedCertificateManager();
-    }
-
-    /**
      * Fails fast when a deprecated keystore helper is called on a service whose secret key does not come from the local keystore, rather than quietly reading
      * or generating a keystore key the service never uses.
      */
@@ -188,23 +152,33 @@ public class SecurityService implements ISecurityService {
             log.debug("Already initialized. Key store={}", keyStoreURL);
             return;
         }
-        if (keyStoreFileName == null) {
-            log.debug("Using keystore from classpath {}", keyStoreURL);
-            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
-                    + SecurityConstants.SYSPROP_KEYSTORE);
-        } else {
-            log.info("Using keystore from file {}", keyStoreFileName);
+        if (usesLocalKeyStore) {
+            requireKeyStoreFile();
         }
-        if (trustStoreFileName == null) {
-            log.debug("Using truststore from classpath {}", trustStoreURL);
-            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
-                    + SecurityConstants.SYSPROP_TRUSTSTORE);
-        } else {
-            log.info("Using truststore from file {}", trustStoreFileName);
+        if (usesLocalTrustStore) {
+            requireTrustStoreFile();
         }
         long secureRandom = nextSecureLong();
         log.debug("Confirmed secure random is available. Result={}. Running keystore integrity check...", secureRandom);
         isKeystoreInitialized = validateKeystoreIntegrity();
+    }
+
+    private void requireKeyStoreFile() {
+        if (keyStoreFileName == null) {
+            log.debug("Using keystore from classpath {}", keyStoreURL);
+            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
+                    + SecurityConstants.SYSPROP_KEYSTORE);
+        }
+        log.info("Using keystore from file {}", keyStoreFileName);
+    }
+
+    private void requireTrustStoreFile() {
+        if (trustStoreFileName == null) {
+            log.debug("Using truststore from classpath {}", trustStoreURL);
+            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
+                    + SecurityConstants.SYSPROP_TRUSTSTORE);
+        }
+        log.info("Using truststore from file {}", trustStoreFileName);
     }
 
     @Override
@@ -392,7 +366,6 @@ public class SecurityService implements ISecurityService {
     @Override
     public String encrypt(String plainText) {
         try {
-            checkThatKeystoreFileExists();
             byte[] bytes = plainText.getBytes(SecurityConstants.CHARSET);
             byte[] enc = getCipher(Cipher.ENCRYPT_MODE).doFinal(bytes);
             return new String(Base64.encodeBase64(enc), SecurityConstants.CHARSET);
@@ -406,7 +379,6 @@ public class SecurityService implements ISecurityService {
     @Override
     public String decrypt(String encText) {
         try {
-            checkThatKeystoreFileExists();
             byte[] dec = Base64.decodeBase64(encText.getBytes(Charset.defaultCharset()));
             byte[] bytes = getCipher(Cipher.DECRYPT_MODE).doFinal(dec);
             return new String(bytes, SecurityConstants.CHARSET);

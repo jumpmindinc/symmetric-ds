@@ -22,7 +22,6 @@ package org.jumpmind.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
@@ -31,7 +30,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore.TrustedCertificateEntry;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -81,17 +79,6 @@ class BouncyCastleSecurityServiceTest {
             reader.readLine();
             assertTrue(securityService.readPemBytes(reader).length > 0);
         }
-    }
-
-    @Test
-    void testGenerateRSAKeyPair_throwsWithOtherCertificateManager() {
-        BouncyCastleSecurityService unsupportedService = new BouncyCastleSecurityService() {
-            @Override
-            protected ICertificateManager createCertificateManager(IKeyStoreRepository keyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
-                return new UnsupportedCertificateManager();
-            }
-        };
-        assertThrows(NotImplementedException.class, () -> unsupportedService.generateRSAKeyPair());
     }
 
     private byte[] readTrustedCertPem() throws Exception {

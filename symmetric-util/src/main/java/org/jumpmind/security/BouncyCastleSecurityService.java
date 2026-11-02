@@ -27,15 +27,12 @@ import java.security.KeyStore.Entry;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
-import org.apache.commons.lang3.NotImplementedException;
-
 /**
  * Security service that can generate, import and export certificates, using {@link BouncyCastleCertificateManager}.
  */
 public class BouncyCastleSecurityService extends SecurityService {
-    @Override
-    protected ICertificateManager createCertificateManager(IKeyStoreRepository keyStoreRepository, ITlsMaterialProvider tlsMaterialProvider) {
-        return new BouncyCastleCertificateManager(keyStoreRepository, tlsMaterialProvider);
+    public BouncyCastleSecurityService() {
+        super(SecurityServiceParts.builder().certificateManagerFactory(BouncyCastleCertificateManager::new).build());
     }
 
     /**
@@ -71,10 +68,6 @@ public class BouncyCastleSecurityService extends SecurityService {
     }
 
     private BouncyCastleCertificateManager getBouncyCastleCertificateManager() {
-        if (getCertificateManager() instanceof BouncyCastleCertificateManager) {
-            return (BouncyCastleCertificateManager) getCertificateManager();
-        }
-        throw new NotImplementedException(String.format("%s manages certificates with %s, not Bouncy Castle", getClass().getSimpleName(),
-                getCertificateManager().getClass().getSimpleName()));
+        return (BouncyCastleCertificateManager) getCertificateManager();
     }
 }
