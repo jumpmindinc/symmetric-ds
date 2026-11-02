@@ -304,8 +304,8 @@ by database.
 |
 |
 |
-|
-|
+|✔
+|✔
 
 |MySQL
 |5.0.2 and above
@@ -440,16 +440,16 @@ by database.
 
 |SQL Database in Microsoft Fabric *
 |Tested on 12.0.2000.8
+|✔
+|✔
 |
+|✔
+|✔
+|✔
+|✔
 |
-|
-|
-|
-|
-|
-|
-|
-|
+|✔
+|✔
 
 |SQL Server *
 |2005 and above
