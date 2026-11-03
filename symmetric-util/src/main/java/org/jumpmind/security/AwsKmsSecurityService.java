@@ -25,8 +25,9 @@ package org.jumpmind.security;
  * {@code security.service.class.name=org.jumpmind.security.AwsKmsSecurityService} and the aws.kms.* system properties in {@link SecurityConstants}, with the
  * awskms module installed.
  * <p>
- * Keystore entries and TLS material stay in the local keystore and truststore. Certificates are managed with Bouncy Castle when it is on the classpath, as on
- * servers.
+ * Keystore entries, such as startup parameters saved with the {@link SecurityConstants#PREFIX_KEYSTORE_STORAGE} prefix, are kept in AWS Secrets Manager through
+ * {@link SecretsManagerSecretStore}. TLS material stays in the local keystore and truststore. Certificates are managed with Bouncy Castle when it is on the
+ * classpath, as on servers.
  * <p>
  * Use it for new installations only. A secret key already in the local keystore is not migrated, so values encrypted with it cannot be decrypted after
  * switching.
@@ -40,7 +41,8 @@ public class AwsKmsSecurityService extends SecurityService {
     }
 
     private static SecurityServiceParts createParts() {
-        SecurityServiceParts.Builder parts = SecurityServiceParts.builder().secretKeyProvider(KmsEnvelopeKeyProvider.fromSystemProperties());
+        SecurityServiceParts.Builder parts = SecurityServiceParts.builder().secretKeyProvider(KmsEnvelopeKeyProvider.fromSystemProperties())
+                .secretStore(SecretsManagerSecretStore.fromSystemProperties());
         if (isBouncyCastleAvailable()) {
             parts.certificateManagerFactory(BouncyCastleCertificateManager::new);
         }

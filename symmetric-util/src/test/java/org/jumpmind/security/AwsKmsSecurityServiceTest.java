@@ -46,10 +46,13 @@ class AwsKmsSecurityServiceTest {
     }
 
     @Test
-    void testConstructor_keepsKeystoreEntriesAndTlsMaterialLocal() {
-        AwsKmsSecurityService securityService = new AwsKmsSecurityService();
-        assertInstanceOf(KeystoreSecretStore.class, securityService.getSecretStore());
-        assertInstanceOf(KeystoreTlsMaterialProvider.class, securityService.getTlsMaterialProvider());
+    void testConstructor_usesSecretsManagerSecretStore() {
+        assertInstanceOf(SecretsManagerSecretStore.class, new AwsKmsSecurityService().getSecretStore());
+    }
+
+    @Test
+    void testConstructor_keepsTlsMaterialLocal() {
+        assertInstanceOf(KeystoreTlsMaterialProvider.class, new AwsKmsSecurityService().getTlsMaterialProvider());
     }
 
     @Test

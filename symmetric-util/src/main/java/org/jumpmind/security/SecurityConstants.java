@@ -61,4 +61,6 @@ public class SecurityConstants {
     public static final String AWS_KMS_ENDPOINT = "aws.kms.endpoint";
     public static final String AWS_KMS_WRAPPED_KEY = "aws.kms.wrapped.key";
     public static final String AWS_KMS_WRAPPED_KEY_FILE = "aws.kms.wrapped.key.file";
+    public static final String AWS_SECRETS_MANAGER_PREFIX = "aws.secretsmanager.prefix";
+    public static final String AWS_SECRETS_MANAGER_ENDPOINT = "aws.secretsmanager.endpoint";
 }

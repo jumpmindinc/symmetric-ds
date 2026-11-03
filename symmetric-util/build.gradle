@@ -15,6 +15,8 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
         compileOnly "software.amazon.awssdk:kms:2.54.2"
         testImplementation "software.amazon.awssdk:kms:2.54.2"
+        compileOnly "software.amazon.awssdk:secretsmanager:2.54.2"
+        testImplementation "software.amazon.awssdk:secretsmanager:2.54.2"
         compileOnly "org.codehaus.mojo:animal-sniffer-annotations:$animalSnifferVersion"
         compileOnly "tools.jackson.core:jackson-core:$jacksonVersion"
         compileOnly ("com.azure:azure-core:1.60.0") {
