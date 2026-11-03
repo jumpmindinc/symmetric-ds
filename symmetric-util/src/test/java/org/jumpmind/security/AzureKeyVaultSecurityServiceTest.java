@@ -31,10 +31,13 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import javax.crypto.spec.SecretKeySpec;
+
 import org.jumpmind.security.azure.AzureKeyVault;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.core.http.rest.PagedIterable;
@@ -87,6 +90,16 @@ class AzureKeyVaultSecurityServiceTest {
     void testGetKeystoreEntry_readsVaultSecret() throws Exception {
         when(secretClient.getSecret("corp-000-db-password")).thenReturn(new KeyVaultSecret("corp-000-db-password", "s3cret"));
         assertEquals("s3cret", securityService.getKeystoreEntry(ALIAS));
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void testSetKeystoreEntry_withKeySavesEncodedValueToVault() throws Exception {
+        ArgumentCaptor<KeyVaultSecret> secret = ArgumentCaptor.forClass(KeyVaultSecret.class);
+        securityService.setKeystoreEntry(ALIAS, new SecretKeySpec("s3cret".getBytes(), "DES"));
+        verify(secretClient).setSecret(secret.capture());
+        assertEquals("corp-000-db-password", secret.getValue().getName());
+        assertEquals("s3cret", secret.getValue().getValue());
     }
 
     @Test

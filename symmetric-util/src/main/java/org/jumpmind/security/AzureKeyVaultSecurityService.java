@@ -20,6 +20,8 @@
  */
 package org.jumpmind.security;
 
+import java.security.Key;
+
 import org.jumpmind.security.azure.AzureKeyVault;
 import org.jumpmind.security.azure.AzureKeyVaultParts;
 
@@ -35,5 +37,14 @@ public class AzureKeyVaultSecurityService extends BouncyCastleSecurityService {
 
     AzureKeyVaultSecurityService(AzureKeyVault vault) {
         super(AzureKeyVaultParts.create(vault));
+    }
+
+    /**
+     * @deprecated Kept so code compiled against earlier versions still runs. Use {@link #setKeystoreEntry(String, String)} with the key's encoded value
+     *             instead.
+     */
+    @Deprecated(since = "3.19", forRemoval = true)
+    public void setKeystoreEntry(String alias, Key key) throws Exception {
+        setKeystoreEntry(alias, new String(key.getEncoded()));
     }
 }
