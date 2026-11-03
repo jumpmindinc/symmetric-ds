@@ -35,6 +35,8 @@ import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -52,7 +54,12 @@ import org.slf4j.LoggerFactory;
  */
 public class SecurityService implements ISecurityService {
     protected Logger log = LoggerFactory.getLogger(getClass());
+    /**
+     * The key most recently fetched by any service in this JVM. Kept for subclasses that set or read it directly, such as {@link AzureKeyVaultSecurityService};
+     * this class uses the key cached for its own provider instead.
+     */
     protected static volatile SecretKey secretKey;
+    private static final ConcurrentMap<Object, SecretKey> SECRET_KEYS_BY_IDENTITY = new ConcurrentHashMap<>();
     protected static String keyStoreFileName;
     protected static URL keyStoreURL;
     protected static volatile boolean hasInitKeyStore;
@@ -66,6 +73,7 @@ public class SecurityService implements ISecurityService {
     private final ICertificateManager certificateManager;
     private final boolean usesLocalKeyStore;
     private final boolean usesLocalTrustStore;
+    private volatile SecretKey serviceSecretKey;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -426,17 +434,25 @@ public class SecurityService implements ISecurityService {
     @Override
     public Cipher getCipher(int mode) throws Exception {
         initializeSecretKey();
-        Cipher cipher = Cipher.getInstance(secretKey.getAlgorithm());
+        SecretKey key = getActiveSecretKey();
+        Cipher cipher = Cipher.getInstance(key.getAlgorithm());
         initializeCipher(cipher, mode);
         if (log.isDebugEnabled()) {
             log.debug("Using {} algorithm {}-bit provided by {}.", cipher.getAlgorithm(),
-                    secretKey.getEncoded().length * 8, cipher.getProvider().getName());
+                    key.getEncoded().length * 8, cipher.getProvider().getName());
         }
         return cipher;
     }
 
     protected void initializeCipher(Cipher cipher, int mode) throws Exception {
-        CipherInitializer.initialize(cipher, mode, secretKey, random);
+        CipherInitializer.initialize(cipher, mode, getActiveSecretKey(), random);
+    }
+
+    /**
+     * @return the key fetched for this service's provider, or the shared {@link #secretKey} when a subclass's own {@link #initializeSecretKey()} set only that
+     */
+    private SecretKey getActiveSecretKey() {
+        return serviceSecretKey != null ? serviceSecretKey : secretKey;
     }
 
     protected String getTrustStorePassword() {
@@ -461,14 +477,30 @@ public class SecurityService implements ISecurityService {
                 tlsMaterialProvider.getClass().getSimpleName()));
     }
 
+    /**
+     * Fetches the key from this service's provider once per JVM for each {@link ISecretKeyProvider#getKeyIdentity()}, so services built with different
+     * providers never share a key.
+     */
     protected void initializeSecretKey() throws Exception {
-        if (secretKey == null) {
+        if (serviceSecretKey == null) {
             synchronized (SecurityService.class) {
-                if (secretKey == null) {
-                    secretKey = secretKeyProvider.getSecretKey();
+                if (serviceSecretKey == null) {
+                    Object identity = secretKeyProvider.getKeyIdentity();
+                    SecretKey key = SECRET_KEYS_BY_IDENTITY.get(identity);
+                    if (key == null) {
+                        key = secretKeyProvider.getSecretKey();
+                        SECRET_KEYS_BY_IDENTITY.put(identity, key);
+                    }
+                    serviceSecretKey = key;
+                    secretKey = key;
                 }
             }
         }
+    }
+
+    static void clearSecretKeyCache() {
+        SECRET_KEYS_BY_IDENTITY.clear();
+        secretKey = null;
     }
 
     /**

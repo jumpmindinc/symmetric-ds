@@ -27,8 +27,16 @@ import javax.crypto.SecretKey;
  * {@link ISecurityService#getCipher(int)}. This is the implementor side of a Bridge: {@link SecurityService} owns the cipher operations and delegates to a
  * provider for where the key comes from, so a backend such as a cloud KMS can supply the key without a local keystore.
  * <p>
- * Implementations may create and persist a key on first use. Callers cache the result, so each call may be expensive.
+ * Implementations may create and persist a key on first use. Callers cache the result by {@link #getKeyIdentity()}, so each call may be expensive.
  */
 public interface ISecretKeyProvider {
     public SecretKey getSecretKey() throws Exception;
+
+    /**
+     * Identifies the key this provider supplies. Providers that supply the same key return equal identities, so the key is fetched once per JVM and shared
+     * between them. The default treats every instance of the same class as supplying the same key.
+     */
+    public default Object getKeyIdentity() {
+        return getClass();
+    }
 }

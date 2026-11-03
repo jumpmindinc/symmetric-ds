@@ -84,7 +84,7 @@ class SecurityServiceTest {
         }
 
         private static void clearCachedSecretKey() {
-            secretKey = null;
+            clearSecretKeyCache();
         }
 
         private static SecretKey getCachedSecretKey() {
@@ -588,6 +588,24 @@ class SecurityServiceTest {
     }
 
     @Test
+    void testGetCipher_withDifferentProvidersUsesEachProvidersKey() {
+        ISecretKeyProvider otherKeyProvider = () -> new SecretKeySpec(filledKey((byte) 0x33), "AES");
+        TestSecurityService securityService = new TestSecurityService(FIXED_KEY_PROVIDER);
+        TestSecurityService otherSecurityService = new TestSecurityService(otherKeyProvider);
+        String encrypted = securityService.encrypt("secret value");
+        assertNotEquals(encrypted, otherSecurityService.encrypt("secret value"));
+        assertEquals("secret value", securityService.decrypt(encrypted));
+    }
+
+    @Test
+    void testGetCipher_withSameKeyIdentityFetchesKeyOncePerJvm() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        new TestSecurityService(countingKeyProvider(calls)).getCipher(Cipher.ENCRYPT_MODE);
+        new TestSecurityService(countingKeyProvider(calls)).getCipher(Cipher.ENCRYPT_MODE);
+        assertEquals(1, calls.get());
+    }
+
+    @Test
     void testConstructor_throwsWhenCertificateManagerFactoryReturnsNull() {
         SecurityServiceParts parts = SecurityServiceParts.builder().certificateManagerFactory((keyStoreRepository, tlsMaterialProvider) -> null).build();
         NullPointerException exception = assertThrows(NullPointerException.class, () -> new TestSecurityService(parts));
@@ -606,6 +624,19 @@ class SecurityServiceTest {
         TestSecurityService securityService = new TestSecurityService();
         securityService.encrypt("secret value");
         assertTrue(securityService.keystoreFileChecks > 0);
+    }
+
+    private ISecretKeyProvider countingKeyProvider(AtomicInteger calls) {
+        return () -> {
+            calls.incrementAndGet();
+            return new SecretKeySpec(filledKey((byte) 0x44), "AES");
+        };
+    }
+
+    private static byte[] filledKey(byte value) {
+        byte[] keyBytes = new byte[32];
+        Arrays.fill(keyBytes, value);
+        return keyBytes;
     }
 
     private SecurityService newServiceWithCertificateManager(ICertificateManager certificateManager) {
