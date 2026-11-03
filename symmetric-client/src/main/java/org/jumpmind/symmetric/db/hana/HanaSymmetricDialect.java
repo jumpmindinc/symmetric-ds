@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.db.hana;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -28,12 +29,19 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.FormatUtils;
 
 public class HanaSymmetricDialect extends AbstractSymmetricDialect {
     static final String SYNC_TRIGGERS_DISABLED_USER_VARIABLE = "sync_triggers_disabled";
     static final String SYNC_TRIGGERS_DISABLED_NODE_VARIABLE = "sync_node_disabled";
     static final String SQL_DROP_FUNCTION = "DROP FUNCTION $(functionName)";
-    static final String SQL_FUNCTION_INSTALLED = "select count(*) from functions where function_name = '$(functionName)';";
+    static final String SQL_FUNCTION_INSTALLED = "select count(*) from functions where schema_name = current_schema and function_name = upper('$(functionName)')";
+    static final String SQL_FUNCTION_EQUALS = SQL_FUNCTION_INSTALLED + " and definition like ?";
+    static final String SQL_CREATE_TRANSACTION_ID_FUNCTION = "CREATE OR REPLACE function $(functionName) returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin $(functionBody) end";
+    static final String TRANSACTION_ID_FUNCTION_SUFFIX = "_transaction_id";
+    static final String UPDATE_TRANSACTION_BODY = "output1 := to_varchar(CURRENT_UPDATE_TRANSACTION());";
+    static final String TRANSACTION_SLOT_BODY = "select transaction_id into output1 from M_TRANSACTIONS where connection_id = CURRENT_CONNECTION and transaction_id != -1;";
+    static final int FIRST_REVISION_WITH_UPDATE_TRANSACTION = 100;
 
     public HanaSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
@@ -77,7 +85,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     public void dropRequiredDatabaseObjects() {
-        String function = this.parameterService.getTablePrefix() + "_" + "transaction_id";
+        String function = getTransactionIdFunctionName();
         if (installed(SQL_FUNCTION_INSTALLED, function)) {
             uninstall(SQL_DROP_FUNCTION, function);
         }
@@ -85,15 +93,38 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     public void createRequiredDatabaseObjectsImpl(StringBuilder ddl) {
-        String transactionId = this.parameterService.getTablePrefix() + "_" + "transaction_id";
-        if (!installed(SQL_FUNCTION_INSTALLED, transactionId)) {
-            String sql = "CREATE OR REPLACE function $(functionName)                                                                                                                                                             "
-                    + "   returns output1 varchar(50) LANGUAGE SQLSCRIPT AS                                                                                                                                                 "
-                    + "   begin                                                                                                                                                              "
-                    + "      select transaction_id into output1 from M_TRANSACTIONS where connection_id = CURRENT_CONNECTION and transaction_id != -1;                                                                                                         "
-                    + "   end;    ";
-            install(sql, transactionId, ddl);
+        String function = getTransactionIdFunctionName();
+        String functionBody = getTransactionIdFunctionBody();
+        if (!isFunctionBodyInstalled(function, functionBody)) {
+            install(FormatUtils.replace("functionBody", functionBody, SQL_CREATE_TRANSACTION_ID_FUNCTION), function, ddl);
         }
+    }
+
+    String getTransactionIdFunctionName() {
+        return parameterService.getTablePrefix() + TRANSACTION_ID_FUNCTION_SUFFIX;
+    }
+
+    String getTransactionIdFunctionBody() {
+        return isUpdateTransactionSupported() ? UPDATE_TRANSACTION_BODY : TRANSACTION_SLOT_BODY;
+    }
+
+    boolean isUpdateTransactionSupported() {
+        if (databaseMajorVersion != 1) {
+            return databaseMajorVersion > 1;
+        }
+        return parseRevision(databaseProductVersion) >= FIRST_REVISION_WITH_UPDATE_TRANSACTION;
+    }
+
+    static int parseRevision(String productVersion) {
+        String[] versionParts = StringUtils.split(StringUtils.defaultString(productVersion), '.');
+        if (versionParts.length > 2 && StringUtils.isNumeric(versionParts[2])) {
+            return Integer.parseInt(versionParts[2]);
+        }
+        return -1;
+    }
+
+    private boolean isFunctionBodyInstalled(String function, String functionBody) {
+        return platform.getSqlTemplate().queryForInt(replaceTokens(SQL_FUNCTION_EQUALS, function), "%" + functionBody + "%") > 0;
     }
 
     @Override

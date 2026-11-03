@@ -3,7 +3,10 @@ package org.jumpmind.symmetric.db.hana;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -114,5 +117,102 @@ class HanaSymmetricDialectTest {
         String tablePrefix = "SYM";
         when(parameterService.getTablePrefix()).thenReturn(tablePrefix);
         assertEquals("$(defaultSchema)" + tablePrefix + "_" + "transaction_id()", dialect.getTransactionTriggerExpression("", "", new Trigger()));
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana2() {
+        assertTrue(createDialect(2, "2.00.088.00.1760424921").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1Sps10() {
+        assertTrue(createDialect(1, "1.00.100.00.1434512907").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1Sps09() {
+        assertFalse(createDialect(1, "1.00.097.00.1434028111").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1UnknownRevision() {
+        assertFalse(createDialect(1, null).isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testParseRevision() {
+        assertEquals(88, HanaSymmetricDialect.parseRevision("2.00.088.00.1760424921"));
+        assertEquals(122, HanaSymmetricDialect.parseRevision("1.00.122.05"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision("2.00"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision("1.00.abc.00"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision(null));
+    }
+
+    @Test
+    void testGetTransactionIdFunctionBodyOnHana2() {
+        assertEquals(HanaSymmetricDialect.UPDATE_TRANSACTION_BODY, createDialect(2, "2.00.088.00").getTransactionIdFunctionBody());
+    }
+
+    @Test
+    void testGetTransactionIdFunctionBodyOnHana1Sps09() {
+        assertEquals(HanaSymmetricDialect.TRANSACTION_SLOT_BODY, createDialect(1, "1.00.097.00").getTransactionIdFunctionBody());
+    }
+
+    @Test
+    void testGetTransactionIdFunctionName() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        assertEquals("sym_transaction_id", dialect.getTransactionIdFunctionName());
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsReplacesOutdatedFunction() {
+        HanaSymmetricDialect hana2Dialect = createDialect(2, "2.00.088.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        String expectedEqualsSql = "select count(*) from functions where schema_name = current_schema and function_name = upper('sym_transaction_id')"
+                + " and definition like ?";
+        when(sqlTemplate.queryForInt(expectedEqualsSql, "%" + HanaSymmetricDialect.UPDATE_TRANSACTION_BODY + "%")).thenReturn(0);
+        hana2Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate).update("CREATE OR REPLACE function sym_transaction_id returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin "
+                + "output1 := to_varchar(CURRENT_UPDATE_TRANSACTION()); end");
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsKeepsCurrentFunction() {
+        HanaSymmetricDialect hana2Dialect = createDialect(2, "2.00.088.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(sqlTemplate.queryForInt(anyString(), (Object) any())).thenReturn(1);
+        hana2Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate, never()).update(anyString());
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsInstallsSlotFunctionOnHana1Sps09() {
+        HanaSymmetricDialect hana1Dialect = createDialect(1, "1.00.097.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        hana1Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate).update("CREATE OR REPLACE function sym_transaction_id returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin "
+                + HanaSymmetricDialect.TRANSACTION_SLOT_BODY + " end");
+    }
+
+    @Test
+    void testDropRequiredDatabaseObjectsDropsInstalledFunction() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(sqlTemplate.queryForInt("select count(*) from functions where schema_name = current_schema and function_name = upper('sym_transaction_id')"))
+                .thenReturn(1);
+        dialect.dropRequiredDatabaseObjects();
+        verify(sqlTemplate).update("DROP FUNCTION sym_transaction_id");
+    }
+
+    @Test
+    void testDropRequiredDatabaseObjectsSkipsMissingFunction() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        dialect.dropRequiredDatabaseObjects();
+        verify(sqlTemplate, never()).update(anyString());
+    }
+
+    private HanaSymmetricDialect createDialect(int majorVersion, String productVersion) {
+        when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(majorVersion);
+        when(sqlTemplate.getDatabaseProductVersion()).thenReturn(productVersion);
+        return new HanaSymmetricDialect(parameterService, platform);
     }
 }
