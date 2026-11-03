@@ -39,7 +39,7 @@ class KeystoreSecretStoreTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        repository = InMemoryKeyStoreRepository.fileBased();
+        repository = InMemoryKeyStoreRepository.persistent();
         store = new KeystoreSecretStore(repository);
     }
 

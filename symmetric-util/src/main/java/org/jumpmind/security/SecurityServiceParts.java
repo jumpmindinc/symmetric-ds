@@ -36,12 +36,14 @@ public final class SecurityServiceParts {
     private final ISecretStore secretStore;
     private final ITlsMaterialProvider tlsMaterialProvider;
     private final CertificateManagerFactory certificateManagerFactory;
+    private final IKeyStoreRepository keyStoreRepository;
 
     private SecurityServiceParts(Builder builder) {
         secretKeyProvider = builder.secretKeyProvider;
         secretStore = builder.secretStore;
         tlsMaterialProvider = builder.tlsMaterialProvider;
         certificateManagerFactory = builder.certificateManagerFactory;
+        keyStoreRepository = builder.keyStoreRepository;
     }
 
     public static Builder builder() {
@@ -64,8 +66,12 @@ public final class SecurityServiceParts {
         return Optional.ofNullable(certificateManagerFactory);
     }
 
+    public Optional<IKeyStoreRepository> getKeyStoreRepository() {
+        return Optional.ofNullable(keyStoreRepository);
+    }
+
     /**
-     * Creates the certificate manager once the service can hand it the local keystore and the service's TLS material provider, for example
+     * Creates the certificate manager once the service can hand it the keystore repository and the service's TLS material provider, for example
      * {@code BouncyCastleCertificateManager::new}.
      */
     @FunctionalInterface
@@ -78,6 +84,7 @@ public final class SecurityServiceParts {
         private ISecretStore secretStore;
         private ITlsMaterialProvider tlsMaterialProvider;
         private CertificateManagerFactory certificateManagerFactory;
+        private IKeyStoreRepository keyStoreRepository;
 
         private Builder() {
         }
@@ -99,6 +106,15 @@ public final class SecurityServiceParts {
 
         public Builder certificateManagerFactory(CertificateManagerFactory certificateManagerFactory) {
             this.certificateManagerFactory = requireSet(certificateManagerFactory, "certificateManagerFactory");
+            return this;
+        }
+
+        /**
+         * Replaces the local keystore file as the place the keystore-based parts, the certificate manager and {@link SecurityService#getKeyStore()} read and
+         * save keystore entries, for example a cloud key vault.
+         */
+        public Builder keyStoreRepository(IKeyStoreRepository keyStoreRepository) {
+            this.keyStoreRepository = requireSet(keyStoreRepository, "keyStoreRepository");
             return this;
         }
 

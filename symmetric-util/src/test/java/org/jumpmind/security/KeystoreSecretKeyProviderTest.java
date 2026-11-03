@@ -45,7 +45,7 @@ class KeystoreSecretKeyProviderTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        repository = InMemoryKeyStoreRepository.fileBased();
+        repository = InMemoryKeyStoreRepository.persistent();
         provider = new KeystoreSecretKeyProvider(repository, new SecureRandom());
     }
 
@@ -100,7 +100,7 @@ class KeystoreSecretKeyProviderTest {
     }
 
     @Test
-    void testGenerateDefaultSecretKey_withFileBasedKeystoreUsesRandomBytes() {
+    void testGenerateDefaultSecretKey_withPersistentKeystoreUsesRandomBytes() {
         SecretKey first = provider.generateDefaultSecretKey();
         SecretKey second = provider.generateDefaultSecretKey();
         assertNotNull(first);
@@ -108,14 +108,14 @@ class KeystoreSecretKeyProviderTest {
     }
 
     @Test
-    void testGetKeyBytes_withoutFileBasedKeystoreDerivesFromPassword() throws Exception {
-        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.withoutFile(), new SecureRandom());
+    void testGetKeyBytes_withoutPersistentKeystoreDerivesFromPassword() throws Exception {
+        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.notPersistent(), new SecureRandom());
         assertArrayEquals("changeittt".getBytes(), passwordProvider.getKeyBytes(10));
     }
 
     @Test
     void testGetKeyBytes_withShortLengthTruncatesPassword() throws Exception {
-        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.withoutFile(), new SecureRandom());
+        KeystoreSecretKeyProvider passwordProvider = new KeystoreSecretKeyProvider(InMemoryKeyStoreRepository.notPersistent(), new SecureRandom());
         assertArrayEquals("chan".getBytes(), passwordProvider.getKeyBytes(4));
     }
 

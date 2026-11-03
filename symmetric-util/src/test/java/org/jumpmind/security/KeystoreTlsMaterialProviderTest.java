@@ -48,8 +48,8 @@ class KeystoreTlsMaterialProviderTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        keyStoreRepository = InMemoryKeyStoreRepository.fileBased();
-        trustStoreRepository = InMemoryKeyStoreRepository.fileBased();
+        keyStoreRepository = InMemoryKeyStoreRepository.persistent();
+        trustStoreRepository = InMemoryKeyStoreRepository.persistent();
         provider = new KeystoreTlsMaterialProvider(keyStoreRepository, trustStoreRepository);
     }
 

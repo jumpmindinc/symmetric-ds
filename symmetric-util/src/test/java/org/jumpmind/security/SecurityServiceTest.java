@@ -534,7 +534,7 @@ class SecurityServiceTest {
 
     @Test
     void testDeleteCertificate_removesSamlCertFromKeystoreNotSecretStore() throws Exception {
-        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.fileBased();
+        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.persistent();
         ISecretStore secretStore = mock(ISecretStore.class);
         SecurityService securityService = new TestSecurityService(SecurityServiceParts.builder().secretKeyProvider(FIXED_KEY_PROVIDER).secretStore(secretStore)
                 .certificateManagerFactory((localKeyStoreRepository, tlsMaterialProvider) -> new BouncyCastleCertificateManager(keyStoreRepository,
@@ -624,6 +624,29 @@ class SecurityServiceTest {
         TestSecurityService securityService = new TestSecurityService();
         securityService.encrypt("secret value");
         assertTrue(securityService.keystoreFileChecks > 0);
+    }
+
+    @Test
+    void testGetKeyStore_withKeyStoreRepositoryReadsFromIt() throws Exception {
+        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.persistent();
+        TestSecurityService securityService = new TestSecurityService(SecurityServiceParts.builder().keyStoreRepository(keyStoreRepository).build());
+        assertSame(keyStoreRepository.load(), securityService.getKeyStore());
+    }
+
+    @Test
+    void testSaveKeyStore_withKeyStoreRepositorySavesToIt() throws Exception {
+        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.persistent();
+        TestSecurityService securityService = new TestSecurityService(SecurityServiceParts.builder().keyStoreRepository(keyStoreRepository).build());
+        securityService.saveKeyStore(keyStoreRepository.load(), InMemoryKeyStoreRepository.PASSWORD);
+        assertEquals(1, keyStoreRepository.getSaveCount());
+    }
+
+    @Test
+    void testSetKeystoreEntry_withKeyStoreRepositoryStoresEntryThere() throws Exception {
+        InMemoryKeyStoreRepository keyStoreRepository = InMemoryKeyStoreRepository.persistent();
+        TestSecurityService securityService = new TestSecurityService(SecurityServiceParts.builder().keyStoreRepository(keyStoreRepository).build());
+        securityService.setKeystoreEntry("db.password", "s3cret");
+        assertTrue(keyStoreRepository.load().containsAlias("db.password"));
     }
 
     private ISecretKeyProvider countingKeyProvider(AtomicInteger calls) {

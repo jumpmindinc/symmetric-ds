@@ -104,7 +104,7 @@ public class BouncyCastleCertificateManager implements ICertificateManager {
         try {
             KeyStore keyStore = keyStoreRepository.load();
             KeyStore.ProtectionParameter param = getProtectionParameter();
-            if (keyStore.getEntry(alias, param) == null) {
+            if (!(keyStore.getEntry(alias, param) instanceof PrivateKeyEntry)) {
                 new BouncyCastleHelper().checkProviderInstalled();
                 PrivateKeyEntry privateEntry = createDefaultSslCert(host, lifetimeInDays);
                 String subject = ((X509Certificate) privateEntry.getCertificate()).getSubjectX500Principal().getName();

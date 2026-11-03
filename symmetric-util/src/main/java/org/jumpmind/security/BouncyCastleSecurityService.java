@@ -36,6 +36,14 @@ public class BouncyCastleSecurityService extends SecurityService {
     }
 
     /**
+     * @param parts
+     *            parts whose certificate manager is a {@link BouncyCastleCertificateManager}, which the deprecated methods below delegate to
+     */
+    protected BouncyCastleSecurityService(SecurityServiceParts parts) {
+        super(parts);
+    }
+
+    /**
      * @deprecated Overriding this no longer changes how certificates are generated. Supply an {@link ICertificateManager} instead.
      */
     @Deprecated

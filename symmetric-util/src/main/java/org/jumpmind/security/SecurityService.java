@@ -55,8 +55,8 @@ import org.slf4j.LoggerFactory;
 public class SecurityService implements ISecurityService {
     protected Logger log = LoggerFactory.getLogger(getClass());
     /**
-     * The key most recently fetched by any service in this JVM. Kept for subclasses that set or read it directly, such as {@link AzureKeyVaultSecurityService};
-     * this class uses the key cached for its own provider instead.
+     * The key most recently fetched by any service in this JVM. Kept for subclasses outside this library that set or read it directly; this class uses the key
+     * cached for its own provider instead.
      */
     protected static volatile SecretKey secretKey;
     private static final ConcurrentMap<Object, SecretKey> SECRET_KEYS_BY_IDENTITY = new ConcurrentHashMap<>();
@@ -71,6 +71,8 @@ public class SecurityService implements ISecurityService {
     private final ISecretStore secretStore;
     private final ITlsMaterialProvider tlsMaterialProvider;
     private final ICertificateManager certificateManager;
+    private final IKeyStoreRepository keyStoreRepository;
+    private final boolean keyStoreRepositorySupplied;
     private final boolean usesLocalKeyStore;
     private final boolean usesLocalTrustStore;
     private volatile SecretKey serviceSecretKey;
@@ -101,29 +103,31 @@ public class SecurityService implements ISecurityService {
      */
     protected SecurityService(SecurityServiceParts parts) {
         isKeystoreInitialized = false;
+        keyStoreRepository = parts.getKeyStoreRepository().orElseGet(LocalKeyStoreRepository::new);
+        keyStoreRepositorySupplied = parts.getKeyStoreRepository().isPresent();
         secretKeyProvider = parts.getSecretKeyProvider().orElseGet(this::newKeystoreSecretKeyProvider);
         secretStore = parts.getSecretStore().orElseGet(this::newKeystoreSecretStore);
         tlsMaterialProvider = parts.getTlsMaterialProvider().orElseGet(this::newKeystoreTlsMaterialProvider);
         certificateManager = parts.getCertificateManagerFactory().map(this::createCertificateManager).orElseGet(UnsupportedCertificateManager::new);
         usesLocalTrustStore = !parts.getTlsMaterialProvider().isPresent();
-        usesLocalKeyStore = usesLocalTrustStore || !parts.getSecretKeyProvider().isPresent() || !parts.getSecretStore().isPresent()
-                || parts.getCertificateManagerFactory().isPresent();
+        usesLocalKeyStore = !keyStoreRepositorySupplied && (usesLocalTrustStore || !parts.getSecretKeyProvider().isPresent()
+                || !parts.getSecretStore().isPresent() || parts.getCertificateManagerFactory().isPresent());
     }
 
     private ICertificateManager createCertificateManager(SecurityServiceParts.CertificateManagerFactory factory) {
-        return Objects.requireNonNull(factory.create(new LocalKeyStoreRepository(), tlsMaterialProvider), "certificateManagerFactory returned null");
+        return Objects.requireNonNull(factory.create(keyStoreRepository, tlsMaterialProvider), "certificateManagerFactory returned null");
     }
 
     private KeystoreSecretKeyProvider newKeystoreSecretKeyProvider() {
-        return new KeystoreSecretKeyProvider(new LocalKeyStoreRepository(), random);
+        return new KeystoreSecretKeyProvider(keyStoreRepository, random);
     }
 
     private KeystoreSecretStore newKeystoreSecretStore() {
-        return new KeystoreSecretStore(new LocalKeyStoreRepository());
+        return new KeystoreSecretStore(keyStoreRepository);
     }
 
     private KeystoreTlsMaterialProvider newKeystoreTlsMaterialProvider() {
-        return new KeystoreTlsMaterialProvider(new LocalKeyStoreRepository(), new LocalTrustStoreRepository());
+        return new KeystoreTlsMaterialProvider(keyStoreRepository, new LocalTrustStoreRepository());
     }
 
     protected ISecretKeyProvider getSecretKeyProvider() {
@@ -210,8 +214,15 @@ public class SecurityService implements ISecurityService {
         return tlsMaterialProvider.getTrustStore();
     }
 
+    /**
+     * @return the keystore from the repository this service was built with, or else from the local keystore file
+     */
     @Override
     public KeyStore getKeyStore() {
+        return keyStoreRepositorySupplied ? keyStoreRepository.load() : loadKeyStoreFile();
+    }
+
+    private KeyStore loadKeyStoreFile() {
         try {
             checkThatKeystoreFileExists();
             String keyStoreType = getKeyStoreType();
@@ -404,20 +415,28 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public String unobfuscate(String obfText) {
+        return deobfuscate(obfText);
+    }
+
+    private static String deobfuscate(String obfText) {
         return new String(rot13(new String(Base64.decodeBase64(obfText.getBytes(Charset.defaultCharset())), Charset.defaultCharset())));
     }
 
     @Override
     public String unobfuscateIfNeeded(String systemPropertyName) {
+        return unobfuscateSystemProperty(systemPropertyName);
+    }
+
+    private static String unobfuscateSystemProperty(String systemPropertyName) {
         String value = System.getProperty(systemPropertyName);
         if (value != null && value.startsWith(SecurityConstants.PREFIX_OBF)) {
-            value = unobfuscate(value.substring(SecurityConstants.PREFIX_OBF.length()));
+            value = deobfuscate(value.substring(SecurityConstants.PREFIX_OBF.length()));
             System.setProperty(systemPropertyName, value);
         }
         return value;
     }
 
-    private String rot13(String text) {
+    private static String rot13(String text) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
@@ -460,7 +479,14 @@ public class SecurityService implements ISecurityService {
     }
 
     protected String getKeyStorePassword() {
-        return StringUtils.defaultIfBlank(unobfuscateIfNeeded(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
+        return getConfiguredKeyStorePassword();
+    }
+
+    /**
+     * @return the password from {@link SecurityConstants#SYSPROP_KEYSTORE_PASSWORD}, unobfuscated, or the default password when it is not set
+     */
+    static String getConfiguredKeyStorePassword() {
+        return StringUtils.defaultIfBlank(unobfuscateSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
     }
 
     /**
@@ -592,7 +618,9 @@ public class SecurityService implements ISecurityService {
     }
 
     protected void saveKeyStore(KeyStore ks, String password) throws Exception {
-        if (keyStoreFileName != null) {
+        if (keyStoreRepositorySupplied) {
+            keyStoreRepository.save(ks);
+        } else if (keyStoreFileName != null) {
             log.info("Saving keystore {}", keyStoreFileName);
             try {
                 FileUtils.copyFile(new File(keyStoreFileName), new File(keyStoreFileName + ".bak"));
@@ -626,7 +654,7 @@ public class SecurityService implements ISecurityService {
         }
 
         @Override
-        public boolean isFileBased() {
+        public boolean isPersistent() {
             return keyStoreFileName != null;
         }
     }
@@ -672,7 +700,7 @@ public class SecurityService implements ISecurityService {
         }
 
         @Override
-        public boolean isFileBased() {
+        public boolean isPersistent() {
             return trustStoreFileName != null;
         }
     }

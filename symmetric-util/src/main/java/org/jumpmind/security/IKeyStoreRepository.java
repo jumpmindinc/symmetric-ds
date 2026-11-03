@@ -23,7 +23,8 @@ package org.jumpmind.security;
 import java.security.KeyStore;
 
 /**
- * Loads and saves the local keystore that {@link KeystoreSecretKeyProvider} reads the secret key from.
+ * Loads and saves the keystore that the keystore-based parts read from: the local keystore file by default, or a backend such as a cloud key vault when a
+ * service supplies its own with {@link SecurityServiceParts.Builder#keyStoreRepository(IKeyStoreRepository)}.
  */
 public interface IKeyStoreRepository {
     public KeyStore load();
@@ -33,7 +34,8 @@ public interface IKeyStoreRepository {
     public String getPassword();
 
     /**
-     * @return true when the keystore is backed by a file, false when it comes from the classpath or memory
+     * @return true when saved entries outlive the JVM, as in a keystore file or a key vault, so a generated secret key can use random bytes; false when the
+     *         keystore comes from the classpath or memory
      */
-    public boolean isFileBased();
+    public boolean isPersistent();
 }

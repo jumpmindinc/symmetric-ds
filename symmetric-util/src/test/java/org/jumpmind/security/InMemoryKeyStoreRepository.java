@@ -25,20 +25,20 @@ import java.security.KeyStore;
 class InMemoryKeyStoreRepository implements IKeyStoreRepository {
     static final String PASSWORD = "changeit";
     private final KeyStore keyStore;
-    private final boolean fileBased;
+    private final boolean persistent;
     private int saveCount;
     private boolean failOnSave;
 
-    private InMemoryKeyStoreRepository(KeyStore keyStore, boolean fileBased) {
+    private InMemoryKeyStoreRepository(KeyStore keyStore, boolean persistent) {
         this.keyStore = keyStore;
-        this.fileBased = fileBased;
+        this.persistent = persistent;
     }
 
-    static InMemoryKeyStoreRepository fileBased() throws Exception {
+    static InMemoryKeyStoreRepository persistent() throws Exception {
         return new InMemoryKeyStoreRepository(newLoadedKeyStore(), true);
     }
 
-    static InMemoryKeyStoreRepository withoutFile() throws Exception {
+    static InMemoryKeyStoreRepository notPersistent() throws Exception {
         return new InMemoryKeyStoreRepository(newLoadedKeyStore(), false);
     }
 
@@ -65,8 +65,8 @@ class InMemoryKeyStoreRepository implements IKeyStoreRepository {
     }
 
     @Override
-    public boolean isFileBased() {
-        return fileBased;
+    public boolean isPersistent() {
+        return persistent;
     }
 
     int getSaveCount() {

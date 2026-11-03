@@ -39,6 +39,8 @@ import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 
+import javax.crypto.spec.SecretKeySpec;
+
 import org.jumpmind.util.AppUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,8 +57,8 @@ class BouncyCastleCertificateManagerTest {
     @BeforeEach
     void setUp() throws Exception {
         new BouncyCastleHelper().checkProviderInstalled();
-        keyStoreRepository = InMemoryKeyStoreRepository.fileBased();
-        trustStore = InMemoryKeyStoreRepository.fileBased().load();
+        keyStoreRepository = InMemoryKeyStoreRepository.persistent();
+        trustStore = InMemoryKeyStoreRepository.persistent().load();
         ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
         when(tlsMaterialProvider.getTrustStore()).thenReturn(trustStore);
         manager = new BouncyCastleCertificateManager(keyStoreRepository, tlsMaterialProvider);
@@ -80,6 +82,15 @@ class BouncyCastleCertificateManagerTest {
         manager.installDefaultSslCert(HOST);
         manager.installDefaultSslCert(HOST);
         assertEquals(1, keyStoreRepository.getSaveCount());
+    }
+
+    @Test
+    void testInstallDefaultSslCert_replacesEntryThatIsNotPrivateKey() throws Exception {
+        KeyStore keyStore = keyStoreRepository.load();
+        keyStore.setKeyEntry(SecurityConstants.ALIAS_SAML_PRIVATE_KEY, new SecretKeySpec("garbled".getBytes(), "DES"),
+                InMemoryKeyStoreRepository.PASSWORD.toCharArray(), null);
+        manager.installDefaultSamlSslCert(HOST, 10);
+        assertNotNull(manager.getCurrentSamlSslCert());
     }
 
     @Test

@@ -130,7 +130,7 @@ public class KeystoreSecretKeyProvider implements ISecretKeyProvider {
 
     byte[] getKeyBytes(int byteSize) {
         byte[] bytes = new byte[byteSize];
-        if (keyStoreRepository.isFileBased()) {
+        if (keyStoreRepository.isPersistent()) {
             log.info("Using random bytes for secret key");
             random.nextBytes(bytes);
         } else {
