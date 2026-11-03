@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
 public class BouncyCastleCertificateManager implements ICertificateManager {
     private static final int RSA_KEY_SIZE = 2048;
     private static final long MILLIS_PER_DAY = 86400000L;
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(BouncyCastleCertificateManager.class);
     private final IKeyStoreRepository keyStoreRepository;
     private final ITlsMaterialProvider tlsMaterialProvider;
 

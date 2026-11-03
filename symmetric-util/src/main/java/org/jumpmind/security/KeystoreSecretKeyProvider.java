@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * {@link SecurityConstants#SYSPROP_CLUSTER_KEYSTORE_SEED} if set, otherwise generated, and then saved to the keystore.
  */
 public class KeystoreSecretKeyProvider implements ISecretKeyProvider {
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(KeystoreSecretKeyProvider.class);
     private final IKeyStoreRepository keyStoreRepository;
     private final SecureRandom random;
 

@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * Reads the truststore from a file, or from the classpath when no file is set, and writes it back to the file.
  */
 class LocalTrustStoreRepository implements IKeyStoreRepository {
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(LocalTrustStoreRepository.class);
     private final String fileName;
     private final URL url;
     private final Supplier<String> password;

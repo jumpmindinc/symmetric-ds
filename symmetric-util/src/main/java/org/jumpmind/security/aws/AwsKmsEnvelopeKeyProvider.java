@@ -55,7 +55,7 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
 public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
     static final Map<String, String> ENCRYPTION_CONTEXT = Map.of("application", "symmetricds", "purpose", SecurityConstants.ALIAS_SYM_SECRET_KEY);
     private static final String KEY_ALGORITHM = "AES";
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(AwsKmsEnvelopeKeyProvider.class);
     private final Supplier<KmsClient> kmsClientSupplier;
     private final String keyId;
     private final WrappedDataKeySource wrappedDataKeySource;

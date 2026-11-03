@@ -32,7 +32,7 @@ import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
  * Keeps named secret values as Azure Key Vault secrets, one per alias.
  */
 class AzureKeyVaultSecretStore implements ISecretStore {
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(AzureKeyVaultSecretStore.class);
     private final SecretClient secretClient;
 
     AzureKeyVaultSecretStore(AzureKeyVault vault) {

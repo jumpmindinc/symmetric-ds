@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KeystoreTlsMaterialProvider implements ITlsMaterialProvider {
     private static final String FALLBACK_KEY_MANAGER_FACTORY_ALGORITHM = "SunX509";
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(KeystoreTlsMaterialProvider.class);
     private final IKeyStoreRepository keyStoreRepository;
     private final IKeyStoreRepository trustStoreRepository;
 

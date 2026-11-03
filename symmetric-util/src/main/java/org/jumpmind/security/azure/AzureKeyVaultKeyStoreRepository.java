@@ -66,7 +66,7 @@ class AzureKeyVaultKeyStoreRepository implements IKeyStoreRepository {
     private static final String PEM_BEGIN_PRIVATE_KEY = "BEGIN PRIVATE KEY";
     private static final String PEM_END_PRIVATE_KEY = "END PRIVATE KEY";
     private static final char[] PKCS12_PASSWORD = new char[0];
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(AzureKeyVaultKeyStoreRepository.class);
     private final SecretClient secretClient;
     private final CertificateClient certificateClient;
     private final ISecretStore secretStore;

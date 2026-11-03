@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KeystoreSecretStore implements ISecretStore {
     private static final String ENTRY_KEY_ALGORITHM = "AES";
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(KeystoreSecretStore.class);
     private final IKeyStoreRepository keyStoreRepository;
 
     public KeystoreSecretStore(IKeyStoreRepository keyStoreRepository) {

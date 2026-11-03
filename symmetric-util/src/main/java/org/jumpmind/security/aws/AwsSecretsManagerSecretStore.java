@@ -46,7 +46,7 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundExce
  */
 public class AwsSecretsManagerSecretStore implements ISecretStore {
     static final String DEFAULT_NAME_PREFIX = "symmetricds/";
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(AwsSecretsManagerSecretStore.class);
     private final Supplier<SecretsManagerClient> clientSupplier;
     private final String namePrefix;
     private final String kmsKeyId;

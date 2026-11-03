@@ -52,7 +52,7 @@ import com.azure.security.keyvault.certificates.models.KeyVaultCertificateWithPo
 class AzureKeyVaultCertificateManager extends BouncyCastleCertificateManager {
     private static final int SSL_CERT_KEY_SIZE = 2048;
     private static final int SSL_CERT_VALIDITY_IN_MONTHS = 300;
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(AzureKeyVaultCertificateManager.class);
     private final CertificateClient certificateClient;
     private final ISecretStore secretStore;
 
