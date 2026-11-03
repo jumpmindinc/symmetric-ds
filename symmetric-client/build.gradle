@@ -45,5 +45,6 @@ apply from: symAssembleDir + '/common.gradle'
     }
 
     test {
+        // SymmetricModulesPropertiesTest checks the AWS SDK versions in symmetric-modules.properties against this
         systemProperty "awsSdkVersion", awsSdkVersion
     }
