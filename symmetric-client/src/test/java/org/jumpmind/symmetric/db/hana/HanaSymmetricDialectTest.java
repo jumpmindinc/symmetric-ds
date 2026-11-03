@@ -113,6 +113,6 @@ class HanaSymmetricDialectTest {
     void testGetTransactionTriggerExpression() {
         String tablePrefix = "SYM";
         when(parameterService.getTablePrefix()).thenReturn(tablePrefix);
-        assertEquals(tablePrefix + "_" + "transaction_id()", dialect.getTransactionTriggerExpression("", "", new Trigger()));
+        assertEquals("$(defaultSchema)" + tablePrefix + "_" + "transaction_id()", dialect.getTransactionTriggerExpression("", "", new Trigger()));
     }
 }

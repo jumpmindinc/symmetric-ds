@@ -72,7 +72,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     public String getTransactionTriggerExpression(String defaultCatalog, String defaultSchema, Trigger trigger) {
-        return parameterService.getTablePrefix() + "_" + "transaction_id()";
+        return "$(defaultSchema)" + parameterService.getTablePrefix() + "_" + "transaction_id()";
     }
 
     @Override
