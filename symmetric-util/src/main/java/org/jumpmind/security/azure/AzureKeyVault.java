@@ -65,10 +65,8 @@ public class AzureKeyVault {
             CredentialBuilderBase credentialBuilder = (CredentialBuilderBase) Class.forName(credentialBuilderClassName).getDeclaredConstructor().newInstance();
             Method buildMethod = credentialBuilder.getClass().getMethod("build", (Class<?>[]) null);
             return (TokenCredential) buildMethod.invoke(credentialBuilder);
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to build an Azure credential with " + credentialBuilderClassName, e);
         }
     }
 

@@ -21,6 +21,8 @@
 package org.jumpmind.security.azure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.jumpmind.security.SecurityConstants;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +32,15 @@ class AzureKeyVaultTest {
     @AfterEach
     void tearDown() {
         System.clearProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS);
+        System.clearProperty(SecurityConstants.AZURE_CREDENTIAL_BUILDER_CLASSNAME);
+    }
+
+    @Test
+    void testConnect_throwsNamingUnknownCredentialBuilder() {
+        System.setProperty(SecurityConstants.AZURE_CREDENTIAL_BUILDER_CLASSNAME, "com.example.MissingCredentialBuilder");
+        IllegalStateException exception = assertThrows(IllegalStateException.class, AzureKeyVault::connect);
+        assertEquals("Unable to build an Azure credential with com.example.MissingCredentialBuilder", exception.getMessage());
+        assertInstanceOf(ClassNotFoundException.class, exception.getCause());
     }
 
     @Test
