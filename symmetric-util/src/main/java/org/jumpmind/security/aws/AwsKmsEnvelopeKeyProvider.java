@@ -50,10 +50,9 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
  * <p>
  * Configured with {@link SecurityConstants#AWS_KMS_KEY_ID} and optionally {@link SecurityConstants#AWS_KMS_REGION} and
  * {@link SecurityConstants#AWS_KMS_ENDPOINT}. Credentials come from the AWS default provider chain, such as environment variables, a profile, an EC2 instance
- * role or EKS pod identity. Every KMS request carries {@link #ENCRYPTION_CONTEXT}, so the encrypted data key can only be decrypted for this purpose and each
- * use appears in CloudTrail.
+ * role or EKS pod identity. Every KMS request carries {@link #ENCRYPTION_CONTEXT}, so the encrypted data key can only be decrypted for this purpose.
  */
-public class KmsEnvelopeKeyProvider implements ISecretKeyProvider {
+public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
     static final Map<String, String> ENCRYPTION_CONTEXT = Map.of("application", "symmetricds", "purpose", SecurityConstants.ALIAS_SYM_SECRET_KEY);
     private static final String KEY_ALGORITHM = "AES";
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -61,7 +60,7 @@ public class KmsEnvelopeKeyProvider implements ISecretKeyProvider {
     private final String keyId;
     private final WrappedDataKeySource wrappedDataKeySource;
 
-    KmsEnvelopeKeyProvider(Supplier<KmsClient> kmsClientSupplier, String keyId, WrappedDataKeySource wrappedDataKeySource) {
+    AwsKmsEnvelopeKeyProvider(Supplier<KmsClient> kmsClientSupplier, String keyId, WrappedDataKeySource wrappedDataKeySource) {
         this.kmsClientSupplier = kmsClientSupplier;
         this.keyId = keyId;
         this.wrappedDataKeySource = wrappedDataKeySource;
@@ -71,7 +70,7 @@ public class KmsEnvelopeKeyProvider implements ISecretKeyProvider {
      * @throws IllegalStateException
      *             when {@link SecurityConstants#AWS_KMS_KEY_ID} is not set
      */
-    public static KmsEnvelopeKeyProvider fromSystemProperties() {
+    public static AwsKmsEnvelopeKeyProvider fromSystemProperties() {
         String keyId = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_KEY_ID));
         if (keyId == null) {
             throw new IllegalStateException("Set the system property -D" + SecurityConstants.AWS_KMS_KEY_ID
@@ -79,7 +78,7 @@ public class KmsEnvelopeKeyProvider implements ISecretKeyProvider {
         }
         String region = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_REGION));
         String endpoint = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_ENDPOINT));
-        return new KmsEnvelopeKeyProvider(() -> buildKmsClient(region, endpoint), keyId, WrappedDataKeySource.fromSystemProperties());
+        return new AwsKmsEnvelopeKeyProvider(() -> buildKmsClient(region, endpoint), keyId, WrappedDataKeySource.fromSystemProperties());
     }
 
     private static KmsClient buildKmsClient(String region, String endpoint) {

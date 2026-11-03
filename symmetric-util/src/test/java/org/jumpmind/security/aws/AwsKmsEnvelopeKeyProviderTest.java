@@ -51,7 +51,7 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyRequest;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
 import software.amazon.awssdk.services.kms.model.KmsException;
 
-class KmsEnvelopeKeyProviderTest {
+class AwsKmsEnvelopeKeyProviderTest {
     private static final String KEY_ID = "alias/symmetricds";
     private static final byte[] PLAIN_KEY = filled((byte) 0x11);
     private static final byte[] OTHER_PLAIN_KEY = filled((byte) 0x22);
@@ -59,14 +59,14 @@ class KmsEnvelopeKeyProviderTest {
     private static final byte[] OTHER_WRAPPED_KEY = "other-data-key".getBytes();
     private KmsClient kms;
     private WrappedDataKeySource wrappedDataKeySource;
-    private KmsEnvelopeKeyProvider provider;
+    private AwsKmsEnvelopeKeyProvider provider;
 
     @BeforeEach
     void setUp() {
         kms = mock(KmsClient.class);
         wrappedDataKeySource = mock(WrappedDataKeySource.class);
         when(wrappedDataKeySource.describe()).thenReturn("/opt/symmetricds/security/kms-wrapped.key");
-        provider = new KmsEnvelopeKeyProvider(() -> kms, KEY_ID, wrappedDataKeySource);
+        provider = new AwsKmsEnvelopeKeyProvider(() -> kms, KEY_ID, wrappedDataKeySource);
     }
 
     @AfterEach
@@ -95,7 +95,7 @@ class KmsEnvelopeKeyProviderTest {
         verify(kms).generateDataKey(request.capture());
         assertEquals(KEY_ID, request.getValue().keyId());
         assertEquals(DataKeySpec.AES_256, request.getValue().keySpec());
-        assertEquals(KmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().encryptionContext());
+        assertEquals(AwsKmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().encryptionContext());
     }
 
     @Test
@@ -115,7 +115,7 @@ class KmsEnvelopeKeyProviderTest {
         verify(kms).decrypt(request.capture());
         assertEquals(KEY_ID, request.getValue().keyId());
         assertArrayEquals(WRAPPED_KEY, request.getValue().ciphertextBlob().asByteArray());
-        assertEquals(KmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().encryptionContext());
+        assertEquals(AwsKmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().encryptionContext());
     }
 
     @Test
@@ -151,13 +151,13 @@ class KmsEnvelopeKeyProviderTest {
 
     @Test
     void testGetKeyIdentity_differsForOtherKmsKey() {
-        KmsEnvelopeKeyProvider otherProvider = new KmsEnvelopeKeyProvider(() -> kms, "alias/other", wrappedDataKeySource);
+        AwsKmsEnvelopeKeyProvider otherProvider = new AwsKmsEnvelopeKeyProvider(() -> kms, "alias/other", wrappedDataKeySource);
         assertNotEquals(provider.getKeyIdentity(), otherProvider.getKeyIdentity());
     }
 
     @Test
     void testFromSystemProperties_throwsWithoutKeyId() {
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> KmsEnvelopeKeyProvider.fromSystemProperties());
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> AwsKmsEnvelopeKeyProvider.fromSystemProperties());
         assertEquals("Set the system property -Daws.kms.key.id to the ID, ARN or alias of the AWS KMS key that protects the SymmetricDS secret key",
                 exception.getMessage());
     }
@@ -165,7 +165,7 @@ class KmsEnvelopeKeyProviderTest {
     @Test
     void testFromSystemProperties_withKeyIdUsesItInIdentity() {
         System.setProperty(SecurityConstants.AWS_KMS_KEY_ID, KEY_ID);
-        assertTrue(((String) KmsEnvelopeKeyProvider.fromSystemProperties().getKeyIdentity()).startsWith("aws-kms:" + KEY_ID + ":"));
+        assertTrue(((String) AwsKmsEnvelopeKeyProvider.fromSystemProperties().getKeyIdentity()).startsWith("aws-kms:" + KEY_ID + ":"));
     }
 
     private GenerateDataKeyResponse generatedDataKey() {

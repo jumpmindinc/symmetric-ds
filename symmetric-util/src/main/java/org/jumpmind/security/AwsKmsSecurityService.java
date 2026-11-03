@@ -20,16 +20,16 @@
  */
 package org.jumpmind.security;
 
-import org.jumpmind.security.aws.KmsEnvelopeKeyProvider;
-import org.jumpmind.security.aws.SecretsManagerSecretStore;
+import org.jumpmind.security.aws.AwsKmsEnvelopeKeyProvider;
+import org.jumpmind.security.aws.AwsSecretsManagerSecretStore;
 
 /**
- * Security service whose secret key is protected by AWS KMS through {@link KmsEnvelopeKeyProvider}. Select it with
+ * Security service whose secret key is protected by AWS KMS through {@link AwsKmsEnvelopeKeyProvider}. Select it with
  * {@code security.service.class.name=org.jumpmind.security.AwsKmsSecurityService} and the aws.kms.* system properties in {@link SecurityConstants}, with the
  * awskms module installed.
  * <p>
  * Keystore entries, such as startup parameters saved with the {@link SecurityConstants#PREFIX_KEYSTORE_STORAGE} prefix, are kept in AWS Secrets Manager through
- * {@link SecretsManagerSecretStore}. TLS material stays in the local keystore and truststore. Certificates are managed with Bouncy Castle when it is on the
+ * {@link AwsSecretsManagerSecretStore}. TLS material stays in the local keystore and truststore. Certificates are managed with Bouncy Castle when it is on the
  * classpath, as on servers.
  * <p>
  * Use it for new installations only. A secret key already in the local keystore is not migrated, so values encrypted with it cannot be decrypted after
@@ -44,8 +44,10 @@ public class AwsKmsSecurityService extends SecurityService {
     }
 
     private static SecurityServiceParts createParts() {
-        SecurityServiceParts.Builder parts = SecurityServiceParts.builder().secretKeyProvider(KmsEnvelopeKeyProvider.fromSystemProperties())
-                .secretStore(SecretsManagerSecretStore.fromSystemProperties());
+        SecurityServiceParts.Builder parts = SecurityServiceParts.builder().secretKeyProvider(AwsKmsEnvelopeKeyProvider.fromSystemProperties())
+                .secretStore(AwsSecretsManagerSecretStore.fromSystemProperties());
+        // Bouncy Castle ships with symmetric-server, so it is missing only when symmetric-client runs without it.
+        // The impact is certificates then can't be generated, imported or exported, but encryption and TLS with existing certificates work.
         if (isBouncyCastleAvailable()) {
             parts.certificateManagerFactory(BouncyCastleCertificateManager::new);
         }

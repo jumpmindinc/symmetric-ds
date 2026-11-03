@@ -49,7 +49,7 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsExcept
 import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerException;
 
-class SecretsManagerSecretStoreTest {
+class AwsSecretsManagerSecretStoreTest {
     private static final String PREFIX = "symmetricds/";
     private static final String KMS_KEY_ID = "alias/symmetricds";
     private static final String ALIAS = "corp-000.db.password";
@@ -57,7 +57,7 @@ class SecretsManagerSecretStoreTest {
     private static final String VALUE = "s3cret";
     private SecretsManagerClient client;
     private AtomicInteger clientsCreated;
-    private SecretsManagerSecretStore store;
+    private AwsSecretsManagerSecretStore store;
 
     @BeforeEach
     void setUp() {
@@ -157,23 +157,23 @@ class SecretsManagerSecretStoreTest {
 
     @Test
     void testFromSystemProperties_defaultsPrefix() {
-        assertEquals(SECRET_NAME, SecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
+        assertEquals(SECRET_NAME, AwsSecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
     }
 
     @Test
     void testFromSystemProperties_withConfiguredPrefix() {
         System.setProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX, " prod/sym/ ");
-        assertEquals("prod/sym/" + ALIAS, SecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
+        assertEquals("prod/sym/" + ALIAS, AwsSecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
     }
 
     @Test
     void testFromSystemProperties_withBlankPrefixUsesDefault() {
         System.setProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX, "  ");
-        assertEquals(SECRET_NAME, SecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
+        assertEquals(SECRET_NAME, AwsSecretsManagerSecretStore.fromSystemProperties().toSecretName(ALIAS));
     }
 
-    private SecretsManagerSecretStore createStore(String kmsKeyId) {
-        return new SecretsManagerSecretStore(() -> {
+    private AwsSecretsManagerSecretStore createStore(String kmsKeyId) {
+        return new AwsSecretsManagerSecretStore(() -> {
             clientsCreated.incrementAndGet();
             return client;
         }, PREFIX, kmsKeyId);

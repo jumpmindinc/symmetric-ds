@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.jumpmind.security.aws.KmsEnvelopeKeyProvider;
-import org.jumpmind.security.aws.SecretsManagerSecretStore;
+import org.jumpmind.security.aws.AwsKmsEnvelopeKeyProvider;
+import org.jumpmind.security.aws.AwsSecretsManagerSecretStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,13 +43,13 @@ class AwsKmsSecurityServiceTest {
     }
 
     @Test
-    void testConstructor_usesKmsEnvelopeKeyProvider() {
-        assertInstanceOf(KmsEnvelopeKeyProvider.class, new AwsKmsSecurityService().getSecretKeyProvider());
+    void testConstructor_usesAwsKmsEnvelopeKeyProvider() {
+        assertInstanceOf(AwsKmsEnvelopeKeyProvider.class, new AwsKmsSecurityService().getSecretKeyProvider());
     }
 
     @Test
-    void testConstructor_usesSecretsManagerSecretStore() {
-        assertInstanceOf(SecretsManagerSecretStore.class, new AwsKmsSecurityService().getSecretStore());
+    void testConstructor_usesAwsSecretsManagerSecretStore() {
+        assertInstanceOf(AwsSecretsManagerSecretStore.class, new AwsKmsSecurityService().getSecretStore());
     }
 
     @Test

@@ -44,7 +44,7 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundExce
  * encrypted with the KMS key in {@link SecurityConstants#AWS_KMS_KEY_ID} when it is set, otherwise with the account's AWS managed key. The region is taken from
  * {@link SecurityConstants#AWS_KMS_REGION}, because a secret must be in the same region as the KMS key that encrypts it.
  */
-public class SecretsManagerSecretStore implements ISecretStore {
+public class AwsSecretsManagerSecretStore implements ISecretStore {
     static final String DEFAULT_NAME_PREFIX = "symmetricds/";
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final Supplier<SecretsManagerClient> clientSupplier;
@@ -52,18 +52,18 @@ public class SecretsManagerSecretStore implements ISecretStore {
     private final String kmsKeyId;
     private SecretsManagerClient client;
 
-    SecretsManagerSecretStore(Supplier<SecretsManagerClient> clientSupplier, String namePrefix, String kmsKeyId) {
+    AwsSecretsManagerSecretStore(Supplier<SecretsManagerClient> clientSupplier, String namePrefix, String kmsKeyId) {
         this.clientSupplier = clientSupplier;
         this.namePrefix = namePrefix;
         this.kmsKeyId = kmsKeyId;
     }
 
-    public static SecretsManagerSecretStore fromSystemProperties() {
+    public static AwsSecretsManagerSecretStore fromSystemProperties() {
         String namePrefix = StringUtils.defaultIfBlank(System.getProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX), DEFAULT_NAME_PREFIX).trim();
         String kmsKeyId = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_KEY_ID));
         String region = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_REGION));
         String endpoint = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_SECRETS_MANAGER_ENDPOINT));
-        return new SecretsManagerSecretStore(() -> buildClient(region, endpoint), namePrefix, kmsKeyId);
+        return new AwsSecretsManagerSecretStore(() -> buildClient(region, endpoint), namePrefix, kmsKeyId);
     }
 
     private static SecretsManagerClient buildClient(String region, String endpoint) {
