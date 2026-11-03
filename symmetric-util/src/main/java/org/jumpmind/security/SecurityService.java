@@ -127,7 +127,8 @@ public class SecurityService implements ISecurityService {
     }
 
     private KeystoreTlsMaterialProvider newKeystoreTlsMaterialProvider() {
-        return new KeystoreTlsMaterialProvider(keyStoreRepository, new LocalTrustStoreRepository());
+        return new KeystoreTlsMaterialProvider(keyStoreRepository, new LocalTrustStoreRepository(trustStoreFileName, trustStoreURL,
+                this::getTrustStorePassword));
     }
 
     protected ISecretKeyProvider getSecretKeyProvider() {
@@ -656,52 +657,6 @@ public class SecurityService implements ISecurityService {
         @Override
         public boolean isPersistent() {
             return keyStoreFileName != null;
-        }
-    }
-
-    /**
-     * Reads the truststore from {@link SecurityConstants#SYSPROP_TRUSTSTORE}, or from the classpath when that is not set, and writes it back to the file.
-     */
-    private class LocalTrustStoreRepository implements IKeyStoreRepository {
-        @Override
-        public KeyStore load() {
-            try {
-                KeyStore ks = KeyStore.getInstance(System.getProperty(SecurityConstants.SYSPROP_TRUSTSTORE_TYPE, KeyStore.getDefaultType()));
-                if (trustStoreFileName != null) {
-                    try (FileInputStream is = new FileInputStream(trustStoreFileName)) {
-                        ks.load(is, getPassword().toCharArray());
-                    }
-                } else if (trustStoreURL != null) {
-                    try (InputStream is = trustStoreURL.openStream()) {
-                        ks.load(is, getPassword().toCharArray());
-                    }
-                }
-                return ks;
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public void save(KeyStore trustStore) throws Exception {
-            if (trustStoreFileName != null) {
-                log.info("Saving truststore {}", trustStoreFileName);
-                try (FileOutputStream os = new FileOutputStream(trustStoreFileName)) {
-                    trustStore.store(os, getPassword().toCharArray());
-                }
-            }
-        }
-
-        @Override
-        public String getPassword() {
-            return getTrustStorePassword();
-        }
-
-        @Override
-        public boolean isPersistent() {
-            return trustStoreFileName != null;
         }
     }
 }
