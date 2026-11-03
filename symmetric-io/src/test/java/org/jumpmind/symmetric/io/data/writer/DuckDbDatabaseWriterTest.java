@@ -22,7 +22,8 @@ package org.jumpmind.symmetric.io.data.writer;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 
@@ -34,30 +35,23 @@ import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 class DuckDbDatabaseWriterTest {
     private static final int ID_INDEX = 0;
     private static final int NOTES_INDEX = 1;
     private static final int QUANTITY_INDEX = 2;
-    @Mock
-    private IDatabasePlatform mockPlatform;
-    @Mock
-    private DatabaseInfo mockDatabaseInfo;
     private DuckDbDatabaseWriter writer;
     private Table table;
 
     @BeforeEach
     void setUp() {
-        lenient().when(mockPlatform.getDatabaseInfo()).thenReturn(mockDatabaseInfo);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         table = new Table("test_customer");
         table.addColumn(new Column("id", true, Types.VARCHAR, 0, 0));
         table.addColumn(new Column("notes", false, Types.VARCHAR, 0, 0));
         table.addColumn(new Column("quantity", false, Types.INTEGER, 0, 0));
-        writer = new DuckDbDatabaseWriter(mockPlatform, mockPlatform, "sym_", null, new DatabaseWriterSettings());
+        writer = new DuckDbDatabaseWriter(platform, platform, "sym_", null, new DatabaseWriterSettings());
         writer.sourceTable = table;
         writer.targetTable = table;
     }
@@ -111,5 +105,21 @@ class DuckDbDatabaseWriterTest {
     void testDoesColumnNeedUpdated_unchangedKeyWithoutOldDataDoesNotNeedUpdated() {
         CsvData data = createUpdate(new String[] { "1", null, "5" }, null);
         assertFalse(doesColumnNeedUpdated(ID_INDEX, data, true));
+    }
+
+    @Test
+    void testDoesColumnNeedUpdated_unchangedVarcharWithoutApplyChangesOnlyNeedsUpdated() {
+        CsvData data = createUpdate(new String[] { "1", "abc", "5" }, new String[] { "1", "abc", "5" });
+        assertTrue(doesColumnNeedUpdated(NOTES_INDEX, data, false));
+        assertTrue(data.getChangedDataIndicators()[NOTES_INDEX]);
+    }
+
+    @Test
+    void testDoesColumnNeedUpdated_withoutApplyChangesOnlyUpdatesAllColumnsExceptUnchangedKey() {
+        CsvData data = createUpdate(new String[] { "1", null, "5" }, new String[] { "1", null, "5" });
+        assertFalse(doesColumnNeedUpdated(ID_INDEX, data, false));
+        assertTrue(doesColumnNeedUpdated(NOTES_INDEX, data, false));
+        assertTrue(doesColumnNeedUpdated(QUANTITY_INDEX, data, false));
+        assertFalse(data.getChangedDataIndicators()[ID_INDEX]);
     }
 }
