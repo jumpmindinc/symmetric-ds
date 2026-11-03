@@ -69,7 +69,7 @@ Once a group of tables has been configured for synchronization, the Diagram will
 
 image::images/canvas/MirrorTablesDialog.png[]
 
-When using the pipelines view, another way to configure synchronization is to enable mirroring. The Mirror button is available for trigger-based capture on SQL Server, Oracle, or PostgreSQL when both endpoints are of the same type and the source endpoint is local. A pipeline cannot include both mirroring and individually configured tables.
+When using the pipelines view, another way to configure synchronization is to enable mirroring. The Mirror button is available for trigger-based capture on SQL Server, Oracle, or PostgreSQL when both endpoints are of the same type and the source endpoint is local. A SQL Database in Microsoft Fabric can also be mirrored to SQL Server, SQL Server Azure, or another SQL Database in Microsoft Fabric, and SQL Server can be mirrored to it. A pipeline cannot include both mirroring and individually configured tables.
 
 When mirroring is configured, DML changes made to any table within the selected catalogs and/or schemas will be replicated across the pipeline. In addition, all DDL changes will be replicated across the pipeline.
 
