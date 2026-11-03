@@ -18,8 +18,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
+import org.jumpmind.security.ISecretStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

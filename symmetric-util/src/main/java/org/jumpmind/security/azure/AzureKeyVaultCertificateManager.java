@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import java.io.ByteArrayInputStream;
 import java.security.KeyStore.PrivateKeyEntry;
@@ -28,6 +28,10 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.jumpmind.security.BouncyCastleCertificateManager;
+import org.jumpmind.security.IKeyStoreRepository;
+import org.jumpmind.security.ISecretStore;
+import org.jumpmind.security.ITlsMaterialProvider;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

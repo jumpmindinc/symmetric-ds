@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.aws;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -30,6 +30,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.security.ISecretKeyProvider;
+import org.jumpmind.security.SecurityConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

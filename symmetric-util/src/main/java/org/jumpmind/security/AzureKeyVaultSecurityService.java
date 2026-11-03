@@ -20,12 +20,13 @@
  */
 package org.jumpmind.security;
 
-import java.security.SecureRandom;
+import org.jumpmind.security.azure.AzureKeyVault;
+import org.jumpmind.security.azure.AzureKeyVaultParts;
 
 /**
  * Security service that keeps the secret key, keystore entries and the SSL certificate in the Azure Key Vault named by
- * {@link SecurityConstants#AZURE_KEYVAULT_URI}. The truststore stays local. Other certificates, such as the SAML one, are generated with Bouncy Castle and
- * saved to the vault as secrets.
+ * {@link SecurityConstants#AZURE_KEYVAULT_URI}, through the parts in {@link AzureKeyVaultParts}. The truststore stays local. Other certificates, such as the
+ * SAML one, are generated with Bouncy Castle and saved to the vault as secrets.
  */
 public class AzureKeyVaultSecurityService extends BouncyCastleSecurityService {
     protected AzureKeyVaultSecurityService() {
@@ -33,20 +34,6 @@ public class AzureKeyVaultSecurityService extends BouncyCastleSecurityService {
     }
 
     AzureKeyVaultSecurityService(AzureKeyVault vault) {
-        super(createParts(vault));
-    }
-
-    private static SecurityServiceParts createParts(AzureKeyVault vault) {
-        new BouncyCastleHelper().checkProviderInstalled();
-        AzureKeyVaultSecretStore secretStore = new AzureKeyVaultSecretStore(vault);
-        AzureKeyVaultKeyStoreRepository keyStoreRepository = new AzureKeyVaultKeyStoreRepository(vault, secretStore);
-        return SecurityServiceParts.builder()
-                .keyStoreRepository(keyStoreRepository)
-                .secretKeyProvider(new AzureKeyVaultSecretKeyProvider(vault,
-                        () -> new KeystoreSecretKeyProvider(keyStoreRepository, new SecureRandom()).generateDefaultSecretKey()))
-                .secretStore(secretStore)
-                .certificateManagerFactory((repository, tlsMaterialProvider) -> new AzureKeyVaultCertificateManager(repository, tlsMaterialProvider, vault,
-                        secretStore))
-                .build();
+        super(AzureKeyVaultParts.create(vault));
     }
 }

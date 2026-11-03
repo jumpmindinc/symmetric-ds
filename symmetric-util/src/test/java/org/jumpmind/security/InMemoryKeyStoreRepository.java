@@ -22,8 +22,8 @@ package org.jumpmind.security;
 
 import java.security.KeyStore;
 
-class InMemoryKeyStoreRepository implements IKeyStoreRepository {
-    static final String PASSWORD = "changeit";
+public class InMemoryKeyStoreRepository implements IKeyStoreRepository {
+    public static final String PASSWORD = "changeit";
     private final KeyStore keyStore;
     private final boolean persistent;
     private int saveCount;
@@ -34,15 +34,15 @@ class InMemoryKeyStoreRepository implements IKeyStoreRepository {
         this.persistent = persistent;
     }
 
-    static InMemoryKeyStoreRepository persistent() throws Exception {
+    public static InMemoryKeyStoreRepository persistent() throws Exception {
         return new InMemoryKeyStoreRepository(newLoadedKeyStore(), true);
     }
 
-    static InMemoryKeyStoreRepository notPersistent() throws Exception {
+    public static InMemoryKeyStoreRepository notPersistent() throws Exception {
         return new InMemoryKeyStoreRepository(newLoadedKeyStore(), false);
     }
 
-    static InMemoryKeyStoreRepository unloaded() throws Exception {
+    public static InMemoryKeyStoreRepository unloaded() throws Exception {
         return new InMemoryKeyStoreRepository(KeyStore.getInstance(SecurityConstants.KEYSTORE_TYPE_PKCS12), true);
     }
 
@@ -69,11 +69,11 @@ class InMemoryKeyStoreRepository implements IKeyStoreRepository {
         return persistent;
     }
 
-    int getSaveCount() {
+    public int getSaveCount() {
         return saveCount;
     }
 
-    void failOnSave() {
+    public void failOnSave() {
         failOnSave = true;
     }
 

@@ -20,6 +20,9 @@
  */
 package org.jumpmind.security;
 
+import org.jumpmind.security.aws.KmsEnvelopeKeyProvider;
+import org.jumpmind.security.aws.SecretsManagerSecretStore;
+
 /**
  * Security service whose secret key is protected by AWS KMS through {@link KmsEnvelopeKeyProvider}. Select it with
  * {@code security.service.class.name=org.jumpmind.security.AwsKmsSecurityService} and the aws.kms.* system properties in {@link SecurityConstants}, with the

@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.aws;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +33,7 @@ import java.util.Optional;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.security.SecurityConstants;
 
 /**
  * Where the KMS-encrypted data key is kept: inline in {@link SecurityConstants#AWS_KMS_WRAPPED_KEY} when that is set, otherwise in the file named by

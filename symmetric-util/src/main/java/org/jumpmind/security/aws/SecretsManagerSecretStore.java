@@ -18,12 +18,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.aws;
 
 import java.net.URI;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.security.ISecretStore;
+import org.jumpmind.security.SecurityConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

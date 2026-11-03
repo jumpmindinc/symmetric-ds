@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -39,6 +39,11 @@ import java.security.KeyStore.PrivateKeyEntry;
 import java.security.cert.X509Certificate;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.jumpmind.security.BouncyCastleHelper;
+import org.jumpmind.security.ISecretStore;
+import org.jumpmind.security.InMemoryKeyStoreRepository;
+import org.jumpmind.security.ITlsMaterialProvider;
+import org.jumpmind.security.SecurityConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

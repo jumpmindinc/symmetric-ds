@@ -18,10 +18,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.jumpmind.security.SecurityConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 

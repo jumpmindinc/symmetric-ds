@@ -485,7 +485,7 @@ public class SecurityService implements ISecurityService {
     /**
      * @return the password from {@link SecurityConstants#SYSPROP_KEYSTORE_PASSWORD}, unobfuscated, or the default password when it is not set
      */
-    static String getConfiguredKeyStorePassword() {
+    public static String getConfiguredKeyStorePassword() {
         return StringUtils.defaultIfBlank(unobfuscateSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
     }
 

@@ -106,7 +106,7 @@ public class KeystoreSecretKeyProvider implements ISecretKeyProvider {
     /**
      * Tries each of {@link SecurityConstants#CIPHERS} in order of preference and returns a key for the first one this JVM supports.
      */
-    SecretKey generateDefaultSecretKey() {
+    public SecretKey generateDefaultSecretKey() {
         SecretKey candidate = null;
         for (int i = 0; i < SecurityConstants.CIPHERS.length; i++) {
             try {

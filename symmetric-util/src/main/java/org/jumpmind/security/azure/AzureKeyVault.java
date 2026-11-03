@@ -18,11 +18,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import java.lang.reflect.Method;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.security.AzureKeyVaultSecurityService;
+import org.jumpmind.security.SecurityConstants;
 
 import com.azure.core.credential.TokenCredential;
 import com.azure.identity.CredentialBuilderBase;
@@ -35,12 +37,12 @@ import com.azure.security.keyvault.secrets.SecretClientBuilder;
  * The clients for the Azure Key Vault named by {@link SecurityConstants#AZURE_KEYVAULT_URI}, shared by the Azure parts of {@link AzureKeyVaultSecurityService},
  * and the naming rule they share: Key Vault names allow dashes but not dots, so the dots in an alias are stored as dashes.
  */
-class AzureKeyVault {
+public class AzureKeyVault {
     private static final String DEFAULT_CREDENTIAL_BUILDER_CLASS = "com.azure.identity.DefaultAzureCredentialBuilder";
     private final SecretClient secretClient;
     private final CertificateClient certificateClient;
 
-    AzureKeyVault(SecretClient secretClient, CertificateClient certificateClient) {
+    public AzureKeyVault(SecretClient secretClient, CertificateClient certificateClient) {
         this.secretClient = secretClient;
         this.certificateClient = certificateClient;
     }
@@ -49,7 +51,7 @@ class AzureKeyVault {
      * Signs in with the credential builder named by {@link SecurityConstants#AZURE_CREDENTIAL_BUILDER_CLASSNAME}, which defaults to
      * {@value #DEFAULT_CREDENTIAL_BUILDER_CLASS}.
      */
-    static AzureKeyVault connect() {
+    public static AzureKeyVault connect() {
         String vaultUri = System.getProperty(SecurityConstants.AZURE_KEYVAULT_URI);
         TokenCredential credential = buildCredential(StringUtils.defaultIfBlank(System.getProperty(SecurityConstants.AZURE_CREDENTIAL_BUILDER_CLASSNAME),
                 DEFAULT_CREDENTIAL_BUILDER_CLASS));

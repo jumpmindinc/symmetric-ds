@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import java.util.Base64;
 import java.util.function.Supplier;
@@ -26,6 +26,8 @@ import java.util.function.Supplier;
 import javax.crypto.SecretKey;
 
 import org.apache.commons.lang3.SerializationUtils;
+import org.jumpmind.security.ISecretKeyProvider;
+import org.jumpmind.security.SecurityConstants;
 
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.security.keyvault.secrets.SecretClient;

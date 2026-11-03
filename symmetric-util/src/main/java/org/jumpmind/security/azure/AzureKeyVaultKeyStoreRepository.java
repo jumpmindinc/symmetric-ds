@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.security;
+package org.jumpmind.security.azure;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -40,6 +40,10 @@ import java.util.Enumeration;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.jumpmind.security.IKeyStoreRepository;
+import org.jumpmind.security.ISecretStore;
+import org.jumpmind.security.SecurityConstants;
+import org.jumpmind.security.SecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

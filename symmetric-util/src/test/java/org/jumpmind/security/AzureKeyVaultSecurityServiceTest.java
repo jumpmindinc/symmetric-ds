@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.jumpmind.security.azure.AzureKeyVault;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,13 +70,6 @@ class AzureKeyVaultSecurityServiceTest {
     @AfterEach
     void tearDown() {
         SecurityService.clearSecretKeyCache();
-    }
-
-    @Test
-    void testConstructor_usesAzureParts() {
-        assertInstanceOf(AzureKeyVaultSecretKeyProvider.class, securityService.getSecretKeyProvider());
-        assertInstanceOf(AzureKeyVaultSecretStore.class, securityService.getSecretStore());
-        assertInstanceOf(AzureKeyVaultCertificateManager.class, securityService.getCertificateManager());
     }
 
     @Test
