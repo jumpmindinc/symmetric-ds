@@ -50,7 +50,7 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
                         "                                  $(custom_before_insert_text) \n" +
                         "                                  if $(syncOnInsertCondition) and $(syncOnIncomingBatchCondition) then                                                                                                 \n"
                         +
-                        "                                    insert into $(defaultCatalog)$(prefixName)_data (table_name, event_type, trigger_hist_id, row_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
+                        "                                    insert into $(defaultSchema)$(prefixName)_data (table_name, event_type, trigger_hist_id, row_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
                         +
                         "                                    values(                                                                                                                                                            \n"
                         +
@@ -84,7 +84,7 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
                         "                                  $(custom_before_insert_text) \n" +
                         "                                  if $(syncOnInsertCondition) and $(syncOnIncomingBatchCondition) then                                                                                                 \n"
                         +
-                        "                                    insert into $(defaultCatalog)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
+                        "                                    insert into $(defaultSchema)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
                         +
                         "                                    values(                                                                                                                                                            \n"
                         +
@@ -121,7 +121,7 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                   if $(dataHasChangedCondition) then                                                                                                                                  \n"
                         +
-                        "                                       insert into $(defaultCatalog)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
+                        "                                       insert into $(defaultSchema)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
                         +
                         "                                       values(                                                                                                                                                           \n"
                         +
@@ -164,7 +164,7 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                   if $(dataHasChangedCondition) then                                                                                                                                  \n"
                         +
-                        "                                       insert into $(defaultCatalog)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
+                        "                                       insert into $(defaultSchema)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
                         +
                         "                                       values(                                                                                                                                                           \n"
                         +
@@ -201,7 +201,7 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
                         "                                  $(custom_before_delete_text) \n" +
                         "                                  if $(syncOnDeleteCondition) and $(syncOnIncomingBatchCondition) then                                                                                                 \n"
                         +
-                        "                                    insert into $(defaultCatalog)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
+                        "                                    insert into $(defaultSchema)$(prefixName)_data (table_name, event_type, trigger_hist_id, pk_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time)\n"
                         +
                         "                                    values(                                                                                                                                                            \n"
                         +
