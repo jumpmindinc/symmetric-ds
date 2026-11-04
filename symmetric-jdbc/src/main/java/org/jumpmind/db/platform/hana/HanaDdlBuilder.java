@@ -34,6 +34,7 @@ public class HanaDdlBuilder extends AbstractDdlBuilder implements IDdlBuilder {
         databaseInfo.setGeneratedColumnsSupported(true);
         databaseInfo.setSystemIndicesReturned(true);
         databaseInfo.setAutoIncrementUpdateAllowed(true);
+        databaseInfo.addNativeTypeMapping(Types.BIT, "TINYINT", Types.TINYINT);
         databaseInfo.addNativeTypeMapping(Types.VARCHAR, "NVARCHAR", Types.NVARCHAR);
         databaseInfo.addNativeTypeMapping(Types.CHAR, "NCHAR", Types.NCHAR);
         databaseInfo.addNativeTypeMapping(Types.LONGVARBINARY, "BLOB", Types.BLOB);
