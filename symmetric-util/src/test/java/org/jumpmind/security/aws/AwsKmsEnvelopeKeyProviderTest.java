@@ -131,7 +131,7 @@ class AwsKmsEnvelopeKeyProviderTest {
 
     @Test
     void testGetSecretKey_whenAnotherProcessSavedFirstUsesSavedKey() throws Exception {
-        when(wrappedDataKeySource.read()).thenReturn(Optional.empty(), Optional.of(OTHER_WRAPPED_KEY));
+        when(wrappedDataKeySource.read()).thenReturn(Optional.empty()).thenReturn(Optional.of(OTHER_WRAPPED_KEY));
         when(wrappedDataKeySource.writeIfAbsent(WRAPPED_KEY)).thenReturn(false);
         when(kms.generateDataKey(any(GenerateDataKeyRequest.class))).thenReturn(generatedDataKey());
         when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(OTHER_PLAIN_KEY));
