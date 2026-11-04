@@ -3,7 +3,10 @@ package org.jumpmind.symmetric.db.hana;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -68,8 +71,9 @@ class HanaSymmetricDialectTest {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         InOrder inOrder = inOrder(transaction);
         dialect.enableSyncTriggers(transaction);
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_triggers_disabled" + "'=''");
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_node_disabled" + "'=''");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_triggers_disabled'");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_node_disabled'");
+        verifyNoMoreInteractions(transaction);
     }
 
     @Test
@@ -83,25 +87,33 @@ class HanaSymmetricDialectTest {
     }
 
     @Test
-    void testDoesTriggerExistOnPlatform() {
-        String tableName = "TEST_TABLE";
-        String triggerName = "TEST_TRIGGER";
-        String expectedSql = "select count(*) from triggers where trigger_name like ? and subject_table_name like ?";
-        Object[] expectedArgs = new Object[] { triggerName, tableName.toUpperCase() };
-        when(sqlTemplate.queryForInt(expectedSql, expectedArgs)).thenReturn(1);
-        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, null, tableName, triggerName));
-        verify(sqlTemplate, times(1)).queryForInt(expectedSql, expectedArgs);
+    void testDoesTriggerExistOnPlatformInGivenSchema() {
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "Test_Mixed_Case", "TEST_MIXED_CASE", "App", "APP" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs)).thenReturn(1);
+        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, "App", "Test_Mixed_Case", "SYM_ON_I_FOR_TEST"));
+        verify(sqlTemplate, times(1)).queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs);
     }
 
     @Test
-    void testDoesTriggerExistOnPlatformFalse() {
-        String tableName = "TEST_TABLE";
-        String triggerName = "TEST_TRIGGER";
-        String expectedSql = "select count(*) from triggers where trigger_name like ? and subject_table_name like ?";
-        Object[] expectedArgs = new Object[] { triggerName, tableName.toUpperCase() };
-        when(sqlTemplate.queryForInt(expectedSql, expectedArgs)).thenReturn(0);
-        assertFalse(dialect.doesTriggerExistOnPlatform(null, null, null, tableName, triggerName));
-        verify(sqlTemplate, times(1)).queryForInt(expectedSql, expectedArgs);
+    void testDoesTriggerExistOnPlatformUsesDefaultSchema() {
+        when(platform.getDefaultSchema()).thenReturn("SYM");
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "TEST_TABLE", "TEST_TABLE", "SYM", "SYM" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs)).thenReturn(1);
+        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, null, "TEST_TABLE", "SYM_ON_I_FOR_TEST"));
+    }
+
+    @Test
+    void testDoesTriggerExistOnPlatformWithoutSchema() {
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "test_table", "TEST_TABLE" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS, expectedArgs)).thenReturn(0);
+        assertFalse(dialect.doesTriggerExistOnPlatform(null, null, null, "test_table", "SYM_ON_I_FOR_TEST"));
+        verify(sqlTemplate, times(1)).queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS, expectedArgs);
+    }
+
+    @Test
+    void testTriggerExistsSqlMatchesExactAndUpperCaseTableName() {
+        assertEquals("select count(*) from triggers where upper(trigger_name) = upper(?) and subject_table_name in (?, ?) and schema_name in (?, ?)",
+                HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA);
     }
 
     @Test
@@ -114,5 +126,102 @@ class HanaSymmetricDialectTest {
         String tablePrefix = "SYM";
         when(parameterService.getTablePrefix()).thenReturn(tablePrefix);
         assertEquals("$(defaultSchema)" + tablePrefix + "_" + "transaction_id()", dialect.getTransactionTriggerExpression("", "", new Trigger()));
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana2() {
+        assertTrue(createDialect(2, "2.00.088.00.1760424921").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1Sps10() {
+        assertTrue(createDialect(1, "1.00.100.00.1434512907").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1Sps09() {
+        assertFalse(createDialect(1, "1.00.097.00.1434028111").isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testIsUpdateTransactionSupportedOnHana1UnknownRevision() {
+        assertFalse(createDialect(1, null).isUpdateTransactionSupported());
+    }
+
+    @Test
+    void testParseRevision() {
+        assertEquals(88, HanaSymmetricDialect.parseRevision("2.00.088.00.1760424921"));
+        assertEquals(122, HanaSymmetricDialect.parseRevision("1.00.122.05"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision("2.00"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision("1.00.abc.00"));
+        assertEquals(-1, HanaSymmetricDialect.parseRevision(null));
+    }
+
+    @Test
+    void testGetTransactionIdFunctionBodyOnHana2() {
+        assertEquals(HanaSymmetricDialect.UPDATE_TRANSACTION_BODY, createDialect(2, "2.00.088.00").getTransactionIdFunctionBody());
+    }
+
+    @Test
+    void testGetTransactionIdFunctionBodyOnHana1Sps09() {
+        assertEquals(HanaSymmetricDialect.TRANSACTION_SLOT_BODY, createDialect(1, "1.00.097.00").getTransactionIdFunctionBody());
+    }
+
+    @Test
+    void testGetTransactionIdFunctionName() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        assertEquals("sym_transaction_id", dialect.getTransactionIdFunctionName());
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsReplacesOutdatedFunction() {
+        HanaSymmetricDialect hana2Dialect = createDialect(2, "2.00.088.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        String expectedEqualsSql = "select count(*) from functions where schema_name = current_schema and function_name = upper('sym_transaction_id')"
+                + " and definition like ?";
+        when(sqlTemplate.queryForInt(expectedEqualsSql, "%" + HanaSymmetricDialect.UPDATE_TRANSACTION_BODY + "%")).thenReturn(0);
+        hana2Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate).update("CREATE OR REPLACE function sym_transaction_id returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin "
+                + "output1 := to_varchar(CURRENT_UPDATE_TRANSACTION()); end");
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsKeepsCurrentFunction() {
+        HanaSymmetricDialect hana2Dialect = createDialect(2, "2.00.088.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(sqlTemplate.queryForInt(anyString(), (Object) any())).thenReturn(1);
+        hana2Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate, never()).update(anyString());
+    }
+
+    @Test
+    void testCreateRequiredDatabaseObjectsInstallsSlotFunctionOnHana1Sps09() {
+        HanaSymmetricDialect hana1Dialect = createDialect(1, "1.00.097.00");
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        hana1Dialect.createRequiredDatabaseObjectsImpl(null);
+        verify(sqlTemplate).update("CREATE OR REPLACE function sym_transaction_id returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin "
+                + HanaSymmetricDialect.TRANSACTION_SLOT_BODY + " end");
+    }
+
+    @Test
+    void testDropRequiredDatabaseObjectsDropsInstalledFunction() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(sqlTemplate.queryForInt("select count(*) from functions where schema_name = current_schema and function_name = upper('sym_transaction_id')"))
+                .thenReturn(1);
+        dialect.dropRequiredDatabaseObjects();
+        verify(sqlTemplate).update("DROP FUNCTION sym_transaction_id");
+    }
+
+    @Test
+    void testDropRequiredDatabaseObjectsSkipsMissingFunction() {
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        dialect.dropRequiredDatabaseObjects();
+        verify(sqlTemplate, never()).update(anyString());
+    }
+
+    private HanaSymmetricDialect createDialect(int majorVersion, String productVersion) {
+        when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(majorVersion);
+        when(sqlTemplate.getDatabaseProductVersion()).thenReturn(productVersion);
+        return new HanaSymmetricDialect(parameterService, platform);
     }
 }
