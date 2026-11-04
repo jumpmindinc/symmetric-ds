@@ -82,4 +82,28 @@ class SecurityServicePartsTest {
     void testKeyStoreRepository_rejectsNull() {
         assertThrows(NullPointerException.class, () -> SecurityServiceParts.builder().keyStoreRepository(null));
     }
+
+    @Test
+    void testToBuilder_copiesEveryPart() {
+        ISecretKeyProvider secretKeyProvider = mock(ISecretKeyProvider.class);
+        ISecretStore secretStore = mock(ISecretStore.class);
+        ITlsMaterialProvider tlsMaterialProvider = mock(ITlsMaterialProvider.class);
+        CertificateManagerFactory certificateManagerFactory = (keyStoreRepository, tls) -> new UnsupportedCertificateManager();
+        IKeyStoreRepository keyStoreRepository = mock(IKeyStoreRepository.class);
+        SecurityServiceParts copy = SecurityServiceParts.builder().secretKeyProvider(secretKeyProvider).secretStore(secretStore)
+                .tlsMaterialProvider(tlsMaterialProvider).certificateManagerFactory(certificateManagerFactory).keyStoreRepository(keyStoreRepository).build()
+                .toBuilder().build();
+        assertSame(secretKeyProvider, copy.getSecretKeyProvider().get());
+        assertSame(secretStore, copy.getSecretStore().get());
+        assertSame(tlsMaterialProvider, copy.getTlsMaterialProvider().get());
+        assertSame(certificateManagerFactory, copy.getCertificateManagerFactory().get());
+        assertSame(keyStoreRepository, copy.getKeyStoreRepository().get());
+    }
+
+    @Test
+    void testToBuilder_changesLeaveOriginalUnchanged() {
+        SecurityServiceParts original = SecurityServiceParts.builder().build();
+        original.toBuilder().secretStore(mock(ISecretStore.class)).build();
+        assertFalse(original.getSecretStore().isPresent());
+    }
 }

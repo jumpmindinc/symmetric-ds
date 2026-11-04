@@ -50,6 +50,19 @@ public final class SecurityServiceParts {
         return new Builder();
     }
 
+    /**
+     * @return a builder that starts with these parts, so a copy can be made with some of them changed
+     */
+    public Builder toBuilder() {
+        Builder builder = new Builder();
+        builder.secretKeyProvider = secretKeyProvider;
+        builder.secretStore = secretStore;
+        builder.tlsMaterialProvider = tlsMaterialProvider;
+        builder.certificateManagerFactory = certificateManagerFactory;
+        builder.keyStoreRepository = keyStoreRepository;
+        return builder;
+    }
+
     public Optional<ISecretKeyProvider> getSecretKeyProvider() {
         return Optional.ofNullable(secretKeyProvider);
     }

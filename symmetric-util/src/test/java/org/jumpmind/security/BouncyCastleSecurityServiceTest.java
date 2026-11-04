@@ -22,7 +22,10 @@ package org.jumpmind.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -47,6 +50,38 @@ class BouncyCastleSecurityServiceTest {
     @Test
     void testCreateCertificateManager_returnsBouncyCastleManager() {
         assertInstanceOf(BouncyCastleCertificateManager.class, securityService.getCertificateManager());
+    }
+
+    @Test
+    void testConstructor_withoutCertificateManagerFactoryUsesBouncyCastleAndKeepsOtherParts() {
+        ISecretStore secretStore = mock(ISecretStore.class);
+        BouncyCastleSecurityService service = new BouncyCastleSecurityService(SecurityServiceParts.builder().secretStore(secretStore).build());
+        assertInstanceOf(BouncyCastleCertificateManager.class, service.getCertificateManager());
+        assertSame(secretStore, service.getSecretStore());
+    }
+
+    @Test
+    void testConstructor_withoutCertificateManagerFactoryDeprecatedMethodsWork() throws Exception {
+        BouncyCastleSecurityService service = new BouncyCastleSecurityService(SecurityServiceParts.builder().build());
+        assertEquals("RSA", service.generateRSAKeyPair().getPublic().getAlgorithm());
+    }
+
+    @Test
+    void testConstructor_withBouncyCastleSubclassManager() {
+        BouncyCastleSecurityService service = new BouncyCastleSecurityService(SecurityServiceParts.builder().certificateManagerFactory((repository,
+                tlsMaterialProvider) -> new BouncyCastleCertificateManager(repository, tlsMaterialProvider) {
+                }).build());
+        assertInstanceOf(BouncyCastleCertificateManager.class, service.getCertificateManager());
+    }
+
+    @Test
+    void testConstructor_withOtherCertificateManagerThrows() {
+        SecurityServiceParts parts = SecurityServiceParts.builder().certificateManagerFactory((repository,
+                tlsMaterialProvider) -> new UnsupportedCertificateManager())
+                .build();
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new BouncyCastleSecurityService(parts));
+        assertEquals("BouncyCastleSecurityService needs a BouncyCastleCertificateManager, but its certificate manager factory created a"
+                + " UnsupportedCertificateManager", exception.getMessage());
     }
 
     @Test

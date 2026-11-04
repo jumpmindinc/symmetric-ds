@@ -32,15 +32,29 @@ import java.security.cert.X509Certificate;
  */
 public class BouncyCastleSecurityService extends SecurityService {
     public BouncyCastleSecurityService() {
-        super(SecurityServiceParts.builder().certificateManagerFactory(BouncyCastleCertificateManager::new).build());
+        this(SecurityServiceParts.builder().build());
     }
 
     /**
      * @param parts
-     *            parts whose certificate manager is a {@link BouncyCastleCertificateManager}, which the deprecated methods below delegate to
+     *            the parts to use; when they set no certificate manager factory, {@link BouncyCastleCertificateManager} is used
+     * @throws IllegalArgumentException
+     *             when the certificate manager factory creates something other than a {@link BouncyCastleCertificateManager}, which the deprecated methods
+     *             below delegate to
      */
     protected BouncyCastleSecurityService(SecurityServiceParts parts) {
-        super(parts);
+        super(withBouncyCastleCertificateManager(parts));
+        if (!(getCertificateManager() instanceof BouncyCastleCertificateManager)) {
+            throw new IllegalArgumentException(getClass().getSimpleName() + " needs a " + BouncyCastleCertificateManager.class.getSimpleName()
+                    + ", but its certificate manager factory created a " + getCertificateManager().getClass().getSimpleName());
+        }
+    }
+
+    private static SecurityServiceParts withBouncyCastleCertificateManager(SecurityServiceParts parts) {
+        if (parts.getCertificateManagerFactory().isPresent()) {
+            return parts;
+        }
+        return parts.toBuilder().certificateManagerFactory(BouncyCastleCertificateManager::new).build();
     }
 
     /**
