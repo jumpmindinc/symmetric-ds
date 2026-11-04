@@ -54,22 +54,47 @@ ALTER ROLE db_datareader ADD MEMBER [<app registration name>];
 ALTER ROLE db_datawriter ADD MEMBER [<app registration name>];
 ----
 
-These roles are enough for SymmetricDS to create its tables, functions, and triggers, capture changes, and load data.
+These roles are enough for SymmetricDS to create its tables, functions, and triggers (including the database-level trigger that captures changes to
+the structure of tables), capture changes, and load data.
 
 ==== Capturing Changes
 
 SymmetricDS captures changes in SQL Database in Microsoft Fabric with database triggers.  When adding the node, the capture type is trigger-based by default.
 Time-based capture is also available, but log mining is not.
 
-Only changes to data (inserts, updates, and deletes) are captured.  Changes to the structure of a table are not captured, so the `trigger.capture.ddl.changes`
-parameter has no effect on this database.
+Changes to data (inserts, updates, and deletes) are always captured.  Changes to the structure of tables are captured only when the
+`trigger.capture.ddl.changes` parameter is set to `true`, see <<Capturing Schema Changes>>.
 
-The triggers run as the user that changes the table (`EXECUTE AS CALLER`).  A user or application that changes a captured table needs permission on that table
-only.  No permission on the SymmetricDS tables is needed.  A user or application that connects to the database also needs the Read permission on the
-database item, as described in the Permissions section above.
+The triggers on tables run as the user that changes the table (`EXECUTE AS CALLER`).  A user or application that changes the data of a captured table needs
+permission on that table only.  No permission on the SymmetricDS tables is needed.  A user or application that connects to the database also needs the Read
+permission on the database item, as described in the Permissions section above.
 
 IMPORTANT: Keep the `mssql.trigger.execute.as` parameter set to `caller`, which is the default.  SQL Database in Microsoft Fabric does not support
 `EXECUTE AS` with `self` or `owner`, and creating the triggers fails with error 22607.
+
+==== Capturing Schema Changes
+
+SymmetricDS can capture changes to the structure of tables and replicate them to other nodes, as it does for SQL Server.  Set the
+`trigger.capture.ddl.changes` parameter to `true` and restart the node.  SymmetricDS then creates a database-level trigger that records the statements
+that create, alter, or drop tables, indexes, views, functions, stored procedures, triggers, types, and schemas.  The statements are sent to the target nodes
+and run there.
+
+When a SQL Database in Microsoft Fabric is the source of a mirror, which is set up with the Mirror button of the <<Set Up New Replication,Configure Diagram>>,
+SymmetricDS sets the parameters for you and replicates both the data and the structure of the tables.  See <<Set Up New Replication>> for the databases
+that can be used as the target.
+
+By default, the `trigger.capture.ddl.check.trigger.hist` parameter is `true`.  Statements that create, alter, or drop a table, or an index or trigger on a
+table, are then captured only for tables that SymmetricDS already captures, so a statement that creates a new table is not captured.  Statements for views,
+functions, stored procedures, types, and schemas are captured in both modes.  Set the parameter to `false` to capture the statements for every table in the
+database, so that new tables are replicated.  A mirror requires this setting, and the console sets it for you.
+
+A statement that SymmetricDS runs on this database while it loads changes from another node is recorded with the name of that node and is not sent back
+to it, so two nodes can replicate changes to the structure of tables in both directions.
+
+The database-level trigger runs as the user that runs the statement.  A user or application that creates, alters, or drops a table, index, view, function,
+stored procedure, trigger, type, or schema in this database while schema changes are captured needs permission to read the `SYM_TRIGGER_HIST` and
+`SYM_TRIGGER` tables and to insert into the `SYM_DATA` table.  The `db_datareader` and `db_datawriter` roles that SymmetricDS uses include these permissions.
+Without them, the statement fails with error 373.
 
 ==== Bulk Loading
 
