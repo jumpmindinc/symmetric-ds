@@ -24,18 +24,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.AdditionalMatchers.aryEq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.BufferedWriter;
@@ -343,6 +346,26 @@ class DataExtractorServiceTest {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         service.updateExtractRequestLoadTime(transaction, new Date(), outgoingBatch);
         verify(listener, never()).loadTerminated(any(), any(), any());
+    }
+
+    @Test
+    void testGetTablesForExtractByLoadId_withTransaction_queriesThroughTransaction() {
+        ExtractRequest request = new ExtractRequest();
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        when(transaction.query(any(String.class), any(), aryEq(new Object[] { LOAD_ID, "source" }), isNull())).thenReturn(List.of(request));
+        DataExtractorService extractorService = new DataExtractorService(engine);
+        assertEquals(List.of(request), extractorService.getTablesForExtractByLoadId(transaction, LOAD_ID));
+        verifyNoInteractions(sqlTemplate);
+    }
+
+    @Test
+    void testGetTablesForExtractByLoadIdAndNodeId_withTransaction_queriesThroughTransaction() {
+        ExtractRequest request = new ExtractRequest();
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        when(transaction.query(any(String.class), any(), aryEq(new Object[] { LOAD_ID, "target" }), isNull())).thenReturn(List.of(request));
+        DataExtractorService extractorService = new DataExtractorService(engine);
+        assertEquals(List.of(request), extractorService.getTablesForExtractByLoadIdAndNodeId(transaction, LOAD_ID, "target"));
+        verifyNoInteractions(sqlTemplate);
     }
 
     @Test

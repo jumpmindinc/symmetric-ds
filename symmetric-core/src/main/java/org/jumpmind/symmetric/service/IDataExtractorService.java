@@ -75,6 +75,10 @@ public interface IDataExtractorService {
 
     public List<ExtractRequest> getTablesForExtractByLoadIdAndNodeId(long loadId, String nodeId);
 
+    public List<ExtractRequest> getTablesForExtractByLoadId(ISqlTransaction transaction, long loadId);
+
+    public List<ExtractRequest> getTablesForExtractByLoadIdAndNodeId(ISqlTransaction transaction, long loadId, String nodeId);
+
     public void updateExtractRequestLoadTime(ISqlTransaction transaction, Date loadTime, OutgoingBatch batch);
 
     public void updateExtractRequestTransferred(OutgoingBatch batch, long transferMillis);
