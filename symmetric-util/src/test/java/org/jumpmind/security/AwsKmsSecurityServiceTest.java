@@ -20,10 +20,13 @@
  */
 package org.jumpmind.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
 
 import org.jumpmind.security.aws.AwsKmsEnvelopeKeyProvider;
 import org.jumpmind.security.aws.AwsSecretsManagerSecretStore;
@@ -32,6 +35,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class AwsKmsSecurityServiceTest {
+    private static final String MISSING_CLASS = "software.amazon.awssdk.NoSuchClass";
+
     @BeforeEach
     void setUp() {
         System.setProperty(SecurityConstants.AWS_KMS_KEY_ID, "alias/symmetricds");
@@ -66,6 +71,18 @@ class AwsKmsSecurityServiceTest {
     void testConstructor_throwsWithoutKmsKeyId() {
         System.clearProperty(SecurityConstants.AWS_KMS_KEY_ID);
         assertThrows(IllegalStateException.class, () -> new AwsKmsSecurityService());
+    }
+
+    @Test
+    void testRequireAwsSdk_withRequiredClassesOnClasspath() {
+        AwsKmsSecurityService.requireAwsSdk(AwsKmsSecurityService.REQUIRED_AWS_CLASSES);
+    }
+
+    @Test
+    void testRequireAwsSdk_withClassMissingSaysProIsRequired() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> AwsKmsSecurityService.requireAwsSdk(List.of(MISSING_CLASS)));
+        assertEquals("The AWS KMS security service is not supported in SymmetricDS open source. It requires SymmetricDS Pro. Contact the SymmetricDS sales"
+                + " team for more information.", exception.getMessage());
     }
 
     @Test
