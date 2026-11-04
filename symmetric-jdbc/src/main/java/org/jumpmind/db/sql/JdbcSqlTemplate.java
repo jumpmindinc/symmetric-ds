@@ -1270,7 +1270,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 } else if (argType == Types.TINYINT) {
                     setTinyIntValue(ps, i, arg, argType);
                 } else {
-                    StatementCreatorUtils.setParameterValue(ps, i, verifyArgType(arg, argType), arg);
+                    doSetValue(ps, i, argType, arg);
                 }
             } catch (SQLException ex) {
                 String msg = String.format("Parameter arg '%s' type: %s caused exception: %s", arg, TypeMap.getJdbcTypeName(argType), ex.getMessage());
@@ -1336,6 +1336,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     public void doSetValue(PreparedStatement ps, int parameterPosition, Object argValue)
             throws SQLException {
         StatementCreatorUtils.setParameterValue(ps, parameterPosition, SqlTypeValue.TYPE_UNKNOWN, argValue);
+    }
+
+    public void doSetValue(PreparedStatement ps, int parameterPosition, int argType, Object arg) throws SQLException {
+        StatementCreatorUtils.setParameterValue(ps, parameterPosition, verifyArgType(arg, argType), arg);
     }
 
     @Override
