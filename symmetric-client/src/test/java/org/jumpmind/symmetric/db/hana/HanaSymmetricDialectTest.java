@@ -71,8 +71,9 @@ class HanaSymmetricDialectTest {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         InOrder inOrder = inOrder(transaction);
         dialect.enableSyncTriggers(transaction);
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_triggers_disabled" + "'=''");
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_node_disabled" + "'=''");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_triggers_disabled'");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_node_disabled'");
+        verifyNoMoreInteractions(transaction);
     }
 
     @Test
@@ -86,25 +87,33 @@ class HanaSymmetricDialectTest {
     }
 
     @Test
-    void testDoesTriggerExistOnPlatform() {
-        String tableName = "TEST_TABLE";
-        String triggerName = "TEST_TRIGGER";
-        String expectedSql = "select count(*) from triggers where trigger_name like ? and subject_table_name like ?";
-        Object[] expectedArgs = new Object[] { triggerName, tableName.toUpperCase() };
-        when(sqlTemplate.queryForInt(expectedSql, expectedArgs)).thenReturn(1);
-        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, null, tableName, triggerName));
-        verify(sqlTemplate, times(1)).queryForInt(expectedSql, expectedArgs);
+    void testDoesTriggerExistOnPlatformInGivenSchema() {
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "Test_Mixed_Case", "TEST_MIXED_CASE", "App", "APP" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs)).thenReturn(1);
+        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, "App", "Test_Mixed_Case", "SYM_ON_I_FOR_TEST"));
+        verify(sqlTemplate, times(1)).queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs);
     }
 
     @Test
-    void testDoesTriggerExistOnPlatformFalse() {
-        String tableName = "TEST_TABLE";
-        String triggerName = "TEST_TRIGGER";
-        String expectedSql = "select count(*) from triggers where trigger_name like ? and subject_table_name like ?";
-        Object[] expectedArgs = new Object[] { triggerName, tableName.toUpperCase() };
-        when(sqlTemplate.queryForInt(expectedSql, expectedArgs)).thenReturn(0);
-        assertFalse(dialect.doesTriggerExistOnPlatform(null, null, null, tableName, triggerName));
-        verify(sqlTemplate, times(1)).queryForInt(expectedSql, expectedArgs);
+    void testDoesTriggerExistOnPlatformUsesDefaultSchema() {
+        when(platform.getDefaultSchema()).thenReturn("SYM");
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "TEST_TABLE", "TEST_TABLE", "SYM", "SYM" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA, expectedArgs)).thenReturn(1);
+        assertTrue(dialect.doesTriggerExistOnPlatform(null, null, null, "TEST_TABLE", "SYM_ON_I_FOR_TEST"));
+    }
+
+    @Test
+    void testDoesTriggerExistOnPlatformWithoutSchema() {
+        Object[] expectedArgs = new Object[] { "SYM_ON_I_FOR_TEST", "test_table", "TEST_TABLE" };
+        when(sqlTemplate.queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS, expectedArgs)).thenReturn(0);
+        assertFalse(dialect.doesTriggerExistOnPlatform(null, null, null, "test_table", "SYM_ON_I_FOR_TEST"));
+        verify(sqlTemplate, times(1)).queryForInt(HanaSymmetricDialect.SQL_TRIGGER_EXISTS, expectedArgs);
+    }
+
+    @Test
+    void testTriggerExistsSqlMatchesExactAndUpperCaseTableName() {
+        assertEquals("select count(*) from triggers where upper(trigger_name) = upper(?) and subject_table_name in (?, ?) and schema_name in (?, ?)",
+                HanaSymmetricDialect.SQL_TRIGGER_EXISTS_IN_SCHEMA);
     }
 
     @Test

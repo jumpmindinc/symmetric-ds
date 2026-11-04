@@ -35,6 +35,8 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
     static final String SYNC_TRIGGERS_DISABLED_USER_VARIABLE = "sync_triggers_disabled";
     static final String SYNC_TRIGGERS_DISABLED_NODE_VARIABLE = "sync_node_disabled";
     static final String SQL_DROP_FUNCTION = "DROP FUNCTION $(functionName)";
+    static final String SQL_TRIGGER_EXISTS = "select count(*) from triggers where upper(trigger_name) = upper(?) and subject_table_name in (?, ?)";
+    static final String SQL_TRIGGER_EXISTS_IN_SCHEMA = SQL_TRIGGER_EXISTS + " and schema_name in (?, ?)";
     static final String SQL_FUNCTION_INSTALLED = "select count(*) from functions where schema_name = current_schema and function_name = upper('$(functionName)')";
     static final String SQL_FUNCTION_EQUALS = SQL_FUNCTION_INSTALLED + " and definition like ?";
     static final String SQL_CREATE_TRANSACTION_ID_FUNCTION = "CREATE OR REPLACE function $(functionName) returns output1 varchar(50) LANGUAGE SQLSCRIPT AS begin $(functionBody) end";
@@ -69,8 +71,8 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
-        transaction.prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "'=''");
-        transaction.prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'=''");
+        transaction.prepareAndExecute("unset '" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "'");
+        transaction.prepareAndExecute("unset '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'");
     }
 
     @Override
@@ -134,8 +136,13 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     protected boolean doesTriggerExistOnPlatform(StringBuilder sqlBuffer, String catalogName, String schema, String tableName, String triggerName) {
-        return platform.getSqlTemplate().queryForInt("select count(*) from triggers where trigger_name like ? and subject_table_name like ?",
-                new Object[] { triggerName, tableName.toUpperCase() }) > 0;
+        String schemaName = StringUtils.isNotBlank(schema) ? schema : platform.getDefaultSchema();
+        if (StringUtils.isBlank(schemaName)) {
+            return platform.getSqlTemplate().queryForInt(SQL_TRIGGER_EXISTS,
+                    new Object[] { triggerName, tableName, tableName.toUpperCase() }) > 0;
+        }
+        return platform.getSqlTemplate().queryForInt(SQL_TRIGGER_EXISTS_IN_SCHEMA,
+                new Object[] { triggerName, tableName, tableName.toUpperCase(), schemaName, schemaName.toUpperCase() }) > 0;
     }
 
     @Override
