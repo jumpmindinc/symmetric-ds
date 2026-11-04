@@ -27,6 +27,7 @@ import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -228,31 +229,32 @@ public class BouncyCastleCertificateManager implements ICertificateManager {
                 }
             } else if (fileType.equalsIgnoreCase("pem") || fileType.equalsIgnoreCase("crt") || fileType.equalsIgnoreCase("cer")) {
                 List<Certificate> certs = new ArrayList<Certificate>();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-                String line = null;
-                while ((line = reader.readLine()) != null) {
-                    if (line.contains("BEGIN CERTIFICATE")) {
-                        CertificateFactory factory = CertificateFactory.getInstance("X.509");
-                        certs.add(factory.generateCertificate(new ByteArrayInputStream(readPemBytes(reader))));
-                    } else if (line.contains("BEGIN PRIVATE KEY")) {
-                        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(readPemBytes(reader));
-                        key = KeyFactory.getInstance("RSA").generatePrivate(spec);
-                    } else if (line.contains("BEGIN RSA PRIVATE KEY")) {
-                        RSAPrivateKey rsaPrivKey = RSAPrivateKey.getInstance(ASN1Primitive.fromByteArray(readPemBytes(reader)));
-                        RSAPrivateKeySpec rsaPrivKeySpec = new RSAPrivateKeySpec(rsaPrivKey.getModulus(), rsaPrivKey.getPrivateExponent());
-                        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-                        key = keyFactory.generatePrivate(rsaPrivKeySpec);
-                    } else if (line.contains("BEGIN ENCRYPTED PRIVATE KEY")) {
-                        if (password != null) {
-                            new BouncyCastleHelper().checkProviderInstalled();
-                            InputDecryptorProvider inputDecryptorProvider = new JcePKCSPBEInputDecryptorProviderBuilder()
-                                    .setProvider(BouncyCastleProvider.PROVIDER_NAME).build(password.toCharArray());
-                            PKCS8EncryptedPrivateKeyInfo pkInfo = new PKCS8EncryptedPrivateKeyInfo(readPemBytes(reader));
-                            PrivateKeyInfo info = pkInfo.decryptPrivateKeyInfo(inputDecryptorProvider);
-                            JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
-                            key = converter.getPrivateKey(info);
-                        } else {
-                            throw new UnrecoverableKeyException();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.US_ASCII))) {
+                    String line = null;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.contains("BEGIN CERTIFICATE")) {
+                            CertificateFactory factory = CertificateFactory.getInstance("X.509");
+                            certs.add(factory.generateCertificate(new ByteArrayInputStream(readPemBytes(reader))));
+                        } else if (line.contains("BEGIN PRIVATE KEY")) {
+                            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(readPemBytes(reader));
+                            key = KeyFactory.getInstance("RSA").generatePrivate(spec);
+                        } else if (line.contains("BEGIN RSA PRIVATE KEY")) {
+                            RSAPrivateKey rsaPrivKey = RSAPrivateKey.getInstance(ASN1Primitive.fromByteArray(readPemBytes(reader)));
+                            RSAPrivateKeySpec rsaPrivKeySpec = new RSAPrivateKeySpec(rsaPrivKey.getModulus(), rsaPrivKey.getPrivateExponent());
+                            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                            key = keyFactory.generatePrivate(rsaPrivKeySpec);
+                        } else if (line.contains("BEGIN ENCRYPTED PRIVATE KEY")) {
+                            if (password != null) {
+                                new BouncyCastleHelper().checkProviderInstalled();
+                                InputDecryptorProvider inputDecryptorProvider = new JcePKCSPBEInputDecryptorProviderBuilder()
+                                        .setProvider(BouncyCastleProvider.PROVIDER_NAME).build(password.toCharArray());
+                                PKCS8EncryptedPrivateKeyInfo pkInfo = new PKCS8EncryptedPrivateKeyInfo(readPemBytes(reader));
+                                PrivateKeyInfo info = pkInfo.decryptPrivateKeyInfo(inputDecryptorProvider);
+                                JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+                                key = converter.getPrivateKey(info);
+                            } else {
+                                throw new UnrecoverableKeyException();
+                            }
                         }
                     }
                 }

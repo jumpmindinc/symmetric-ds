@@ -40,9 +40,11 @@ import org.mockito.ArgumentCaptor;
 
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
+import software.amazon.awssdk.services.secretsmanager.model.CreateSecretResponse;
 import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import software.amazon.awssdk.services.secretsmanager.model.InvalidRequestException;
 import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueResponse;
 import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsException;
@@ -147,12 +149,38 @@ class AwsSecretsManagerSecretStoreTest {
     }
 
     @Test
-    void testGetClient_createsClientOnceOnFirstUse() {
-        when(client.getSecretValue(any(GetSecretValueRequest.class))).thenReturn(GetSecretValueResponse.builder().secretString(VALUE).build());
+    void testEachCall_opensAndClosesItsOwnClient() {
+        when(client.getSecretValue(any(GetSecretValueRequest.class))).thenThrow(notFound());
         assertEquals(0, clientsCreated.get());
         store.getEntry(ALIAS);
         store.deleteEntry(ALIAS);
-        assertEquals(1, clientsCreated.get());
+        assertEquals(2, clientsCreated.get());
+        verify(client, times(2)).close();
+    }
+
+    @Test
+    void testSetEntry_whenSecretStillBeingDeletedRetriesUntilSaved() {
+        when(client.putSecretValue(any(PutSecretValueRequest.class))).thenThrow(stillDeleting()).thenThrow(stillDeleting())
+                .thenReturn(PutSecretValueResponse.builder().build());
+        store.setEntry(ALIAS, VALUE);
+        verify(client, times(3)).putSecretValue(any(PutSecretValueRequest.class));
+        verify(client).close();
+    }
+
+    @Test
+    void testSetEntry_whenCreateRejectedWhileDeletingRetriesCreate() {
+        when(client.putSecretValue(any(PutSecretValueRequest.class))).thenThrow(notFound());
+        when(client.createSecret(any(CreateSecretRequest.class))).thenThrow(stillDeleting()).thenReturn(CreateSecretResponse.builder().build());
+        store.setEntry(ALIAS, VALUE);
+        verify(client, times(2)).createSecret(any(CreateSecretRequest.class));
+    }
+
+    @Test
+    void testSetEntry_whenStillRejectedAfterLastAttemptThrows() {
+        when(client.putSecretValue(any(PutSecretValueRequest.class))).thenThrow(stillDeleting());
+        assertThrows(InvalidRequestException.class, () -> store.setEntry(ALIAS, VALUE));
+        verify(client, times(AwsSecretsManagerSecretStore.MAX_SAVE_ATTEMPTS)).putSecretValue(any(PutSecretValueRequest.class));
+        verify(client).close();
     }
 
     @Test
@@ -176,7 +204,11 @@ class AwsSecretsManagerSecretStoreTest {
         return new AwsSecretsManagerSecretStore(() -> {
             clientsCreated.incrementAndGet();
             return client;
-        }, PREFIX, kmsKeyId);
+        }, PREFIX, kmsKeyId, 0);
+    }
+
+    private static InvalidRequestException stillDeleting() {
+        return InvalidRequestException.builder().message("You can't perform this operation on the secret because it was marked for deletion.").build();
     }
 
     private static ResourceNotFoundException notFound() {
