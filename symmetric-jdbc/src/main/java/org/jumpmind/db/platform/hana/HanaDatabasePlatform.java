@@ -24,6 +24,7 @@ import java.sql.Connection;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -62,7 +63,10 @@ public class HanaDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public String getDefaultSchema() {
-        return null;
+        if (StringUtils.isBlank(defaultSchema)) {
+            defaultSchema = getSqlTemplate().queryForObject("select current_schema from dummy", String.class);
+        }
+        return defaultSchema;
     }
 
     @Override

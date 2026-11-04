@@ -1,11 +1,14 @@
 package org.jumpmind.db.platform.hana;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Types;
 
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,25 @@ class HanaDdlBuilderTest {
         assertEquals("BLOB", hanaDatabaseInfo.getNativeType(Types.LONGVARBINARY));
         assertEquals("NCLOB", hanaDatabaseInfo.getNativeType(Types.LONGVARCHAR));
         assertEquals("NCLOB", hanaDatabaseInfo.getNativeType(Types.CLOB));
+    }
+
+    @Test
+    void testBitMapsToTinyint() {
+        DatabaseInfo hanaDatabaseInfo = ddlBuilder.getDatabaseInfo();
+        assertEquals("TINYINT", hanaDatabaseInfo.getNativeType(Types.BIT));
+        assertEquals(Types.TINYINT, hanaDatabaseInfo.getTargetJdbcType(Types.BIT));
+    }
+
+    @Test
+    void testCreateTableWithBitColumnUsesTinyint() {
+        Table table = new Table("test_bit");
+        Column id = new Column("id", true, Types.INTEGER, 0, 0);
+        id.setRequired(true);
+        table.addColumn(id);
+        table.addColumn(new Column("flag", false, Types.BIT, 0, 0));
+        String ddl = ddlBuilder.createTable(table);
+        assertTrue(ddl.contains("\"flag\" TINYINT"), ddl);
+        assertFalse(ddl.contains("BIT"), ddl);
     }
 
     @Test
