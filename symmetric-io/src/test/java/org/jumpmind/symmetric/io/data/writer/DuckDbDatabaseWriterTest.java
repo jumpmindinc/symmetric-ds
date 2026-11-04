@@ -70,13 +70,22 @@ class DuckDbDatabaseWriterTest {
     @Test
     void testDoesColumnNeedUpdated_varcharUpdatedToNullWithMissingOldValueNeedsUpdated() {
         CsvData data = createUpdate(new String[] { "1", null, "5" }, new String[] { "1", null, "5" });
+        data.setNoBinaryOldData(true);
         assertTrue(doesColumnNeedUpdated(NOTES_INDEX, data, true));
         assertTrue(data.getChangedDataIndicators()[NOTES_INDEX]);
     }
 
     @Test
+    void testDoesColumnNeedUpdated_blankVarcharWithCapturedOldLobDataDoesNotNeedUpdated() {
+        CsvData data = createUpdate(new String[] { "1", null, "5" }, new String[] { "1", null, "5" });
+        assertFalse(doesColumnNeedUpdated(NOTES_INDEX, data, true));
+        assertFalse(data.getChangedDataIndicators()[NOTES_INDEX]);
+    }
+
+    @Test
     void testDoesColumnNeedUpdated_varcharWithEmptyOldValueNeedsUpdated() {
         CsvData data = createUpdate(new String[] { "1", "", "5" }, new String[] { "1", "", "5" });
+        data.setNoBinaryOldData(true);
         assertTrue(doesColumnNeedUpdated(NOTES_INDEX, data, true));
         assertTrue(data.getChangedDataIndicators()[NOTES_INDEX]);
     }

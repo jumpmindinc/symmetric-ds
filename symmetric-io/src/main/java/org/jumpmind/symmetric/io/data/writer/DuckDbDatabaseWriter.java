@@ -38,7 +38,7 @@ public class DuckDbDatabaseWriter extends DynamicDefaultDatabaseWriter {
             boolean applyChangesOnly) {
         boolean needsUpdated = super.doesColumnNeedUpdated(targetColumnIndex, column, data, rowData, oldData, applyChangesOnly);
         if (!needsUpdated && oldData != null && applyChangesOnly && column.getMappedTypeCode() == Types.VARCHAR
-                && StringUtils.isBlank(oldData[targetColumnIndex])) {
+                && StringUtils.isBlank(oldData[targetColumnIndex]) && data.isNoBinaryOldData()) {
             // indicate that we are considering the column to be changed
             updateChangedDataIndicator(data, column, true);
             needsUpdated = true;
