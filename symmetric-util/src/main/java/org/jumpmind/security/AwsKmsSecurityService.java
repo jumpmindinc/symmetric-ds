@@ -26,7 +26,8 @@ import org.jumpmind.security.aws.AwsSecretsManagerSecretStore;
 /**
  * Security service whose secret key is protected by AWS KMS through {@link AwsKmsEnvelopeKeyProvider}. Select it with
  * {@code security.service.class.name=org.jumpmind.security.AwsKmsSecurityService} and the aws.kms.* system properties in {@link SecurityConstants}, with the
- * awskms module installed.
+ * awskms module installed. The KMS-encrypted copy of the secret key is kept in AWS Secrets Manager, so every node with the same secret name prefix shares it,
+ * unless {@link SecurityConstants#AWS_KMS_WRAPPED_KEY} or {@link SecurityConstants#AWS_KMS_WRAPPED_KEY_FILE} keeps it on the node instead.
  * <p>
  * Keystore entries, such as startup parameters saved with the {@link SecurityConstants#PREFIX_KEYSTORE_STORAGE} prefix, are kept in AWS Secrets Manager through
  * {@link AwsSecretsManagerSecretStore}. TLS material stays in the local keystore and truststore. Certificates are managed with Bouncy Castle when it is on the

@@ -20,7 +20,6 @@
  */
 package org.jumpmind.security.aws;
 
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -29,16 +28,13 @@ import java.util.function.Supplier;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecretKeyProvider;
 import org.jumpmind.security.SecurityConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.kms.KmsClient;
-import software.amazon.awssdk.services.kms.KmsClientBuilder;
 import software.amazon.awssdk.services.kms.model.DataKeySpec;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyRequest;
@@ -46,7 +42,8 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
 
 /**
  * Supplies an AES-256 secret key protected by an AWS KMS key, using envelope encryption: on first start KMS generates the data key and only its encrypted copy
- * is saved; on later starts KMS decrypts that copy. The plain key exists only in memory, and the KMS key never leaves KMS.
+ * is saved, by default in AWS Secrets Manager (see {@link WrappedDataKeySource#fromSystemProperties()}); on later starts KMS decrypts that copy. The plain key
+ * exists only in memory, and the KMS key never leaves KMS.
  * <p>
  * Configured with {@link SecurityConstants#AWS_KMS_KEY_ID} and optionally {@link SecurityConstants#AWS_KMS_REGION} and
  * {@link SecurityConstants#AWS_KMS_ENDPOINT}. Credentials come from the AWS default provider chain, such as environment variables, a profile, an EC2 instance
@@ -71,25 +68,12 @@ public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
      *             when {@link SecurityConstants#AWS_KMS_KEY_ID} is not set
      */
     public static AwsKmsEnvelopeKeyProvider fromSystemProperties() {
-        String keyId = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_KEY_ID));
+        String keyId = AwsSettings.getKmsKeyId();
         if (keyId == null) {
             throw new IllegalStateException("Set the system property -D" + SecurityConstants.AWS_KMS_KEY_ID
                     + " to the ID, ARN or alias of the AWS KMS key that protects the SymmetricDS secret key");
         }
-        String region = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_REGION));
-        String endpoint = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_ENDPOINT));
-        return new AwsKmsEnvelopeKeyProvider(() -> buildKmsClient(region, endpoint), keyId, WrappedDataKeySource.fromSystemProperties());
-    }
-
-    private static KmsClient buildKmsClient(String region, String endpoint) {
-        KmsClientBuilder builder = KmsClient.builder();
-        if (region != null) {
-            builder.region(Region.of(region));
-        }
-        if (endpoint != null) {
-            builder.endpointOverride(URI.create(endpoint));
-        }
-        return builder.build();
+        return new AwsKmsEnvelopeKeyProvider(AwsSettings::buildKmsClient, keyId, WrappedDataKeySource.fromSystemProperties());
     }
 
     /**
@@ -111,7 +95,9 @@ public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
         GenerateDataKeyResponse response = kms.generateDataKey(GenerateDataKeyRequest.builder().keyId(keyId).keySpec(DataKeySpec.AES_256)
                 .encryptionContext(ENCRYPTION_CONTEXT).build());
         if (wrappedDataKeySource.writeIfAbsent(response.ciphertextBlob().asByteArray())) {
-            log.info("Generated a new secret key with AWS KMS key {} and saved it, encrypted, to {}", keyId, wrappedDataKeySource.describe());
+            log.warn("Generated a new secret key with AWS KMS key {} and saved it, encrypted, to {}. Keep that copy safe: values encrypted with any other"
+                    + " secret key cannot be decrypted with this one, and every node that shares encrypted values must use this same encrypted key", keyId,
+                    wrappedDataKeySource.describe());
             return toSecretKey(response.plaintext());
         }
         log.info("Another process saved an encrypted secret key to {} first, so using that key", wrappedDataKeySource.describe());

@@ -22,163 +22,56 @@ package org.jumpmind.security.aws;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.codec.binary.Base64;
 import org.jumpmind.security.SecurityConstants;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class WrappedDataKeySourceTest {
     private static final byte[] WRAPPED_KEY = "wrapped-data-key".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] OTHER_WRAPPED_KEY = "other-data-key".getBytes(StandardCharsets.UTF_8);
     @TempDir
     Path directory;
-    private Path file;
-    private String originalKeyStoreFile;
-
-    @BeforeEach
-    void setUp() {
-        file = directory.resolve(WrappedDataKeySource.DEFAULT_FILE_NAME);
-        originalKeyStoreFile = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE);
-    }
 
     @AfterEach
     void tearDown() {
         System.clearProperty(SecurityConstants.AWS_KMS_WRAPPED_KEY);
         System.clearProperty(SecurityConstants.AWS_KMS_WRAPPED_KEY_FILE);
-        if (originalKeyStoreFile != null) {
-            System.setProperty(SecurityConstants.SYSPROP_KEYSTORE, originalKeyStoreFile);
-        } else {
-            System.clearProperty(SecurityConstants.SYSPROP_KEYSTORE);
-        }
+        System.clearProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX);
     }
 
     @Test
-    void testRead_returnsInlineKey() throws Exception {
-        WrappedDataKeySource source = new WrappedDataKeySource(Base64.encodeBase64String(WRAPPED_KEY), file);
-        assertArrayEquals(WRAPPED_KEY, source.read().get());
+    void testFromSystemProperties_defaultsToSecretsManager() {
+        WrappedDataKeySource source = WrappedDataKeySource.fromSystemProperties();
+        assertInstanceOf(SecretsManagerWrappedDataKeySource.class, source);
+        assertEquals("AWS Secrets Manager secret symmetricds/kms-wrapped-key", source.describe());
     }
 
     @Test
-    void testRead_inlineKeyTakesPrecedenceOverFile() throws Exception {
-        Files.writeString(file, Base64.encodeBase64String(OTHER_WRAPPED_KEY));
-        WrappedDataKeySource source = new WrappedDataKeySource(Base64.encodeBase64String(WRAPPED_KEY), file);
-        assertArrayEquals(WRAPPED_KEY, source.read().get());
+    void testFromSystemProperties_withPrefixNamesSecretWithIt() {
+        System.setProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX, "prod/sym/");
+        assertEquals("AWS Secrets Manager secret prod/sym/kms-wrapped-key", WrappedDataKeySource.fromSystemProperties().describe());
     }
 
     @Test
-    void testRead_returnsKeyFromFileIgnoringTrailingNewline() throws Exception {
-        Files.writeString(file, Base64.encodeBase64String(WRAPPED_KEY) + "\n");
-        assertArrayEquals(WRAPPED_KEY, new WrappedDataKeySource(null, file).read().get());
-    }
-
-    @Test
-    void testRead_returnsEmptyWhenNothingSaved() throws Exception {
-        assertFalse(new WrappedDataKeySource("  ", file).read().isPresent());
-    }
-
-    @Test
-    void testWriteIfAbsent_savesKeyThatReadReturns() throws Exception {
-        WrappedDataKeySource source = new WrappedDataKeySource(null, file);
-        assertTrue(source.writeIfAbsent(WRAPPED_KEY));
-        assertArrayEquals(WRAPPED_KEY, source.read().get());
-    }
-
-    @Test
-    void testWriteIfAbsent_createsMissingDirectories() throws Exception {
-        Path nestedFile = directory.resolve("security").resolve(WrappedDataKeySource.DEFAULT_FILE_NAME);
-        assertTrue(new WrappedDataKeySource(null, nestedFile).writeIfAbsent(WRAPPED_KEY));
-        assertTrue(Files.exists(nestedFile));
-    }
-
-    @Test
-    void testWriteIfAbsent_restrictsFileToOwner() throws Exception {
-        assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
-        new WrappedDataKeySource(null, file).writeIfAbsent(WRAPPED_KEY);
-        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)));
-    }
-
-    @Test
-    void testWriteIfAbsent_keepsExistingFileAndReturnsFalse() throws Exception {
-        WrappedDataKeySource source = new WrappedDataKeySource(null, file);
-        source.writeIfAbsent(WRAPPED_KEY);
-        assertFalse(source.writeIfAbsent(OTHER_WRAPPED_KEY));
-        assertArrayEquals(WRAPPED_KEY, source.read().get());
-    }
-
-    @Test
-    void testWriteIfAbsent_whenAnotherWriterFinishedFirstKeepsTheirKey() throws Exception {
-        WrappedDataKeySource firstWriter = new WrappedDataKeySource(null, file);
-        WrappedDataKeySource secondWriter = new WrappedDataKeySource(null, file);
-        assertTrue(firstWriter.writeIfAbsent(WRAPPED_KEY));
-        assertFalse(secondWriter.writeIfAbsent(OTHER_WRAPPED_KEY));
-        assertArrayEquals(WRAPPED_KEY, secondWriter.read().get());
-    }
-
-    @Test
-    void testWriteIfAbsent_leavesNoTemporaryFiles() throws Exception {
-        WrappedDataKeySource source = new WrappedDataKeySource(null, file);
-        source.writeIfAbsent(WRAPPED_KEY);
-        source.writeIfAbsent(OTHER_WRAPPED_KEY);
-        try (Stream<Path> files = Files.list(directory)) {
-            assertEquals(List.of(file), files.collect(Collectors.toList()));
-        }
-    }
-
-    @Test
-    void testWriteIfAbsent_throwsWhenKeyIsSetInline() {
-        WrappedDataKeySource source = new WrappedDataKeySource(Base64.encodeBase64String(WRAPPED_KEY), file);
-        assertThrows(IllegalStateException.class, () -> source.writeIfAbsent(OTHER_WRAPPED_KEY));
-    }
-
-    @Test
-    void testDescribe_namesPropertyWhenKeyIsInline() {
-        assertEquals("system property " + SecurityConstants.AWS_KMS_WRAPPED_KEY, new WrappedDataKeySource("abc", file).describe());
-    }
-
-    @Test
-    void testDescribe_returnsAbsoluteFilePath() {
-        assertEquals(file.toAbsolutePath().toString(), new WrappedDataKeySource(null, file).describe());
-    }
-
-    @Test
-    void testFromSystemProperties_withConfiguredFile() {
-        System.setProperty(SecurityConstants.AWS_KMS_WRAPPED_KEY_FILE, file.toString());
-        assertEquals(file.toAbsolutePath().toString(), WrappedDataKeySource.fromSystemProperties().describe());
-    }
-
-    @Test
-    void testFromSystemProperties_defaultsToFileNextToKeystore() {
-        System.setProperty(SecurityConstants.SYSPROP_KEYSTORE, directory.resolve("keystore").toString());
-        assertEquals(file.toAbsolutePath().toString(), WrappedDataKeySource.fromSystemProperties().describe());
-    }
-
-    @Test
-    void testFromSystemProperties_withoutKeystoreDefaultsToSecurityDirectory() {
-        System.clearProperty(SecurityConstants.SYSPROP_KEYSTORE);
-        Path expected = Paths.get("security", WrappedDataKeySource.DEFAULT_FILE_NAME).toAbsolutePath();
-        assertEquals(expected.toString(), WrappedDataKeySource.fromSystemProperties().describe());
-    }
-
-    @Test
-    void testFromSystemProperties_withInlineKey() throws Exception {
+    void testFromSystemProperties_withInlineKeyReadsIt() throws Exception {
         System.setProperty(SecurityConstants.AWS_KMS_WRAPPED_KEY, Base64.encodeBase64String(WRAPPED_KEY));
-        assertArrayEquals(WRAPPED_KEY, WrappedDataKeySource.fromSystemProperties().read().get());
+        WrappedDataKeySource source = WrappedDataKeySource.fromSystemProperties();
+        assertInstanceOf(LocalWrappedDataKeySource.class, source);
+        assertArrayEquals(WRAPPED_KEY, source.read().get());
+    }
+
+    @Test
+    void testFromSystemProperties_withFileUsesIt() {
+        Path file = directory.resolve("kms-wrapped.key");
+        System.setProperty(SecurityConstants.AWS_KMS_WRAPPED_KEY_FILE, file.toString());
+        WrappedDataKeySource source = WrappedDataKeySource.fromSystemProperties();
+        assertInstanceOf(LocalWrappedDataKeySource.class, source);
+        assertEquals(file.toAbsolutePath().toString(), source.describe());
     }
 }

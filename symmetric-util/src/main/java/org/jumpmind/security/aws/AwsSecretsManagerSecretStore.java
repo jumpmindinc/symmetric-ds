@@ -20,18 +20,14 @@
  */
 package org.jumpmind.security.aws;
 
-import java.net.URI;
 import java.util.function.Supplier;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecretStore;
 import org.jumpmind.security.SecurityConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
-import software.amazon.awssdk.services.secretsmanager.SecretsManagerClientBuilder;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
@@ -40,12 +36,12 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsExcept
 import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 
 /**
- * Keeps named secret values in AWS Secrets Manager, one secret per alias, named with a prefix that defaults to {@value #DEFAULT_NAME_PREFIX}. New secrets are
- * encrypted with the KMS key in {@link SecurityConstants#AWS_KMS_KEY_ID} when it is set, otherwise with the account's AWS managed key. The region is taken from
- * {@link SecurityConstants#AWS_KMS_REGION}, because a secret must be in the same region as the KMS key that encrypts it.
+ * Keeps named secret values in AWS Secrets Manager, one secret per alias, named with a prefix that defaults to
+ * {@value AwsSettings#DEFAULT_SECRETS_MANAGER_PREFIX}. New secrets are encrypted with the KMS key in {@link SecurityConstants#AWS_KMS_KEY_ID} when it is set,
+ * otherwise with the account's AWS managed key. The region is taken from {@link SecurityConstants#AWS_KMS_REGION}, because a secret must be in the same region
+ * as the KMS key that encrypts it.
  */
 public class AwsSecretsManagerSecretStore implements ISecretStore {
-    static final String DEFAULT_NAME_PREFIX = "symmetricds/";
     private static final Logger log = LoggerFactory.getLogger(AwsSecretsManagerSecretStore.class);
     private final Supplier<SecretsManagerClient> clientSupplier;
     private final String namePrefix;
@@ -59,22 +55,7 @@ public class AwsSecretsManagerSecretStore implements ISecretStore {
     }
 
     public static AwsSecretsManagerSecretStore fromSystemProperties() {
-        String namePrefix = StringUtils.defaultIfBlank(System.getProperty(SecurityConstants.AWS_SECRETS_MANAGER_PREFIX), DEFAULT_NAME_PREFIX).trim();
-        String kmsKeyId = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_KEY_ID));
-        String region = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_KMS_REGION));
-        String endpoint = StringUtils.trimToNull(System.getProperty(SecurityConstants.AWS_SECRETS_MANAGER_ENDPOINT));
-        return new AwsSecretsManagerSecretStore(() -> buildClient(region, endpoint), namePrefix, kmsKeyId);
-    }
-
-    private static SecretsManagerClient buildClient(String region, String endpoint) {
-        SecretsManagerClientBuilder builder = SecretsManagerClient.builder();
-        if (region != null) {
-            builder.region(Region.of(region));
-        }
-        if (endpoint != null) {
-            builder.endpointOverride(URI.create(endpoint));
-        }
-        return builder.build();
+        return new AwsSecretsManagerSecretStore(AwsSettings::buildSecretsManagerClient, AwsSettings.getSecretsManagerPrefix(), AwsSettings.getKmsKeyId());
     }
 
     @Override
