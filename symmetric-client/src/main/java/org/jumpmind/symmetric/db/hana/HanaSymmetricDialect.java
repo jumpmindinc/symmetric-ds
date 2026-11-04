@@ -69,8 +69,8 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
 
     @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
-        transaction.prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "'=''");
-        transaction.prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'=''");
+        transaction.prepareAndExecute("unset '" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "'");
+        transaction.prepareAndExecute("unset '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'");
     }
 
     @Override

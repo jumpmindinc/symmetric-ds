@@ -71,8 +71,9 @@ class HanaSymmetricDialectTest {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         InOrder inOrder = inOrder(transaction);
         dialect.enableSyncTriggers(transaction);
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_triggers_disabled" + "'=''");
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_node_disabled" + "'=''");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_triggers_disabled'");
+        inOrder.verify(transaction).prepareAndExecute("unset 'sync_node_disabled'");
+        verifyNoMoreInteractions(transaction);
     }
 
     @Test
