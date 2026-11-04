@@ -39,6 +39,16 @@ interface WrappedDataKeySource {
      */
     boolean writeIfAbsent(byte[] wrappedKey) throws IOException;
 
+    /**
+     * @return false when the key is set by configuration and cannot be saved here
+     */
+    boolean isWritable();
+
+    /**
+     * Saves the encrypted data key in place of the one saved before, after it is encrypted under a different KMS key.
+     */
+    void replace(byte[] wrappedKey) throws IOException;
+
     String describe();
 
     /**

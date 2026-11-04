@@ -22,11 +22,13 @@ package org.jumpmind.security.aws;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Optional;
 
@@ -71,15 +73,8 @@ class LocalWrappedDataKeySource implements WrappedDataKeySource {
      */
     @Override
     public boolean writeIfAbsent(byte[] wrappedKey) throws IOException {
-        if (inlineKey != null) {
-            throw new IllegalStateException("The encrypted data key is set by " + SecurityConstants.AWS_KMS_WRAPPED_KEY + " and is not written to a file");
-        }
-        Path directory = file.toAbsolutePath().getParent();
-        Files.createDirectories(directory);
-        Path temp = Files.createTempFile(directory, file.getFileName().toString(), ".tmp");
+        Path temp = writeTemporaryFile(wrappedKey);
         try {
-            restrictToOwner(temp);
-            Files.writeString(temp, Base64.encodeBase64String(wrappedKey), StandardCharsets.UTF_8);
             publish(temp);
             return true;
         } catch (FileAlreadyExistsException e) {
@@ -87,6 +82,41 @@ class LocalWrappedDataKeySource implements WrappedDataKeySource {
         } finally {
             Files.deleteIfExists(temp);
         }
+    }
+
+    @Override
+    public boolean isWritable() {
+        return inlineKey == null;
+    }
+
+    /**
+     * Moves the finished temporary file over the saved one, atomically where the file system allows, so a reader never sees a partly written key.
+     */
+    @Override
+    public void replace(byte[] wrappedKey) throws IOException {
+        Path temp = writeTemporaryFile(wrappedKey);
+        try {
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(temp);
+        }
+    }
+
+    /**
+     * Writes the key next to the file, readable only by its owner where the file system supports it, so it can be moved into place in one step.
+     */
+    private Path writeTemporaryFile(byte[] wrappedKey) throws IOException {
+        if (inlineKey != null) {
+            throw new IllegalStateException("The encrypted data key is set by " + SecurityConstants.AWS_KMS_WRAPPED_KEY + " and is not written to a file");
+        }
+        Path directory = file.toAbsolutePath().getParent();
+        Files.createDirectories(directory);
+        Path temp = Files.createTempFile(directory, file.getFileName().toString(), ".tmp");
+        restrictToOwner(temp);
+        Files.writeString(temp, Base64.encodeBase64String(wrappedKey), StandardCharsets.UTF_8);
+        return temp;
     }
 
     /**

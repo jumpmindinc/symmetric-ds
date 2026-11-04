@@ -28,6 +28,7 @@ import org.apache.commons.codec.binary.Base64;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsException;
 import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 
@@ -76,6 +77,18 @@ class SecretsManagerWrappedDataKeySource implements WrappedDataKeySource {
             return true;
         } catch (ResourceExistsException e) {
             return false;
+        }
+    }
+
+    @Override
+    public boolean isWritable() {
+        return true;
+    }
+
+    @Override
+    public void replace(byte[] wrappedKey) {
+        try (SecretsManagerClient client = clientSupplier.get()) {
+            client.putSecretValue(PutSecretValueRequest.builder().secretId(secretName).secretString(Base64.encodeBase64String(wrappedKey)).build());
         }
     }
 

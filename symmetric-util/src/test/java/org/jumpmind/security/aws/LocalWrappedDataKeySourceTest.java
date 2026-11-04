@@ -134,6 +134,42 @@ class LocalWrappedDataKeySourceTest {
     }
 
     @Test
+    void testReplace_overwritesSavedKey() throws Exception {
+        LocalWrappedDataKeySource source = new LocalWrappedDataKeySource(null, file);
+        source.writeIfAbsent(WRAPPED_KEY);
+        source.replace(OTHER_WRAPPED_KEY);
+        assertArrayEquals(OTHER_WRAPPED_KEY, source.read().get());
+    }
+
+    @Test
+    void testReplace_keepsFileRestrictedToOwnerAndLeavesNoTemporaryFiles() throws Exception {
+        assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+        LocalWrappedDataKeySource source = new LocalWrappedDataKeySource(null, file);
+        source.writeIfAbsent(WRAPPED_KEY);
+        source.replace(OTHER_WRAPPED_KEY);
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)));
+        try (Stream<Path> files = Files.list(directory)) {
+            assertEquals(List.of(file), files.collect(Collectors.toList()));
+        }
+    }
+
+    @Test
+    void testReplace_throwsWhenKeyIsSetInline() {
+        LocalWrappedDataKeySource source = new LocalWrappedDataKeySource(Base64.encodeBase64String(WRAPPED_KEY), file);
+        assertThrows(IllegalStateException.class, () -> source.replace(OTHER_WRAPPED_KEY));
+    }
+
+    @Test
+    void testIsWritable_withFile() {
+        assertTrue(new LocalWrappedDataKeySource(null, file).isWritable());
+    }
+
+    @Test
+    void testIsWritable_withInlineKey() {
+        assertFalse(new LocalWrappedDataKeySource(Base64.encodeBase64String(WRAPPED_KEY), file).isWritable());
+    }
+
+    @Test
     void testDescribe_namesPropertyWhenKeyIsInline() {
         assertEquals("system property " + SecurityConstants.AWS_KMS_WRAPPED_KEY, new LocalWrappedDataKeySource("abc", file).describe());
     }

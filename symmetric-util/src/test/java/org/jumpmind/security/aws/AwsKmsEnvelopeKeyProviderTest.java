@@ -23,6 +23,7 @@ package org.jumpmind.security.aws;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,12 +48,20 @@ import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DataKeySpec;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
+import software.amazon.awssdk.services.kms.model.DescribeKeyRequest;
+import software.amazon.awssdk.services.kms.model.DescribeKeyResponse;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyRequest;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
+import software.amazon.awssdk.services.kms.model.KeyMetadata;
 import software.amazon.awssdk.services.kms.model.KmsException;
+import software.amazon.awssdk.services.kms.model.ReEncryptRequest;
+import software.amazon.awssdk.services.kms.model.ReEncryptResponse;
 
 class AwsKmsEnvelopeKeyProviderTest {
     private static final String KEY_ID = "alias/symmetricds";
+    private static final String OLD_KEY_ARN = "arn:aws:kms:us-east-2:111122223333:key/old";
+    private static final String CURRENT_KEY_ARN = "arn:aws:kms:us-east-2:111122223333:key/current";
+    private static final byte[] RE_ENCRYPTED_KEY = "re-encrypted-data-key".getBytes();
     private static final byte[] PLAIN_KEY = filled((byte) 0x11);
     private static final byte[] OTHER_PLAIN_KEY = filled((byte) 0x22);
     private static final byte[] WRAPPED_KEY = "wrapped-data-key".getBytes();
@@ -66,6 +75,8 @@ class AwsKmsEnvelopeKeyProviderTest {
         kms = mock(KmsClient.class);
         wrappedDataKeySource = mock(WrappedDataKeySource.class);
         when(wrappedDataKeySource.describe()).thenReturn("/opt/symmetricds/security/kms-wrapped.key");
+        when(wrappedDataKeySource.isWritable()).thenReturn(true);
+        when(kms.describeKey(any(DescribeKeyRequest.class))).thenReturn(describedKey(CURRENT_KEY_ARN));
         provider = new AwsKmsEnvelopeKeyProvider(() -> kms, KEY_ID, wrappedDataKeySource);
     }
 
@@ -107,13 +118,13 @@ class AwsKmsEnvelopeKeyProviderTest {
     }
 
     @Test
-    void testGetSecretKey_withSavedKeyDecryptsWithKeyIdAndEncryptionContext() throws Exception {
+    void testGetSecretKey_withSavedKeyDecryptsWithEncryptionContextAndNoKeyId() throws Exception {
         when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
         when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY));
         provider.getSecretKey();
         ArgumentCaptor<DecryptRequest> request = ArgumentCaptor.forClass(DecryptRequest.class);
         verify(kms).decrypt(request.capture());
-        assertEquals(KEY_ID, request.getValue().keyId());
+        assertNull(request.getValue().keyId());
         assertArrayEquals(WRAPPED_KEY, request.getValue().ciphertextBlob().asByteArray());
         assertEquals(AwsKmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().encryptionContext());
     }
@@ -145,6 +156,69 @@ class AwsKmsEnvelopeKeyProviderTest {
     }
 
     @Test
+    void testGetSecretKey_whenKeyNotRotatedLeavesSavedKey() throws Exception {
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY));
+        provider.getSecretKey();
+        verify(kms, never()).reEncrypt(any(ReEncryptRequest.class));
+        verify(wrappedDataKeySource, never()).replace(any());
+    }
+
+    @Test
+    void testGetSecretKey_whenAliasPointsToNewKeyReEncryptsAndSavesSameDataKey() throws Exception {
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY, OLD_KEY_ARN));
+        when(kms.reEncrypt(any(ReEncryptRequest.class))).thenReturn(ReEncryptResponse.builder().ciphertextBlob(SdkBytes.fromByteArray(RE_ENCRYPTED_KEY))
+                .build());
+        assertArrayEquals(PLAIN_KEY, provider.getSecretKey().getEncoded());
+        ArgumentCaptor<ReEncryptRequest> request = ArgumentCaptor.forClass(ReEncryptRequest.class);
+        verify(kms).reEncrypt(request.capture());
+        assertEquals(CURRENT_KEY_ARN, request.getValue().destinationKeyId());
+        assertArrayEquals(WRAPPED_KEY, request.getValue().ciphertextBlob().asByteArray());
+        assertEquals(AwsKmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().sourceEncryptionContext());
+        assertEquals(AwsKmsEnvelopeKeyProvider.ENCRYPTION_CONTEXT, request.getValue().destinationEncryptionContext());
+        verify(wrappedDataKeySource).replace(RE_ENCRYPTED_KEY);
+    }
+
+    @Test
+    void testGetSecretKey_whenRotatedButKeySetInlineLeavesIt() throws Exception {
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(wrappedDataKeySource.isWritable()).thenReturn(false);
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY, OLD_KEY_ARN));
+        assertArrayEquals(PLAIN_KEY, provider.getSecretKey().getEncoded());
+        verify(kms, never()).reEncrypt(any(ReEncryptRequest.class));
+    }
+
+    @Test
+    void testGetSecretKey_whenReEncryptFailsStillReturnsKey() throws Exception {
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY, OLD_KEY_ARN));
+        KmsException accessDenied = (KmsException) KmsException.builder().message("access denied").build();
+        when(kms.reEncrypt(any(ReEncryptRequest.class))).thenThrow(accessDenied);
+        assertArrayEquals(PLAIN_KEY, provider.getSecretKey().getEncoded());
+        verify(wrappedDataKeySource, never()).replace(any());
+    }
+
+    @Test
+    void testGetSecretKey_whenDescribeKeyDeniedStillReturnsKey() throws Exception {
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY, OLD_KEY_ARN));
+        KmsException accessDenied = (KmsException) KmsException.builder().message("access denied").build();
+        when(kms.describeKey(any(DescribeKeyRequest.class))).thenThrow(accessDenied);
+        assertArrayEquals(PLAIN_KEY, provider.getSecretKey().getEncoded());
+        verify(kms, never()).reEncrypt(any(ReEncryptRequest.class));
+    }
+
+    @Test
+    void testGetSecretKey_withKeyArnConfiguredSkipsDescribeKey() throws Exception {
+        AwsKmsEnvelopeKeyProvider arnProvider = new AwsKmsEnvelopeKeyProvider(() -> kms, CURRENT_KEY_ARN, wrappedDataKeySource);
+        when(wrappedDataKeySource.read()).thenReturn(Optional.of(WRAPPED_KEY));
+        when(kms.decrypt(any(DecryptRequest.class))).thenReturn(decryptedDataKey(PLAIN_KEY));
+        arnProvider.getSecretKey();
+        verify(kms, never()).describeKey(any(DescribeKeyRequest.class));
+    }
+
+    @Test
     void testGetKeyIdentity_includesKeyIdAndSavedKeyLocation() {
         assertEquals("aws-kms:alias/symmetricds:/opt/symmetricds/security/kms-wrapped.key", provider.getKeyIdentity());
     }
@@ -173,7 +247,15 @@ class AwsKmsEnvelopeKeyProviderTest {
     }
 
     private DecryptResponse decryptedDataKey(byte[] plainKey) {
-        return DecryptResponse.builder().plaintext(SdkBytes.fromByteArray(plainKey)).build();
+        return decryptedDataKey(plainKey, CURRENT_KEY_ARN);
+    }
+
+    private DecryptResponse decryptedDataKey(byte[] plainKey, String keyArn) {
+        return DecryptResponse.builder().plaintext(SdkBytes.fromByteArray(plainKey)).keyId(keyArn).build();
+    }
+
+    private DescribeKeyResponse describedKey(String keyArn) {
+        return DescribeKeyResponse.builder().keyMetadata(KeyMetadata.builder().arn(keyArn).build()).build();
     }
 
     private static byte[] filled(byte value) {

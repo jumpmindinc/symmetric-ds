@@ -20,6 +20,7 @@
  */
 package org.jumpmind.security.aws;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -34,11 +35,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DataKeySpec;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
+import software.amazon.awssdk.services.kms.model.DecryptResponse;
+import software.amazon.awssdk.services.kms.model.DescribeKeyRequest;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyRequest;
 import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
+import software.amazon.awssdk.services.kms.model.ReEncryptRequest;
+import software.amazon.awssdk.services.kms.model.ReEncryptResponse;
 
 /**
  * Supplies an AES-256 secret key protected by an AWS KMS key, using envelope encryption: on first start KMS generates the data key and only its encrypted copy
@@ -48,6 +54,9 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyResponse;
  * Configured with {@link SecurityConstants#AWS_KMS_KEY_ID} and optionally {@link SecurityConstants#AWS_KMS_REGION} and
  * {@link SecurityConstants#AWS_KMS_ENDPOINT}. Credentials come from the AWS default provider chain, such as environment variables, a profile, an EC2 instance
  * role or EKS pod identity. Every KMS request carries {@link #ENCRYPTION_CONTEXT}, so the encrypted data key can only be decrypted for this purpose.
+ * <p>
+ * The key ID may be an alias. When the alias is pointed at a new KMS key, the saved copy is decrypted with the old key and re-encrypted under the new one,
+ * which needs kms:DescribeKey and kms:ReEncrypt* permissions as well as kms:Decrypt.
  */
 public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
     static final Map<String, String> ENCRYPTION_CONTEXT = Map.of("application", "symmetricds", "purpose", SecurityConstants.ALIAS_SYM_SECRET_KEY);
@@ -84,7 +93,7 @@ public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
         try (KmsClient kms = kmsClientSupplier.get()) {
             Optional<byte[]> wrappedKey = wrappedDataKeySource.read();
             if (wrappedKey.isPresent()) {
-                log.info("Decrypting the secret key from {} with AWS KMS key {}", wrappedDataKeySource.describe(), keyId);
+                log.info("Decrypting the secret key from {} with AWS KMS", wrappedDataKeySource.describe());
                 return decrypt(kms, wrappedKey.get());
             }
             return generate(kms);
@@ -106,9 +115,43 @@ public class AwsKmsEnvelopeKeyProvider implements ISecretKeyProvider {
         return decrypt(kms, savedKey);
     }
 
+    /**
+     * Leaves the key ID out of the request, because KMS reads it from the encrypted data key: after the alias in {@link SecurityConstants#AWS_KMS_KEY_ID} is
+     * pointed at a new KMS key, the saved copy can still be decrypted with the old one, and is then moved to the new one.
+     */
     private SecretKey decrypt(KmsClient kms, byte[] wrappedKey) {
-        return toSecretKey(kms.decrypt(DecryptRequest.builder().keyId(keyId).ciphertextBlob(SdkBytes.fromByteArray(wrappedKey))
-                .encryptionContext(ENCRYPTION_CONTEXT).build()).plaintext());
+        DecryptResponse response = kms.decrypt(DecryptRequest.builder().ciphertextBlob(SdkBytes.fromByteArray(wrappedKey)).encryptionContext(
+                ENCRYPTION_CONTEXT).build());
+        reEncryptIfKeyRotated(kms, wrappedKey, response.keyId());
+        return toSecretKey(response.plaintext());
+    }
+
+    /**
+     * Encrypts the same data key under the KMS key that {@link SecurityConstants#AWS_KMS_KEY_ID} names now, so the old KMS key can be retired. The secret key
+     * itself does not change, so values encrypted with it stay readable. A failure is logged rather than thrown, because the key was already decrypted.
+     */
+    private void reEncryptIfKeyRotated(KmsClient kms, byte[] wrappedKey, String usedKeyArn) {
+        if (usedKeyArn == null || usedKeyArn.equals(keyId)) {
+            return;
+        }
+        try {
+            String currentKeyArn = kms.describeKey(DescribeKeyRequest.builder().keyId(keyId).build()).keyMetadata().arn();
+            if (usedKeyArn.equals(currentKeyArn)) {
+                return;
+            }
+            if (!wrappedDataKeySource.isWritable()) {
+                log.warn("The secret key in {} is encrypted with AWS KMS key {}, but {} now names {}. Re-encrypt it under the new key and update the setting"
+                        + " before retiring the old key", wrappedDataKeySource.describe(), usedKeyArn, keyId, currentKeyArn);
+                return;
+            }
+            ReEncryptResponse response = kms.reEncrypt(ReEncryptRequest.builder().ciphertextBlob(SdkBytes.fromByteArray(wrappedKey)).sourceEncryptionContext(
+                    ENCRYPTION_CONTEXT).destinationKeyId(currentKeyArn).destinationEncryptionContext(ENCRYPTION_CONTEXT).build());
+            wrappedDataKeySource.replace(response.ciphertextBlob().asByteArray());
+            log.info("Re-encrypted the secret key in {} from AWS KMS key {} to {}", wrappedDataKeySource.describe(), usedKeyArn, currentKeyArn);
+        } catch (SdkException | IOException e) {
+            log.warn("Unable to move the secret key in {} from AWS KMS key {} to the key {} names now, so it still depends on the old key",
+                    wrappedDataKeySource.describe(), usedKeyArn, keyId, e);
+        }
     }
 
     private SecretKey toSecretKey(SdkBytes plaintext) {

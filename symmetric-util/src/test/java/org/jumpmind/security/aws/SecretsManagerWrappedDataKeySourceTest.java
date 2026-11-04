@@ -43,6 +43,7 @@ import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 import software.amazon.awssdk.services.secretsmanager.model.InvalidRequestException;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsException;
 import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 
@@ -102,6 +103,21 @@ class SecretsManagerWrappedDataKeySourceTest {
         when(client.createSecret(any(CreateSecretRequest.class))).thenThrow(ResourceExistsException.builder().message("exists").build());
         assertFalse(source.writeIfAbsent(WRAPPED_KEY));
         verify(client, times(1)).close();
+    }
+
+    @Test
+    void testReplace_addsNewSecretVersion() {
+        ArgumentCaptor<PutSecretValueRequest> request = ArgumentCaptor.forClass(PutSecretValueRequest.class);
+        source.replace(WRAPPED_KEY);
+        verify(client).putSecretValue(request.capture());
+        assertEquals(SECRET_NAME, request.getValue().secretId());
+        assertArrayEquals(WRAPPED_KEY, Base64.decodeBase64(request.getValue().secretString()));
+        verify(client).close();
+    }
+
+    @Test
+    void testIsWritable() {
+        assertTrue(source.isWritable());
     }
 
     @Test
