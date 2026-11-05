@@ -77,7 +77,7 @@ An environment variable applies to every engine hosted by that server.
 |SYM_CLUSTER_PARTITION_ID
 |generated
 |Yes
-|Must be identical on every member of one cluster and different between clusters that can reach each other on the network. When blank, each member generates a random value and stores it in `conf/cluster-partition.uuid`, which only matches across members when `conf` is a shared volume.
+|(Example: `12345678-1111-1111-1111-111111111111`) Must be identical on every member of one cluster and different between clusters that can reach each other on the network. When blank, each member generates a random value and stores it in `conf/cluster-partition.uuid`, which only matches across members when `conf` is a shared volume.
 
 |cluster.peer.discovery
 |SYM_CLUSTER_PEER_DISCOVERY
