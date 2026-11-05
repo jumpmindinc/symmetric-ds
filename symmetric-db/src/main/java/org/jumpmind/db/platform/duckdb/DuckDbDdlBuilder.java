@@ -36,6 +36,7 @@ public class DuckDbDdlBuilder extends AbstractDdlBuilder {
         super(DatabaseNamesConstants.DUCKDB);
         databaseInfo.setTriggersSupported(false);
         databaseInfo.setForeignKeysSupported(false);
+        databaseInfo.setLobStoredAsVarchar(true);
         databaseInfo.addNativeTypeMapping(Types.BIT, "BOOLEAN", Types.BOOLEAN);
         databaseInfo.addNativeTypeMapping(Types.LONGVARCHAR, VARCHAR, Types.VARCHAR);
         databaseInfo.addNativeTypeMapping(Types.LONGNVARCHAR, VARCHAR, Types.VARCHAR);

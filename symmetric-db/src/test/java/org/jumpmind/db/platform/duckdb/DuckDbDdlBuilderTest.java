@@ -22,6 +22,7 @@ package org.jumpmind.db.platform.duckdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Types;
 
@@ -46,6 +47,11 @@ class DuckDbDdlBuilderTest {
     void testConstructor_disablesUnsupportedFeatures() {
         assertFalse(databaseInfo.isTriggersSupported());
         assertFalse(databaseInfo.isForeignKeysSupported());
+    }
+
+    @Test
+    void testConstructor_storesLobsAsVarchar() {
+        assertTrue(databaseInfo.isLobStoredAsVarchar());
     }
 
     @Test
