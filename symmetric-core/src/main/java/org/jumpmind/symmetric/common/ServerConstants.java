@@ -106,5 +106,7 @@ public class ServerConstants {
             SecurityConstants.SYSPROP_KEY_MANAGER_FACTORY_ALGORITHM,
             HTTPS_ALLOW_SELF_SIGNED_CERTS,
             HTTPS_VERIFIED_SERVERS,
-            HTTPS2_ENABLE)).collect(Collectors.toUnmodifiableSet());
+            HTTPS_ENABLE,
+            HTTPS2_ENABLE,
+            SERVER_DISALLOW_HTTP_METHODS)).collect(Collectors.toUnmodifiableSet());
 }

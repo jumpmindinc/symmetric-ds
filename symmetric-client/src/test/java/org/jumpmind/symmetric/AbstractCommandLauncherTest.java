@@ -60,6 +60,8 @@ class AbstractCommandLauncherTest {
         clearSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
         clearSystemProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
         clearSystemProperty(ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS);
+        clearSystemProperty(ServerConstants.HTTPS_ENABLE);
+        clearSystemProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS);
         clearSystemProperty("test.unlisted.server.property");
     }
 
@@ -112,6 +114,34 @@ class AbstractCommandLauncherTest {
         StartupParameterService.getInstance().refreshSystemProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
         assertTrue(AbstractCommandLauncher.registerServerProperties(serverPropertiesFile, StartupParameterService.getInstance()));
         assertEquals("false", System.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
+    }
+
+    @Test
+    void registerServerProperties_httpSettingsInFile_areExportedToSystemProperties(@TempDir File tempDir) throws IOException {
+        File serverPropertiesFile = new File(tempDir, "symmetric-server.properties");
+        Properties fileContents = new Properties();
+        fileContents.setProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS, "OPTIONS,TRACE");
+        fileContents.setProperty(ServerConstants.HTTPS_ENABLE, "false");
+        try (FileOutputStream out = new FileOutputStream(serverPropertiesFile)) {
+            fileContents.store(out, null);
+        }
+        assertTrue(AbstractCommandLauncher.registerServerProperties(serverPropertiesFile, StartupParameterService.getInstance()));
+        assertEquals("OPTIONS,TRACE", System.getProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS));
+        assertEquals("false", System.getProperty(ServerConstants.HTTPS_ENABLE));
+    }
+
+    @Test
+    void registerServerProperties_disallowedHttpMethodsAlreadySet_keepsJvmValue(@TempDir File tempDir) throws IOException {
+        File serverPropertiesFile = new File(tempDir, "symmetric-server.properties");
+        Properties fileContents = new Properties();
+        fileContents.setProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS, "OPTIONS,TRACE");
+        try (FileOutputStream out = new FileOutputStream(serverPropertiesFile)) {
+            fileContents.store(out, null);
+        }
+        System.setProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS, "OPTIONS");
+        StartupParameterService.getInstance().refreshSystemProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS);
+        assertTrue(AbstractCommandLauncher.registerServerProperties(serverPropertiesFile, StartupParameterService.getInstance()));
+        assertEquals("OPTIONS", System.getProperty(ServerConstants.SERVER_DISALLOW_HTTP_METHODS));
     }
 
     @Test
