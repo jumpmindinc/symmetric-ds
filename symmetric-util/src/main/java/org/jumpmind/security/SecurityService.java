@@ -27,25 +27,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.TrustedCertificateEntry;
-import java.security.UnrecoverableKeyException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.AlgorithmParameterSpec;
-import org.jumpmind.util.ExceptionUtils;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.DESedeKeySpec;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.PBEParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.KeyManagerFactory;
 
 import org.apache.commons.codec.binary.Base64;
@@ -60,7 +54,12 @@ import org.slf4j.LoggerFactory;
  */
 public class SecurityService implements ISecurityService {
     protected Logger log = LoggerFactory.getLogger(getClass());
+    /**
+     * The key most recently fetched by any service in this JVM. Kept for subclasses outside this library that set or read it directly; this class uses the key
+     * cached for its own provider instead.
+     */
     protected static volatile SecretKey secretKey;
+    private static final ConcurrentMap<Object, SecretKey> SECRET_KEYS_BY_IDENTITY = new ConcurrentHashMap<>();
     protected static String keyStoreFileName;
     protected static URL keyStoreURL;
     protected static volatile boolean hasInitKeyStore;
@@ -68,6 +67,15 @@ public class SecurityService implements ISecurityService {
     protected static URL trustStoreURL;
     protected static SecureRandom random;
     protected static volatile boolean isKeystoreInitialized;
+    private final ISecretKeyProvider secretKeyProvider;
+    private final ISecretStore secretStore;
+    private final ITlsMaterialProvider tlsMaterialProvider;
+    private final ICertificateManager certificateManager;
+    private final IKeyStoreRepository keyStoreRepository;
+    private final boolean keyStoreRepositorySupplied;
+    private final boolean usesLocalKeyStore;
+    private final boolean usesLocalTrustStore;
+    private volatile SecretKey serviceSecretKey;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -86,7 +94,69 @@ public class SecurityService implements ISecurityService {
     }
 
     protected SecurityService() {
+        this(SecurityServiceParts.builder().build());
+    }
+
+    /**
+     * @param parts
+     *            the parts that replace the local keystore and truststore; parts left unset use them
+     */
+    protected SecurityService(SecurityServiceParts parts) {
         isKeystoreInitialized = false;
+        keyStoreRepository = parts.getKeyStoreRepository().orElseGet(LocalKeyStoreRepository::new);
+        keyStoreRepositorySupplied = parts.getKeyStoreRepository().isPresent();
+        secretKeyProvider = parts.getSecretKeyProvider().orElseGet(this::newKeystoreSecretKeyProvider);
+        secretStore = parts.getSecretStore().orElseGet(this::newKeystoreSecretStore);
+        tlsMaterialProvider = parts.getTlsMaterialProvider().orElseGet(this::newKeystoreTlsMaterialProvider);
+        certificateManager = parts.getCertificateManagerFactory().map(this::createCertificateManager).orElseGet(UnsupportedCertificateManager::new);
+        usesLocalTrustStore = !parts.getTlsMaterialProvider().isPresent();
+        usesLocalKeyStore = !keyStoreRepositorySupplied && (usesLocalTrustStore || !parts.getSecretKeyProvider().isPresent()
+                || !parts.getSecretStore().isPresent() || parts.getCertificateManagerFactory().isPresent());
+    }
+
+    private ICertificateManager createCertificateManager(SecurityServiceParts.CertificateManagerFactory factory) {
+        return Objects.requireNonNull(factory.create(keyStoreRepository, tlsMaterialProvider), "certificateManagerFactory returned null");
+    }
+
+    private KeystoreSecretKeyProvider newKeystoreSecretKeyProvider() {
+        return new KeystoreSecretKeyProvider(keyStoreRepository, random);
+    }
+
+    private KeystoreSecretStore newKeystoreSecretStore() {
+        return new KeystoreSecretStore(keyStoreRepository);
+    }
+
+    private KeystoreTlsMaterialProvider newKeystoreTlsMaterialProvider() {
+        return new KeystoreTlsMaterialProvider(keyStoreRepository, new LocalTrustStoreRepository(trustStoreFileName, trustStoreURL,
+                this::getTrustStorePassword));
+    }
+
+    protected ISecretKeyProvider getSecretKeyProvider() {
+        return secretKeyProvider;
+    }
+
+    protected ISecretStore getSecretStore() {
+        return secretStore;
+    }
+
+    protected ITlsMaterialProvider getTlsMaterialProvider() {
+        return tlsMaterialProvider;
+    }
+
+    protected ICertificateManager getCertificateManager() {
+        return certificateManager;
+    }
+
+    /**
+     * Fails fast when a deprecated keystore helper is called on a service whose secret key does not come from the local keystore, rather than quietly reading
+     * or generating a keystore key the service never uses.
+     */
+    private KeystoreSecretKeyProvider getKeystoreSecretKeyProvider() {
+        if (secretKeyProvider instanceof KeystoreSecretKeyProvider) {
+            return (KeystoreSecretKeyProvider) secretKeyProvider;
+        }
+        throw new NotImplementedException(String.format("%s gets its secret key from %s, not the local keystore", getClass().getSimpleName(),
+                secretKeyProvider.getClass().getSimpleName()));
     }
 
     @Override
@@ -95,23 +165,33 @@ public class SecurityService implements ISecurityService {
             log.debug("Already initialized. Key store={}", keyStoreURL);
             return;
         }
-        if (keyStoreFileName == null) {
-            log.debug("Using keystore from classpath {}", keyStoreURL);
-            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
-                    + SecurityConstants.SYSPROP_KEYSTORE);
-        } else {
-            log.info("Using keystore from file {}", keyStoreFileName);
+        if (usesLocalKeyStore) {
+            requireKeyStoreFile();
         }
-        if (trustStoreFileName == null) {
-            log.debug("Using truststore from classpath {}", trustStoreURL);
-            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
-                    + SecurityConstants.SYSPROP_TRUSTSTORE);
-        } else {
-            log.info("Using truststore from file {}", trustStoreFileName);
+        if (usesLocalTrustStore) {
+            requireTrustStoreFile();
         }
         long secureRandom = nextSecureLong();
         log.debug("Confirmed secure random is available. Result={}. Running keystore integrity check...", secureRandom);
         isKeystoreInitialized = validateKeystoreIntegrity();
+    }
+
+    private void requireKeyStoreFile() {
+        if (keyStoreFileName == null) {
+            log.debug("Using keystore from classpath {}", keyStoreURL);
+            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
+                    + SecurityConstants.SYSPROP_KEYSTORE);
+        }
+        log.info("Using keystore from file {}", keyStoreFileName);
+    }
+
+    private void requireTrustStoreFile() {
+        if (trustStoreFileName == null) {
+            log.debug("Using truststore from classpath {}", trustStoreURL);
+            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
+                    + SecurityConstants.SYSPROP_TRUSTSTORE);
+        }
+        log.info("Using truststore from file {}", trustStoreFileName);
     }
 
     @Override
@@ -132,28 +212,18 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public KeyStore getTrustStore() {
-        try {
-            String keyStoreType = System.getProperty(SecurityConstants.SYSPROP_TRUSTSTORE_TYPE, KeyStore.getDefaultType());
-            KeyStore ks = KeyStore.getInstance(keyStoreType);
-            if (trustStoreFileName != null) {
-                try (FileInputStream is = new FileInputStream(trustStoreFileName)) {
-                    ks.load(is, getTrustStorePassword().toCharArray());
-                }
-            } else if (trustStoreURL != null) {
-                try (InputStream is = trustStoreURL.openStream()) {
-                    ks.load(is, getTrustStorePassword().toCharArray());
-                }
-            }
-            return ks;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return tlsMaterialProvider.getTrustStore();
     }
 
+    /**
+     * @return the keystore from the repository this service was built with, or else from the local keystore file
+     */
     @Override
     public KeyStore getKeyStore() {
+        return keyStoreRepositorySupplied ? keyStoreRepository.load() : loadKeyStoreFile();
+    }
+
+    private KeyStore loadKeyStoreFile() {
         try {
             checkThatKeystoreFileExists();
             String keyStoreType = getKeyStoreType();
@@ -209,111 +279,92 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public KeyManagerFactory getKeyManagerFactory() {
-        KeyManagerFactory keyManagerFactory;
-        try {
-            keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerFactoryAlgorithm());
-            keyManagerFactory.init(getKeyStore(), getKeyStorePassword().toCharArray());
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return keyManagerFactory;
+        return tlsMaterialProvider.getKeyManagerFactory();
     }
 
     @Override
     public void installTrustedCert(TrustedCertificateEntry entry) {
-        try {
-            KeyStore keyStore = getTrustStore();
-            String alias = keyStore.getCertificateAlias(entry.getTrustedCertificate());
-            if (alias == null) {
-                alias = String.valueOf(entry.getTrustedCertificate().hashCode());
-                keyStore.setEntry(alias, entry, null);
-                log.info("Installing trusted certificate: {}",
-                        ((X509Certificate) entry.getTrustedCertificate()).getSubjectX500Principal().getName());
-                saveTrustStore(keyStore);
-            } else {
-                log.info("Trusted certificate already installed: {}",
-                        ((X509Certificate) entry.getTrustedCertificate()).getSubjectX500Principal().getName());
-            }
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        tlsMaterialProvider.installTrustedCert(entry);
     }
 
     @Override
     public TrustedCertificateEntry createTrustedCert(byte[] content, String fileType, String alias, String password) {
-        return null;
+        return certificateManager.createTrustedCert(content, fileType, alias, password);
     }
 
     @Override
     public void installDefaultSslCert(String host) {
+        certificateManager.installDefaultSslCert(host);
     }
 
     @Override
     public void installDefaultSamlSslCert(String host, int lifetimeInDays) {
+        certificateManager.installDefaultSamlSslCert(host, lifetimeInDays);
     }
 
     @Override
     public void installSslCert(KeyStore.PrivateKeyEntry entry) {
-        throw new NotImplementedException();
+        certificateManager.installSslCert(entry);
     }
 
     @Override
     public void installSslCert(KeyStore.PrivateKeyEntry entry, String alias) {
-        throw new NotImplementedException();
+        certificateManager.installSslCert(entry, alias);
     }
 
     @Override
     public KeyStore.PrivateKeyEntry createDefaultSslCert(String host) {
-        throw new NotImplementedException();
+        return certificateManager.createDefaultSslCert(host);
     }
 
     @Override
     public KeyStore.PrivateKeyEntry createSslCert(byte[] content, String fileType, String alias, String password) {
-        throw new NotImplementedException();
+        return certificateManager.createSslCert(content, fileType, alias, password);
     }
 
     @Override
     public X509Certificate getCurrentSslCert() {
-        throw new NotImplementedException();
+        return certificateManager.getCurrentSslCert();
     }
 
     @Override
     public X509Certificate getCurrentSamlSslCert() {
-        throw new NotImplementedException();
+        return certificateManager.getCurrentSamlSslCert();
     }
 
     @Override
     public String exportCurrentSslCert(boolean includePrivateKey) {
-        throw new NotImplementedException();
+        return certificateManager.exportCurrentSslCert(includePrivateKey);
     }
 
     @Override
     public String exportTrustedCert(String alias) {
-        throw new NotImplementedException();
+        return certificateManager.exportTrustedCert(alias);
+    }
+
+    @Override
+    public void deleteCertificate(String alias) throws Exception {
+        certificateManager.deleteCertificate(alias);
     }
 
     @Override
     public boolean supportsExportCertificate() {
-        return false;
+        return certificateManager.supportsExportCertificate();
     }
 
     @Override
     public boolean supportsImportCertificate() {
-        return false;
+        return certificateManager.supportsImportCertificate();
     }
 
     @Override
     public boolean supportsBackupCertificate() {
-        return false;
+        return certificateManager.supportsBackupCertificate();
     }
 
     @Override
     public boolean supportsGenerateSelfSignedCertificate() {
-        return false;
+        return certificateManager.supportsGenerateSelfSignedCertificate();
     }
 
     protected void checkThatKeystoreFileExists() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
@@ -335,7 +386,6 @@ public class SecurityService implements ISecurityService {
     @Override
     public String encrypt(String plainText) {
         try {
-            checkThatKeystoreFileExists();
             byte[] bytes = plainText.getBytes(SecurityConstants.CHARSET);
             byte[] enc = getCipher(Cipher.ENCRYPT_MODE).doFinal(bytes);
             return new String(Base64.encodeBase64(enc), SecurityConstants.CHARSET);
@@ -349,7 +399,6 @@ public class SecurityService implements ISecurityService {
     @Override
     public String decrypt(String encText) {
         try {
-            checkThatKeystoreFileExists();
             byte[] dec = Base64.decodeBase64(encText.getBytes(Charset.defaultCharset()));
             byte[] bytes = getCipher(Cipher.DECRYPT_MODE).doFinal(dec);
             return new String(bytes, SecurityConstants.CHARSET);
@@ -367,20 +416,28 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public String unobfuscate(String obfText) {
+        return deobfuscate(obfText);
+    }
+
+    private static String deobfuscate(String obfText) {
         return new String(rot13(new String(Base64.decodeBase64(obfText.getBytes(Charset.defaultCharset())), Charset.defaultCharset())));
     }
 
     @Override
     public String unobfuscateIfNeeded(String systemPropertyName) {
+        return unobfuscateSystemProperty(systemPropertyName);
+    }
+
+    private static String unobfuscateSystemProperty(String systemPropertyName) {
         String value = System.getProperty(systemPropertyName);
         if (value != null && value.startsWith(SecurityConstants.PREFIX_OBF)) {
-            value = unobfuscate(value.substring(SecurityConstants.PREFIX_OBF.length()));
+            value = deobfuscate(value.substring(SecurityConstants.PREFIX_OBF.length()));
             System.setProperty(systemPropertyName, value);
         }
         return value;
     }
 
-    private String rot13(String text) {
+    private static String rot13(String text) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
@@ -397,28 +454,25 @@ public class SecurityService implements ISecurityService {
     @Override
     public Cipher getCipher(int mode) throws Exception {
         initializeSecretKey();
-        Cipher cipher = Cipher.getInstance(secretKey.getAlgorithm());
+        SecretKey key = getActiveSecretKey();
+        Cipher cipher = Cipher.getInstance(key.getAlgorithm());
         initializeCipher(cipher, mode);
         if (log.isDebugEnabled()) {
             log.debug("Using {} algorithm {}-bit provided by {}.", cipher.getAlgorithm(),
-                    secretKey.getEncoded().length * 8, cipher.getProvider().getName());
+                    key.getEncoded().length * 8, cipher.getProvider().getName());
         }
         return cipher;
     }
 
     protected void initializeCipher(Cipher cipher, int mode) throws Exception {
-        AlgorithmParameterSpec paramSpec = Cipher.getMaxAllowedParameterSpec(cipher.getAlgorithm());
-        if (paramSpec instanceof PBEParameterSpec || cipher.getAlgorithm().startsWith("PBE")) {
-            paramSpec = new PBEParameterSpec(SecurityConstants.SALT, SecurityConstants.ITERATION_COUNT);
-            cipher.init(mode, secretKey, paramSpec);
-        } else if (paramSpec instanceof IvParameterSpec) {
-            byte[] iv = new byte[8];
-            random.nextBytes(iv);
-            paramSpec = new IvParameterSpec(iv);
-            cipher.init(mode, secretKey, paramSpec);
-        } else {
-            cipher.init(mode, secretKey);
-        }
+        CipherInitializer.initialize(cipher, mode, getActiveSecretKey(), random);
+    }
+
+    /**
+     * @return the key fetched for this service's provider, or the shared {@link #secretKey} when a subclass's own {@link #initializeSecretKey()} set only that
+     */
+    private SecretKey getActiveSecretKey() {
+        return serviceSecretKey != null ? serviceSecretKey : secretKey;
     }
 
     protected String getTrustStorePassword() {
@@ -426,103 +480,99 @@ public class SecurityService implements ISecurityService {
     }
 
     protected String getKeyStorePassword() {
-        return StringUtils.defaultIfBlank(unobfuscateIfNeeded(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
+        return getConfiguredKeyStorePassword();
     }
 
+    /**
+     * @return the password from {@link SecurityConstants#SYSPROP_KEYSTORE_PASSWORD}, unobfuscated, or the default password when it is not set
+     */
+    public static String getConfiguredKeyStorePassword() {
+        return StringUtils.defaultIfBlank(unobfuscateSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD), SecurityConstants.KEYSTORE_PASSWORD);
+    }
+
+    /**
+     * @deprecated Overriding this no longer changes which algorithm {@link #getKeyManagerFactory()} uses. Supply an {@link ITlsMaterialProvider} instead.
+     * @throws NotImplementedException
+     *             when TLS material does not come from the local keystore
+     */
+    @Deprecated
     protected String getKeyManagerFactoryAlgorithm() {
-        String algorithm = System.getProperty(SecurityConstants.SYSPROP_KEY_MANAGER_FACTORY_ALGORITHM);
-        if (algorithm == null) {
-            algorithm = KeyManagerFactory.getDefaultAlgorithm();
+        if (tlsMaterialProvider instanceof KeystoreTlsMaterialProvider) {
+            return ((KeystoreTlsMaterialProvider) tlsMaterialProvider).getKeyManagerFactoryAlgorithm();
         }
-        if (algorithm == null) {
-            algorithm = "SunX509";
-        }
-        return algorithm;
+        throw new NotImplementedException(String.format("%s gets TLS material from %s, not the local keystore", getClass().getSimpleName(),
+                tlsMaterialProvider.getClass().getSimpleName()));
     }
 
+    /**
+     * Fetches the key from this service's provider once per JVM for each {@link ISecretKeyProvider#getKeyIdentity()}, so services built with different
+     * providers never share a key.
+     */
     protected void initializeSecretKey() throws Exception {
-        if (secretKey == null) {
+        if (serviceSecretKey == null) {
             synchronized (SecurityService.class) {
-                if (secretKey == null) {
-                    String password = getKeyStorePassword();
-                    KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password.toCharArray());
-                    KeyStore ks = getKeyStore();
-                    KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) ks.getEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, param);
-                    if (entry == null) {
-                        String seed = resolveConfiguredSeed();
-                        SecretKey key = StringUtils.isNotBlank(seed) ? createSecretKeyFromSeed(seed) : getDefaultSecretKey();
-                        entry = new KeyStore.SecretKeyEntry(key);
-                        ks.setEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, entry, param);
-                        saveKeyStore(ks, password);
-                    } else {
-                        log.debug("Retrieving secret key");
+                if (serviceSecretKey == null) {
+                    Object identity = secretKeyProvider.getKeyIdentity();
+                    SecretKey key = SECRET_KEYS_BY_IDENTITY.get(identity);
+                    if (key == null) {
+                        key = secretKeyProvider.getSecretKey();
+                        SECRET_KEYS_BY_IDENTITY.put(identity, key);
                     }
-                    secretKey = entry.getSecretKey();
-                    log.info("Initialized with {} {}-bit", entry.getSecretKey().getAlgorithm(), entry.getSecretKey().getEncoded().length * 8);
+                    serviceSecretKey = key;
+                    secretKey = key;
                 }
             }
         }
     }
 
+    static void clearSecretKeyCache() {
+        SECRET_KEYS_BY_IDENTITY.clear();
+        secretKey = null;
+    }
+
+    /**
+     * @deprecated Overriding this no longer changes how the secret key is created. Supply an {@link ISecretKeyProvider} instead.
+     * @throws NotImplementedException
+     *             when the secret key does not come from the local keystore
+     */
+    @Deprecated
     protected String resolveConfiguredSeed() {
-        String seed = System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
-        if (StringUtils.isBlank(seed)) {
-            String legacy = System.getProperty(SecurityConstants.ALIAS_SYM_SECRET_KEY);
-            if (StringUtils.isNotBlank(legacy)) {
-                log.warn("System property -D{} as a key seed is deprecated; use -D{} instead",
-                        SecurityConstants.ALIAS_SYM_SECRET_KEY, SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
-                seed = legacy;
-            }
-        }
-        return seed;
+        return getKeystoreSecretKeyProvider().resolveConfiguredSeed();
     }
 
+    /**
+     * @deprecated Overriding this no longer changes how the secret key is created. Supply an {@link ISecretKeyProvider} instead.
+     * @throws NotImplementedException
+     *             when the secret key does not come from the local keystore
+     */
+    @Deprecated
     protected SecretKey createSecretKeyFromSeed(String base64Seed) {
-        byte[] keyBytes = Base64.decodeBase64(base64Seed);
-        if (!isValidAesKeyLength(keyBytes)) {
-            log.error("Invalid value for system property {}: expected a Base64-encoded 16, 24, or 32-byte AES key, but decoded to {} bytes",
-                    SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED, keyBytes.length);
-            System.exit(1);
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("Using configured secret key. Length={} bytes", keyBytes.length);
-        } else {
-            log.info("Using configured secret key");
-        }
-        return new SecretKeySpec(keyBytes, "AES");
+        return getKeystoreSecretKeyProvider().createSecretKeyFromSeed(base64Seed);
     }
 
+    /**
+     * @deprecated Overriding this no longer changes how the secret key is created. Supply an {@link ISecretKeyProvider} instead.
+     * @throws NotImplementedException
+     *             when the secret key does not come from the local keystore
+     */
+    @Deprecated
     protected boolean isValidAesKeyLength(byte[] keyBytes) {
-        return keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32;
+        return getKeystoreSecretKeyProvider().isValidAesKeyLength(keyBytes);
     }
 
     @Override
     public String getKeystoreEntry(String alias) throws Exception {
-        String password = getKeyStorePassword();
-        KeyStore ks = getKeyStore();
-        Key entry = ks.getKey(alias, password.toCharArray());
-        return entry == null ? null : new String(entry.getEncoded());
+        return secretStore.getEntry(alias);
     }
 
     @Override
     public void setKeystoreEntry(String alias, String value) throws Exception {
-        String password = getKeyStorePassword();
-        SecretKey mySecretKey = new SecretKeySpec(value.getBytes(), "AES");
-        KeyStore ks = getKeyStore();
-        ks.setKeyEntry(alias, mySecretKey, password.toCharArray(), null);
-        saveKeyStore(ks, password);
+        secretStore.setEntry(alias, value);
     }
 
     @Override
     public void deleteKeystoreEntry(String alias) throws Exception {
-        String password = getKeyStorePassword();
-        KeyStore ks = getKeyStore();
-        try {
-            ks.deleteEntry(alias);
-        } catch (KeyStoreException e) {
-            log.info("Unable to delete keystore entry with name {}", alias);
-        }
-        saveKeyStore(ks, password);
+        secretStore.deleteEntry(alias);
     }
 
     @Override
@@ -543,54 +593,35 @@ public class SecurityService implements ISecurityService {
         return random.nextLong();
     }
 
+    /**
+     * @deprecated Overriding this no longer changes how the secret key is created. Supply an {@link ISecretKeyProvider} instead.
+     * @throws NotImplementedException
+     *             when the secret key does not come from the local keystore
+     */
+    @Deprecated
     protected SecretKey getDefaultSecretKey() throws Exception {
-        for (int i = 0; i < SecurityConstants.CIPHERS.length; i++) {
-            try {
-                if (SecurityConstants.CIPHERS[i].startsWith("DESede")) {
-                    SecretKeyFactory kf = SecretKeyFactory.getInstance(SecurityConstants.KEYSPECS[i]);
-                    secretKey = kf.generateSecret(new DESedeKeySpec(getBytes(SecurityConstants.BYTESIZES[i])));
-                } else {
-                    secretKey = new SecretKeySpec(getBytes(SecurityConstants.BYTESIZES[i]), SecurityConstants.KEYSPECS[i]);
-                }
-                initializeCipher(Cipher.getInstance(SecurityConstants.CIPHERS[i]), Cipher.ENCRYPT_MODE);
-                log.info("Generated secret key using {} {}", SecurityConstants.CIPHERS[i],
-                        SecurityConstants.BYTESIZES[i] * 8);
-                break;
-            } catch (Exception e) {
-                log.debug("Cannot use {} {}-bit because: {}", SecurityConstants.CIPHERS[i],
-                        SecurityConstants.BYTESIZES[i] * 8, e.getMessage());
-            }
-        }
-        return secretKey;
+        return getKeystoreSecretKeyProvider().generateDefaultSecretKey();
     }
 
+    /**
+     * @deprecated Overriding this no longer changes how the secret key is created. Supply an {@link ISecretKeyProvider} instead.
+     * @throws NotImplementedException
+     *             when the secret key does not come from the local keystore
+     */
+    @Deprecated
     protected byte[] getBytes(int byteSize) {
-        byte[] bytes = new byte[byteSize];
-        if (keyStoreFileName != null) {
-            log.info("Using random bytes for secret key");
-            random.nextBytes(bytes);
-        } else {
-            log.info("Using keystore password as bytes for secret key");
-            byte[] password = getKeyStorePassword().getBytes(Charset.defaultCharset());
-            for (int i = 0; i < byteSize; i++) {
-                bytes[i] = password[i < password.length ? i : password.length - 1];
-            }
-        }
-        return bytes;
+        return getKeystoreSecretKeyProvider().getKeyBytes(byteSize);
     }
 
     @Override
     public void saveTrustStore(KeyStore ks) throws Exception {
-        if (trustStoreFileName != null) {
-            log.info("Saving truststore {}", trustStoreFileName);
-            try (FileOutputStream os = new FileOutputStream(trustStoreFileName)) {
-                ks.store(os, getTrustStorePassword().toCharArray());
-            }
-        }
+        tlsMaterialProvider.saveTrustStore(ks);
     }
 
     protected void saveKeyStore(KeyStore ks, String password) throws Exception {
-        if (keyStoreFileName != null) {
+        if (keyStoreRepositorySupplied) {
+            keyStoreRepository.save(ks);
+        } else if (keyStoreFileName != null) {
             log.info("Saving keystore {}", keyStoreFileName);
             try {
                 FileUtils.copyFile(new File(keyStoreFileName), new File(keyStoreFileName + ".bak"));
@@ -600,6 +631,32 @@ public class SecurityService implements ISecurityService {
             try (FileOutputStream os = new FileOutputStream(keyStoreFileName)) {
                 ks.store(os, password.toCharArray());
             }
+        }
+    }
+
+    /**
+     * Adapts this service's overridable keystore methods to {@link IKeyStoreRepository}, so subclasses that override {@link #getKeyStore()} or
+     * {@link #saveKeyStore(KeyStore, String)} still control where the secret key, keystore entries and TLS key material are read and stored.
+     */
+    private class LocalKeyStoreRepository implements IKeyStoreRepository {
+        @Override
+        public KeyStore load() {
+            return getKeyStore();
+        }
+
+        @Override
+        public void save(KeyStore keyStore) throws Exception {
+            saveKeyStore(keyStore, getKeyStorePassword());
+        }
+
+        @Override
+        public String getPassword() {
+            return getKeyStorePassword();
+        }
+
+        @Override
+        public boolean isPersistent() {
+            return keyStoreFileName != null;
         }
     }
 }

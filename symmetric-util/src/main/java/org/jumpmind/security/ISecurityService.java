@@ -92,6 +92,17 @@ public interface ISecurityService {
 
     public void deleteKeystoreEntry(String alias) throws Exception;
 
+    /**
+     * Removes the node's own certificate and private key stored under the alias, such as the SSL certificate or
+     * {@link SecurityConstants#ALIAS_SAML_PRIVATE_KEY} before the SAML certificate is rotated. Trusted certificates in the truststore are not affected. Use
+     * this rather than {@link #deleteKeystoreEntry(String)}, which removes stored secret values and may use a different backend.
+     * <p>
+     * The default calls {@link #deleteKeystoreEntry(String)}, which is where certificates were removed before this method existed.
+     */
+    public default void deleteCertificate(String alias) throws Exception {
+        deleteKeystoreEntry(alias);
+    }
+
     public boolean supportsExportCertificate();
 
     public boolean supportsImportCertificate();

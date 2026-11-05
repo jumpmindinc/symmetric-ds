@@ -56,4 +56,11 @@ public class SecurityConstants {
     public static final String EMBEDDED_WEBSERVER_DEFAULT_ROLE = "symmetric";
     public static final String AZURE_KEYVAULT_URI = "azure.keyvault.uri";
     public static final String AZURE_CREDENTIAL_BUILDER_CLASSNAME = "azure.credential.builder.classname";
+    public static final String AWS_KMS_KEY_ID = "aws.kms.key.id";
+    public static final String AWS_KMS_REGION = "aws.kms.region";
+    public static final String AWS_KMS_ENDPOINT = "aws.kms.endpoint";
+    public static final String AWS_KMS_WRAPPED_KEY = "aws.kms.wrapped.key";
+    public static final String AWS_KMS_WRAPPED_KEY_FILE = "aws.kms.wrapped.key.file";
+    public static final String AWS_SECRETS_MANAGER_PREFIX = "aws.secretsmanager.prefix";
+    public static final String AWS_SECRETS_MANAGER_ENDPOINT = "aws.secretsmanager.endpoint";
 }

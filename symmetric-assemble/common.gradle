@@ -343,6 +343,7 @@ subprojects { subproject ->
         jtdsVersion = '1.3.1'
         bouncyCastleVersion = '1.86'
         animalSnifferVersion = '1.23'
+        awsSdkVersion = '2.54.2'
         jnaVersion = '5.14.0'
         jettyVersion = '12.1.12'
         websocketVersion = '2.2.0'
