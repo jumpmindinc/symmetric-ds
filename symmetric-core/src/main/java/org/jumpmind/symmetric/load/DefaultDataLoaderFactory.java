@@ -57,7 +57,6 @@ import org.jumpmind.symmetric.io.data.writer.Conflict.PingBack;
 import org.jumpmind.symmetric.io.data.writer.Conflict.ResolveConflict;
 import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.io.data.writer.DefaultTransformWriterConflictResolver;
-import org.jumpmind.symmetric.io.data.writer.DuckDbDatabaseWriter;
 import org.jumpmind.symmetric.io.data.writer.DynamicDefaultDatabaseWriter;
 import org.jumpmind.symmetric.io.data.writer.IDatabaseWriterErrorHandler;
 import org.jumpmind.symmetric.io.data.writer.IDatabaseWriterFilter;
@@ -325,10 +324,6 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                     targetTableMap.put(tableKey, table);
                 }
             };
-        } else if (DatabaseNamesConstants.DUCKDB.equals(targetPlatform.getName())) {
-            writer = new DuckDbDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
-                    symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings,
-                            resolvedData));
         } else {
             writer = new DynamicDefaultDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
                     symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings,

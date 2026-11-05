@@ -145,6 +145,10 @@ public class DatabaseInfo {
      */
     private boolean autoCommitModeForLastIdentityValueReading = true;
     /**
+     * Whether CLOB columns are stored as an unsized VARCHAR, so they can't be told apart from ordinary string columns.
+     */
+    private boolean lobStoredAsVarchar = false;
+    /**
      * Specifies the maximum length that a table name can have for this database (-1 if there is no limit).
      */
     private int maxTableNameLength = -1;
@@ -808,6 +812,25 @@ public class DatabaseInfo {
     public void setAutoCommitModeForLastIdentityValueReading(
             boolean autoCommitModeForLastIdentityValueReading) {
         this.autoCommitModeForLastIdentityValueReading = autoCommitModeForLastIdentityValueReading;
+    }
+
+    /**
+     * Determines whether CLOB columns are stored as an unsized VARCHAR, so they can't be told apart from ordinary string columns.
+     * 
+     * @return <code>true</code> if CLOB columns are stored as VARCHAR
+     */
+    public boolean isLobStoredAsVarchar() {
+        return lobStoredAsVarchar;
+    }
+
+    /**
+     * Specifies whether CLOB columns are stored as an unsized VARCHAR, so they can't be told apart from ordinary string columns.
+     * 
+     * @param lobStoredAsVarchar
+     *            <code>true</code> if CLOB columns are stored as VARCHAR
+     */
+    public void setLobStoredAsVarchar(boolean lobStoredAsVarchar) {
+        this.lobStoredAsVarchar = lobStoredAsVarchar;
     }
 
     /**
