@@ -235,10 +235,11 @@ class UpdateServiceTest {
     }
 
     @Test
-    void testUpdateUrlsUseStatusAndDownloadsHosts() throws MalformedURLException {
+    void testUpdateUrlsUseDownloadsHostFirstAndStatusHostAsBackup() throws MalformedURLException {
         UpdateService defaultUrlService = new UpdateService(engine);
-        assertEquals("https://status.symmetricds.org/api/getlatest.php", defaultUrlService.getUpdateUrl().toString());
-        assertEquals("https://downloads.jumpmind.com/api/getlatest.php", defaultUrlService.getBackupUpdateUrl().toString());
+        assertEquals("https://downloads.jumpmind.com/api/v1/status/symmetricds/latest?edition=ce&name=symmetric-server",
+                defaultUrlService.getUpdateUrl().toString());
+        assertEquals("https://status.symmetricds.org/api/getlatest.php", defaultUrlService.getBackupUpdateUrl().toString());
     }
 
     @Test

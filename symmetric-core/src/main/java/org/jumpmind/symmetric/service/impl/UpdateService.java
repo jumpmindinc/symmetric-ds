@@ -72,7 +72,8 @@ public class UpdateService extends AbstractService implements IUpdateService {
     protected static final int READ_TIMEOUT_MILLIS = 30000;
     protected static final String JUMPMIND_DOMAIN = "jumpmind.com";
     protected static final String SYMMETRICDS_DOMAIN = "symmetricds.org";
-    protected static final String UPDATE_PATH = "/api/getlatest.php";
+    protected static final String LEGACY_UPDATE_PATH = "/api/getlatest.php";
+    protected static final String LATEST_STATUS_PATH = "/api/v1/status/symmetricds/latest";
     protected static final Pattern VERSION_PATTERN = Pattern.compile("\\d+(\\.\\d+){1,3}(-[A-Za-z0-9]+)?");
     protected ISymmetricEngine engine;
     protected boolean sendUsage;
@@ -375,15 +376,19 @@ public class UpdateService extends AbstractService implements IUpdateService {
     }
 
     protected URL getUpdateUrl() throws MalformedURLException {
-        return toUpdateUrl("status." + SYMMETRICDS_DOMAIN);
+        return toUpdateUrl("downloads." + JUMPMIND_DOMAIN, toLatestStatusPath("ce", "symmetric-server"));
     }
 
     protected URL getBackupUpdateUrl() throws MalformedURLException {
-        return toUpdateUrl("downloads." + JUMPMIND_DOMAIN);
+        return toUpdateUrl("status." + SYMMETRICDS_DOMAIN, LEGACY_UPDATE_PATH);
     }
 
-    protected static URL toUpdateUrl(String host) throws MalformedURLException {
-        return URI.create("https://" + host + UPDATE_PATH).toURL();
+    protected static String toLatestStatusPath(String edition, String name) {
+        return LATEST_STATUS_PATH + "?edition=" + edition + "&name=" + name;
+    }
+
+    protected static URL toUpdateUrl(String host, String pathAndQuery) throws MalformedURLException {
+        return URI.create("https://" + host + pathAndQuery).toURL();
     }
 
     public boolean isNewVersionAvailable() {
