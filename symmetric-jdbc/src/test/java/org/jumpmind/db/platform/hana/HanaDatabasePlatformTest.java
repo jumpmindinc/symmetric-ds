@@ -5,7 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.Types;
@@ -43,8 +48,23 @@ class HanaDatabasePlatformTest {
     }
 
     @Test
-    void testGetDefaultSchema() {
-        assertNull(platform.getDefaultSchema());
+    void testGetDefaultSchema_returnsConnectionCurrentSchema() {
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(sqlTemplate.queryForObject("select current_schema from dummy", String.class)).thenReturn("SYM");
+        HanaDatabasePlatform platformWithSchema = spy(platform);
+        doReturn(sqlTemplate).when(platformWithSchema).getSqlTemplate();
+        assertEquals("SYM", platformWithSchema.getDefaultSchema());
+    }
+
+    @Test
+    void testGetDefaultSchema_queriesDatabaseOnlyOnce() {
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(sqlTemplate.queryForObject("select current_schema from dummy", String.class)).thenReturn("SYM");
+        HanaDatabasePlatform platformWithSchema = spy(platform);
+        doReturn(sqlTemplate).when(platformWithSchema).getSqlTemplate();
+        platformWithSchema.getDefaultSchema();
+        platformWithSchema.getDefaultSchema();
+        verify(sqlTemplate, times(1)).queryForObject("select current_schema from dummy", String.class);
     }
 
     @Test

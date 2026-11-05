@@ -104,6 +104,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public synchronized void unregisterEngine(ISymmetricEngine engine, ClusteredEngineState finalEngineState) {
+        if (engine == null || engine.getParameterService() == null) {
+            return;
+        }
         String engineName = engine.getEngineName();
         registeredEngines.remove(engineName);
         engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), finalEngineState);

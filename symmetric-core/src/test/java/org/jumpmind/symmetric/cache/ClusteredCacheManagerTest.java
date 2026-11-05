@@ -1453,6 +1453,27 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void unregisterEngine_engineWithoutParameterService_returnsWithoutChangingRegisteredEngines() {
+        ISymmetricEngine uninitializedEngine = mock(ISymmetricEngine.class);
+        when(uninitializedEngine.getEngineName()).thenThrow(new NullPointerException("parameterService is null"));
+        manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
+        assertDoesNotThrow(() -> manager.unregisterEngine(uninitializedEngine, ClusteredEngineState.STOPPED));
+        assertEquals(1, registeredEnginesMap.size());
+        assertSame(mockEngine, registeredEnginesMap.get(ENGINE_1));
+        assertEquals(ClusteredEngineState.STARTING, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
+        verify(uninitializedEngine, never()).getEngineName();
+    }
+
+    @Test
+    void unregisterEngine_nullEngine_returnsWithoutChangingRegisteredEngines() {
+        manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
+        assertDoesNotThrow(() -> manager.unregisterEngine(null, ClusteredEngineState.STOPPED));
+        assertEquals(1, registeredEnginesMap.size());
+        assertSame(mockEngine, registeredEnginesMap.get(ENGINE_1));
+        assertEquals(ClusteredEngineState.STARTING, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
+    }
+
+    @Test
     void unregisterEngine_recordsCustomFinalState() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         manager.unregisterEngine(mockEngine, ClusteredEngineState.FAILED);
