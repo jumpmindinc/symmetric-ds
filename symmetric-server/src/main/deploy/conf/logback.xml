@@ -21,7 +21,7 @@
     <logger name="com.mangofactory.swagger.filters.AnnotatedParameterFilter" level="ERROR" />
     <logger name="org.eclipse.jetty.util.ssl.SslContextFactory" level="ERROR" />
     <logger name="org.jumpmind.symmetric.util.PropertiesFactoryBean" level="ERROR" />
-    <logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="WARN" />
     <logger name="org.jumpmind.symmetric.db.SqlScript" level="ERROR" />
     <logger name="org.springframework" level="ERROR" />
     <logger name="springfox.documentation" level="WARN" />
