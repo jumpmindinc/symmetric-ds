@@ -54,12 +54,15 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpServer;
 
 class UpdateServiceTest {
-    private static final int SHORT_TIMEOUT_MILLIS = 500;
+    private static final int MINIMUM_READ_TIMEOUT_MILLIS = 1;
+    private static final int RESPONSIVE_SERVER_TIMEOUT_MILLIS = 2000;
+    private static final Duration HANG_GUARD = Duration.ofSeconds(2);
     private static final byte[] POST_DATA = "guid=abc&version=3.18.0".getBytes(StandardCharsets.UTF_8);
     private ISymmetricEngine engine;
     private ISqlTemplate sqlTemplateDirty;
     private UpdateService updateService;
     private HttpServer httpServer;
+    private int readTimeoutMillis;
 
     @BeforeEach
     void setUp() {
@@ -71,15 +74,16 @@ class UpdateServiceTest {
         when(symmetricDialect.getPlatform().getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        readTimeoutMillis = RESPONSIVE_SERVER_TIMEOUT_MILLIS;
         updateService = new UpdateService(engine) {
             @Override
             protected int getConnectTimeoutMillis() {
-                return SHORT_TIMEOUT_MILLIS;
+                return RESPONSIVE_SERVER_TIMEOUT_MILLIS;
             }
 
             @Override
             protected int getReadTimeoutMillis() {
-                return SHORT_TIMEOUT_MILLIS;
+                return readTimeoutMillis;
             }
         };
     }
@@ -93,10 +97,10 @@ class UpdateServiceTest {
 
     @Test
     void testPostDataForVersionTimesOutWhenServerNeverResponds() throws IOException {
+        readTimeoutMillis = MINIMUM_READ_TIMEOUT_MILLIS;
         try (ServerSocket silentServer = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
             URL url = URI.create("http://127.0.0.1:" + silentServer.getLocalPort() + "/api/getlatest.php").toURL();
-            assertTimeoutPreemptively(Duration.ofSeconds(10),
-                    () -> assertThrows(SocketTimeoutException.class, () -> updateService.postDataForVersion(url, POST_DATA)));
+            assertTimeoutPreemptively(HANG_GUARD, () -> assertThrows(SocketTimeoutException.class, () -> updateService.postDataForVersion(url, POST_DATA)));
         }
         assertNull(updateService.getLatestVersion());
     }
@@ -121,7 +125,7 @@ class UpdateServiceTest {
     void testPostDataForVersionSkipsBooleanNullAndNestedValues() throws IOException {
         URL url = startServer(200, "{\"beta\":true,\"notes\":null,\"build\":12345,\"mirrors\":[\"a\",\"b\"],"
                 + "\"meta\":{\"x\":1},\"version\":\"3.18.6\",\"link\":\"https://example.com/d\"}");
-        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> updateService.postDataForVersion(url, POST_DATA));
+        assertTimeoutPreemptively(HANG_GUARD, () -> updateService.postDataForVersion(url, POST_DATA));
         assertEquals("3.18.6", updateService.getLatestVersion());
         assertEquals("https://example.com/d", updateService.getDownloadUrl());
     }
