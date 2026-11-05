@@ -291,6 +291,8 @@ final public class ParameterConstants {
     public static final String TRIGGER_CAPTURE_DDL_CHANGES = "trigger.capture.ddl.changes";
     public static final String TRIGGER_CAPTURE_DDL_DELIMITER = "trigger.capture.ddl.delimiter";
     public static final String TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST = "trigger.capture.ddl.check.trigger.hist";
+    public static final String TRIGGER_CAPTURE_DDL_CHANNEL = "trigger.capture.ddl.channel";
+    public static final String TRIGGER_CAPTURE_DDL_TABLE = "trigger.capture.ddl.table";
     public static final String TRIGGER_USE_INSERT_DELETE_FOR_PRIMARY_KEY_CHANGES = "trigger.use.insert.delete.for.primary.key.changes";
     public static final String DB_METADATA_IGNORE_CASE = "db.metadata.ignore.case";
     public static final String DB_NATIVE_EXTRACTOR = "db.native.extractor";
@@ -487,6 +489,8 @@ final public class ParameterConstants {
             POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
             TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
             TRIGGER_CAPTURE_DDL_DELIMITER,
+            TRIGGER_CAPTURE_DDL_CHANNEL,
+            TRIGGER_CAPTURE_DDL_TABLE,
             "db.url", "db.user", // See DataSourceProperties class
             LOAD_ONLY_PROPERTY_PREFIX + "db.url", LOAD_ONLY_PROPERTY_PREFIX + "db.user",
             "mssql.use.ntypes.for.sync" // See ConsoleConstants class
