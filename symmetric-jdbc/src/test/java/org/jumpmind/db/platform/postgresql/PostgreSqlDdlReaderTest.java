@@ -1257,7 +1257,6 @@ class PostgreSqlDdlReaderTest {
     }
 
     @Test
-<<<<<<< HEAD
     void testMarkGeneratedColumnStorageKind_marksAllGeneratedColumnsPersisted_belowVersion18_withoutQuerying() throws Exception {
         Column generatedColumn = new Column("total");
         generatedColumn.setGenerated(true);
@@ -1309,7 +1308,8 @@ class PostgreSqlDdlReaderTest {
         ddlReader.markGeneratedColumnStorageKind(connection, table, 18);
         assertTrue(storedColumn.isPersisted());
         assertFalse(virtualColumn.isPersisted());
-=======
+    }
+
     void testReadColumn_uuidColumn_setsSizeTo36() throws SQLException {
         when(platform.getName()).thenReturn("postgres");
         PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
@@ -1336,7 +1336,6 @@ class PostgreSqlDdlReaderTest {
         values.put("COLUMN_SIZE", columnSize);
         values.put("DECIMAL_DIGITS", 0);
         return values;
->>>>>>> 77783f1e2a (SYM-8227: PostgreSQL table rebuild loses rows or turns uuid into text: temp table declares uuid columns as TEXT (#1256))
     }
 
     protected String getResultSetSchemaName() {
