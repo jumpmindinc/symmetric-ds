@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
@@ -1256,6 +1257,7 @@ class PostgreSqlDdlReaderTest {
     }
 
     @Test
+<<<<<<< HEAD
     void testMarkGeneratedColumnStorageKind_marksAllGeneratedColumnsPersisted_belowVersion18_withoutQuerying() throws Exception {
         Column generatedColumn = new Column("total");
         generatedColumn.setGenerated(true);
@@ -1307,6 +1309,34 @@ class PostgreSqlDdlReaderTest {
         ddlReader.markGeneratedColumnStorageKind(connection, table, 18);
         assertTrue(storedColumn.isPersisted());
         assertFalse(virtualColumn.isPersisted());
+=======
+    void testReadColumn_uuidColumn_setsSizeTo36() throws SQLException {
+        when(platform.getName()).thenReturn("postgres");
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        Column column = ddlReader.readColumn(null, uuidColumnValues("uuid", String.valueOf(Integer.MAX_VALUE)));
+        assertEquals(Types.VARCHAR, column.getMappedTypeCode());
+        assertEquals("36", column.getSize());
+        assertEquals(-1, column.findPlatformColumn("postgres").getSize());
+    }
+
+    @Test
+    void testReadColumn_nonUuidColumn_keepsReportedSize() throws SQLException {
+        when(platform.getName()).thenReturn("postgres");
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        Column column = ddlReader.readColumn(null, uuidColumnValues("varchar", "50"));
+        assertEquals("50", column.getSize());
+    }
+
+    private Map<String, Object> uuidColumnValues(String typeName, String columnSize) {
+        Map<String, Object> values = new HashMap<>();
+        values.put("COLUMN_NAME", "id");
+        values.put("TYPE_NAME", typeName);
+        values.put("DATA_TYPE", "uuid".equals(typeName) ? Types.OTHER : Types.VARCHAR);
+        values.put("NUM_PREC_RADIX", 10);
+        values.put("COLUMN_SIZE", columnSize);
+        values.put("DECIMAL_DIGITS", 0);
+        return values;
+>>>>>>> 77783f1e2a (SYM-8227: PostgreSQL table rebuild loses rows or turns uuid into text: temp table declares uuid columns as TEXT (#1256))
     }
 
     protected String getResultSetSchemaName() {
