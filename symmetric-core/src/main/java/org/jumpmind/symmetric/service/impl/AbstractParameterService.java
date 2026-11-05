@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 abstract public class AbstractParameterService {
     protected final Logger log = LoggerFactory.getLogger(getClass());
-    private static final Logger IGNORED_PARAMETER_LOG = LoggerFactory.getLogger(AbstractParameterService.class);
     protected IExtensionService extensionService;
     protected TypedProperties parameters;
     private long cacheTimeoutInMs = 0;
@@ -299,7 +298,7 @@ abstract public class AbstractParameterService {
             if (metaData != null && !metaData.isDatabaseOverridable()) {
                 databaseParameters.remove(key);
                 if (ignoredDatabaseParameterKeys.add(key)) {
-                    IGNORED_PARAMETER_LOG.warn(
+                    log.warn(
                             "Ignoring parameter {} found in the database because it is not database-overridable. Set it in the properties file or "
                                     + "environment variable instead and remove it from the database.", key);
                 }
