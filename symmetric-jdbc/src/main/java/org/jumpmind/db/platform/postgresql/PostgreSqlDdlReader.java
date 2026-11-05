@@ -277,6 +277,13 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                 }
             }
         }
+        if ("UUID".equalsIgnoreCase(column.getJdbcTypeName())) {
+            // the driver reports uuid with a size of Integer.MAX_VALUE, so use the 36 character canonical form
+            column.setSize("36");
+            if (platformColumn != null) {
+                platformColumn.setSize(-1);
+            }
+        }
         if (column.getJdbcTypeCode() == Types.TIMESTAMP || column.getJdbcTypeCode() == Types.TIME || column.getJdbcTypeCode() == ColumnTypes.TIMESTAMPTZ
                 || column.getJdbcTypeCode() == ColumnTypes.TIMETZ) {
             resetColumnSize(column, String.valueOf(column.getScale()));
