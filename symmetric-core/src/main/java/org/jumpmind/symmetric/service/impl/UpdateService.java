@@ -30,6 +30,7 @@ import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -39,9 +40,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
@@ -67,6 +70,10 @@ public class UpdateService extends AbstractService implements IUpdateService {
     protected final long MILLIS_AFTER_NODE_OFFLINE = 86400000l;
     protected static final int CONNECT_TIMEOUT_MILLIS = 10000;
     protected static final int READ_TIMEOUT_MILLIS = 30000;
+    protected static final String JUMPMIND_DOMAIN = "jumpmind.com";
+    protected static final String SYMMETRICDS_DOMAIN = "symmetricds.org";
+    protected static final String UPDATE_PATH = "/api/getlatest.php";
+    protected static final Pattern VERSION_PATTERN = Pattern.compile("\\d+(\\.\\d+){1,3}(-[A-Za-z0-9]+)?");
     protected ISymmetricEngine engine;
     protected boolean sendUsage;
     protected boolean checkUpdates;
@@ -114,9 +121,13 @@ public class UpdateService extends AbstractService implements IUpdateService {
                 addUsageProperties(prop);
             }
             byte[] postData = getPostData(prop);
-            postDataForVersion(getUpdateUrl(), postData);
-            if (checkUpdates && latestVersion != null && Version.isOlderThanVersion(Version.version(), latestVersion)) {
-                log.warn("New version of SymmetricDS (" + latestVersion + ") is available for download from " + downloadUrl);
+            String version = getLatestVersion(getUpdateUrl(), postData);
+            if (version == null) {
+                version = getLatestVersion(getBackupUpdateUrl(), postData);
+            }
+            if (checkUpdates && version != null && Version.isOlderThanVersion(Version.version(), version)) {
+                log.warn("New version of SymmetricDS ({}) is available for download{}", version,
+                        downloadUrl == null ? "" : " from " + downloadUrl);
             }
         } catch (MalformedURLException e) {
             log.debug("Failed to obtain URL for checking updates", e);
@@ -137,6 +148,17 @@ public class UpdateService extends AbstractService implements IUpdateService {
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
+    protected String getLatestVersion(URL url, byte[] postData) {
+        latestVersion = null;
+        downloadUrl = null;
+        try {
+            postDataForVersion(url, postData);
+        } catch (IOException e) {
+            log.debug("Failed to communicate with {} for checking updates", url, e);
+        }
+        return latestVersion;
+    }
+
     protected int getConnectTimeoutMillis() {
         return CONNECT_TIMEOUT_MILLIS;
     }
@@ -150,6 +172,7 @@ public class UpdateService extends AbstractService implements IUpdateService {
         try {
             conn.setConnectTimeout(getConnectTimeoutMillis());
             conn.setReadTimeout(getReadTimeoutMillis());
+            conn.setInstanceFollowRedirects(false);
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setFixedLengthStreamingMode(postData.length);
@@ -191,15 +214,45 @@ public class UpdateService extends AbstractService implements IUpdateService {
                 if (reader.peek() != JsonToken.STRING) {
                     reader.skipValue();
                 } else if ("version".equals(fieldName)) {
-                    latestVersion = reader.nextString();
+                    String version = reader.nextString();
+                    if (VERSION_PATTERN.matcher(version).matches()) {
+                        latestVersion = version;
+                    } else {
+                        log.debug("Ignoring malformed version from update check: {}", version);
+                    }
                 } else if ("link".equals(fieldName)) {
-                    downloadUrl = reader.nextString();
+                    String link = reader.nextString();
+                    if (isTrustedDownloadUrl(link)) {
+                        downloadUrl = link;
+                    } else {
+                        log.debug("Ignoring untrusted download link from update check: {}", link);
+                    }
                 } else {
                     reader.skipValue();
                 }
             }
             reader.endObject();
         }
+    }
+
+    protected boolean isTrustedDownloadUrl(String link) {
+        // java.net.URI allows an apostrophe in the path, which would end a single-quoted HTML attribute
+        if (link.indexOf('\'') >= 0) {
+            return false;
+        }
+        try {
+            URI uri = new URI(link);
+            String host = uri.getHost();
+            return "https".equalsIgnoreCase(uri.getScheme()) && host != null
+                    && (isHostInDomain(host, JUMPMIND_DOMAIN) || isHostInDomain(host, SYMMETRICDS_DOMAIN));
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
+    private static boolean isHostInDomain(String host, String domain) {
+        String lowerCaseHost = host.toLowerCase(Locale.ROOT);
+        return lowerCaseHost.equals(domain) || lowerCaseHost.endsWith("." + domain);
     }
 
     protected Map<String, Object> getProperties() {
@@ -322,7 +375,15 @@ public class UpdateService extends AbstractService implements IUpdateService {
     }
 
     protected URL getUpdateUrl() throws MalformedURLException {
-        return URI.create("https://status.symmetricds.org/api/getlatest.php").toURL();
+        return toUpdateUrl("status." + SYMMETRICDS_DOMAIN);
+    }
+
+    protected URL getBackupUpdateUrl() throws MalformedURLException {
+        return toUpdateUrl("downloads." + JUMPMIND_DOMAIN);
+    }
+
+    protected static URL toUpdateUrl(String host) throws MalformedURLException {
+        return URI.create("https://" + host + UPDATE_PATH).toURL();
     }
 
     public boolean isNewVersionAvailable() {
