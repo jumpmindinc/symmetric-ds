@@ -10,6 +10,7 @@ import org.apache.commons.lang3.Strings;
  */
 public class TableColumnSourceReferences extends ArrayList<TableColumnSourceReferences.ColumnSourceReferenceEntry> {
     private static final long serialVersionUID = 1L;
+    private static final int NOT_FOUND = -1;
     private String searchKey;
 
     /***
@@ -22,14 +23,29 @@ public class TableColumnSourceReferences extends ArrayList<TableColumnSourceRefe
         Column[] targetColumns = targetTable.getColumns();
         for (int targetColumnNo = 0; targetColumnNo < targetColumns.length; targetColumnNo++) {
             Column targetColumn = targetColumns[targetColumnNo];
-            for (int sourceColumnNo = 0; sourceColumnNo < sourceColumns.length; sourceColumnNo++) {
-                Column sourceColumn = sourceColumns[sourceColumnNo];
-                if (Strings.CI.equals(sourceColumn.getName(), targetColumn.getName())) {
-                    this.add(new ColumnSourceReferenceEntry(sourceColumnNo, targetColumnNo, sourceColumn, targetColumn));
-                    break;
-                }
+            int sourceColumnNo = findSourceColumnNo(sourceColumns, targetColumn.getName());
+            if (sourceColumnNo != NOT_FOUND) {
+                this.add(new ColumnSourceReferenceEntry(sourceColumnNo, targetColumnNo, sourceColumns[sourceColumnNo], targetColumn));
             }
         }
+    }
+
+    /***
+     * Finds the source column for a target column name. An exact name match wins over a case-insensitive one, so tables with columns whose names differ only by
+     * case map each column to its own value.
+     */
+    private static int findSourceColumnNo(Column[] sourceColumns, String targetColumnName) {
+        int caseInsensitiveMatchNo = NOT_FOUND;
+        for (int sourceColumnNo = 0; sourceColumnNo < sourceColumns.length; sourceColumnNo++) {
+            String sourceColumnName = sourceColumns[sourceColumnNo].getName();
+            if (Strings.CS.equals(sourceColumnName, targetColumnName)) {
+                return sourceColumnNo;
+            }
+            if (caseInsensitiveMatchNo == NOT_FOUND && Strings.CI.equals(sourceColumnName, targetColumnName)) {
+                caseInsensitiveMatchNo = sourceColumnNo;
+            }
+        }
+        return caseInsensitiveMatchNo;
     }
 
     /***

@@ -370,4 +370,28 @@ class RelationTest {
         Column c2 = new Column("name");
         assertFalse(Relation.areAllColumnsPrimaryKeys(new Column[] { c1, c2 }));
     }
+
+    @Test
+    void testGetColumnWithName_prefersExactMatchWhenNamesDifferOnlyByCase() {
+        Table t = tableWithColumns("id", "last_Name", "last_name");
+        assertEquals("last_Name", t.getColumnWithName("last_Name").getName());
+        assertEquals("last_name", t.getColumnWithName("last_name").getName());
+    }
+
+    @Test
+    void testGetColumnWithName_fallsBackToCaseInsensitiveMatch() {
+        Table t = tableWithColumns("id", "last_name");
+        assertEquals("last_name", t.getColumnWithName("LAST_NAME").getName());
+        assertNull(t.getColumnWithName("missing"));
+        assertNull(t.getColumnWithName(null));
+    }
+
+    @Test
+    void testGetColumnIndex_prefersExactMatchWhenNamesDifferOnlyByCase() {
+        Table t = tableWithColumns("id", "last_Name", "last_name");
+        assertEquals(1, t.getColumnIndex("last_Name"));
+        assertEquals(2, t.getColumnIndex("last_name"));
+        assertEquals(1, t.getColumnIndex("LAST_NAME"));
+        assertEquals(-1, t.getColumnIndex("missing"));
+    }
 }
