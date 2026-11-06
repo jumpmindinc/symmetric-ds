@@ -109,14 +109,16 @@ class PostgreSqlDatabasePlatformTest {
 
     @Test
     void testCreateArray_blankValueForRequiredColumnFailsWithColumnName() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> platform.createArray(arrayColumn(true), ""));
+        Column requiredColumn = arrayColumn(true);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> platform.createArray(requiredColumn, ""));
         assertTrue(ex.getMessage().contains("item_code"));
         assertTrue(ex.getMessage().contains("Blank value for required array column"));
     }
 
     @Test
     void testCreateArray_whitespaceValueForRequiredColumnFails() {
-        assertThrows(IllegalArgumentException.class, () -> platform.createArray(arrayColumn(true), "  "));
+        Column requiredColumn = arrayColumn(true);
+        assertThrows(IllegalArgumentException.class, () -> platform.createArray(requiredColumn, "  "));
     }
 
     @Test
