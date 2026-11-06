@@ -138,8 +138,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected long triggerRouterCacheTime = 0;
     protected Map<String, Boolean> commonBatchesLastKnownState = new ConcurrentHashMap<String, Boolean>();
     protected long commonBatchesCacheTime;
-    protected Map<String, Boolean> defaultRouterOnlyLastKnownState = new ConcurrentHashMap<String, Boolean>();
-    protected long defaultRoutersCacheTime;
+    private final Map<String, DefaultRoutersCheck> defaultRoutersCheckByChannel = new ConcurrentHashMap<String, DefaultRoutersCheck>();
     protected Map<String, Boolean> isAllDataReadByChannel = new ConcurrentHashMap<String, Boolean>();
     protected Map<String, Boolean> hasMaxDataRoutedByChannel = new ConcurrentHashMap<String, Boolean>();
     protected transient ExecutorService readThread = null;
@@ -204,7 +203,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     public void flushCache() {
-        defaultRoutersCacheTime = 0;
+        defaultRoutersCheckByChannel.clear();
     }
 
     /**
@@ -564,31 +563,35 @@ public class RouterService extends AbstractService implements IRouterService, IN
 
     protected boolean onlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
         String channelId = channel.getChannelId();
-        Boolean onlyDefaultRoutersAssigned = defaultRouterOnlyLastKnownState.get(channelId);
+        DefaultRoutersCheck lastCheck = defaultRoutersCheckByChannel.get(channelId);
         long cacheTime = parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS);
-        if (onlyDefaultRoutersAssigned == null || System.currentTimeMillis() - defaultRoutersCacheTime > cacheTime) {
-            onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
-                    && !channel.isFileSyncFlag()
-                    && !channel.isReloadFlag()
-                    && !Constants.CHANNEL_HEARTBEAT.equals(channelId)
-                    && !Constants.CHANNEL_MONITOR.equals(channelId);
-            if (onlyDefaultRoutersAssigned && triggerRouters != null) {
-                for (TriggerRouter triggerRouter : triggerRouters) {
-                    if (triggerRouter.getTrigger().getChannelId().equals(channel.getChannelId()) &&
-                            triggerRouter.getRouter().getNodeGroupLink().getSourceNodeGroupId()
-                                    .equals(nodeGroupId) && !"default".equals(triggerRouter.getRouter().getRouterType())) {
-                        onlyDefaultRoutersAssigned = false;
-                    }
+        if (lastCheck != null && lastCheck.isCurrent(triggerRouters, cacheTime)) {
+            return lastCheck.onlyDefaultRoutersAssigned();
+        }
+        boolean onlyDefaultRoutersAssigned = computeOnlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters);
+        if (onlyDefaultRoutersAssigned && (lastCheck == null || !lastCheck.onlyDefaultRoutersAssigned())) {
+            log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
+                    channelId, nodeGroupId);
+        }
+        defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(onlyDefaultRoutersAssigned, triggerRouters, System.currentTimeMillis()));
+        return onlyDefaultRoutersAssigned;
+    }
+
+    private boolean computeOnlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
+        String channelId = channel.getChannelId();
+        boolean onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
+                && !channel.isFileSyncFlag()
+                && !channel.isReloadFlag()
+                && !Constants.CHANNEL_HEARTBEAT.equals(channelId)
+                && !Constants.CHANNEL_MONITOR.equals(channelId);
+        if (onlyDefaultRoutersAssigned && triggerRouters != null) {
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                if (triggerRouter.getTrigger().getChannelId().equals(channelId) &&
+                        triggerRouter.getRouter().getNodeGroupLink().getSourceNodeGroupId()
+                                .equals(nodeGroupId) && !"default".equals(triggerRouter.getRouter().getRouterType())) {
+                    onlyDefaultRoutersAssigned = false;
                 }
             }
-            if (!onlyDefaultRoutersAssigned.equals(defaultRouterOnlyLastKnownState.get(channelId))) {
-                if (onlyDefaultRoutersAssigned) {
-                    log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
-                            channelId, nodeGroupId);
-                }
-                defaultRouterOnlyLastKnownState.put(channelId, onlyDefaultRoutersAssigned);
-            }
-            defaultRoutersCacheTime = System.currentTimeMillis();
         }
         return onlyDefaultRoutersAssigned;
     }
@@ -1022,6 +1025,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
+        selectDataSkippedForDefaultRouters(data, triggerRouters, context);
         Relation relation = null;
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
             relation = platform.getRelationFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
@@ -1333,6 +1337,44 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
+    /**
+     * Change data is not selected for a channel with only default routers. A non-default router can still be found for the data when the configuration changed
+     * after routing started, or when a table moved to another channel and left data behind. Select the skipped data so that router can see the column values.
+     * Data with a node list is skipped because it is routed to those nodes without a router.
+     */
+    protected void selectDataSkippedForDefaultRouters(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
+        if (context.isOnlyDefaultRoutersAssigned() && StringUtils.isBlank(data.getNodeList()) && hasNonDefaultRouter(triggerRouters)) {
+            Data selectedData = engine.getDataService().findData(data.getDataId());
+            if (selectedData != null) {
+                copyDataUsedToRoute(selectedData, data, context.getChannel());
+            }
+        }
+    }
+
+    private boolean hasNonDefaultRouter(List<TriggerRouter> triggerRouters) {
+        if (triggerRouters != null) {
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                Router router = triggerRouter.getRouter();
+                if (router != null && !"default".equals(router.getRouterType())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void copyDataUsedToRoute(Data source, Data target, NodeChannel channel) {
+        if (channel.isUseRowDataToRoute()) {
+            target.setRowData(source.getRowData());
+        }
+        if (channel.isUseOldDataToRoute()) {
+            target.setOldData(source.getOldData());
+        }
+        if (channel.isUsePkDataToRoute()) {
+            target.setPkData(source.getPkData());
+        }
+    }
+
     public long getMaxDataIdAlreadyRouted() {
         long maxDataIdAlreadyRouted = 0;
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
@@ -1430,6 +1472,16 @@ public class RouterService extends AbstractService implements IRouterService, IN
         @Override
         public String toString() {
             return "GapQualifiedQuery[sql=" + sql + ", args=" + Arrays.toString(args) + ", types=" + Arrays.toString(types) + "]";
+        }
+    }
+
+    /**
+     * Whether a channel had only default routers, and the trigger routers that answer was worked out from. The trigger router cache builds a new list each time
+     * it reloads, so the answer is reused only while that same list is passed in and the cache time has not run out.
+     */
+    private record DefaultRoutersCheck(boolean onlyDefaultRoutersAssigned, List<TriggerRouter> triggerRouters, long checkTime) {
+        boolean isCurrent(List<TriggerRouter> currentTriggerRouters, long cacheTime) {
+            return triggerRouters == currentTriggerRouters && System.currentTimeMillis() - checkTime <= cacheTime;
         }
     }
 }
