@@ -130,10 +130,9 @@ public class ClusterService extends AbstractService implements IClusterService {
         }
         boolean startedWithClusterLockingEnabled = clusteredCacheManager.isClusterLockingEnabled();
         if (startedWithClusterLockingEnabled != clusterLockingParameterValue) {
-            log.warn("{} is set to {} in the database (or environment/engine properties merged by IParameterService), but this node actually started "
-                    + " with value={} because {} is resolved once from file/environment configuration before any node starts and is not "
-                    + "database-overridable. Update the file/environment configuration to match and restart to take effect; "
-                    + "Setting this parameter in database is no longer supported.",
+            log.warn("{} is set to {} in the engine properties, but this node actually started with value={} because {} is resolved once "
+                    + "from conf/symmetric-server.properties, a JVM system property or an environment variable before any node starts. "
+                    + "Update that configuration to match and restart to take effect.",
                     ParameterConstants.CLUSTER_LOCKING_ENABLED, clusterLockingParameterValue, startedWithClusterLockingEnabled,
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }

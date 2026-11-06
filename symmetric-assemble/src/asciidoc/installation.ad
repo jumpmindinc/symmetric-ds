@@ -343,6 +343,146 @@ docker buildx imagetools inspect jumpmind/symmetricds-pro:<version>-hardened --f
 ----
 endif::pro[]
 
+==== Engine Configuration from Environment Variables
+
+A container can start without an engine properties file.
+When the `engines` directory contains no `*.properties` file, SymmetricDS writes `engines/<engine name>.properties` from the `SYM_` environment variables below and starts that engine.
+On later starts the generated file is used, and `SYM_` environment variables still override its values, as described in <<Node Properties File>>.
+Mount the `engines` directory as a volume to keep the generated file across container restarts.
+
+All required variables must be set, or no engine is created.
+
+[cols="3,2,5",options="header"]
+|===
+|Environment variable |Property |Description
+
+|SYM_ENGINE_NAME
+|engine.name
+|Unique name of the engine. Also the name of the generated file and the last part of the sync URL.
+
+|SYM_GROUP_ID
+|group.id
+|Node group this node belongs to.
+
+|SYM_EXTERNAL_ID
+|external.id
+|External id of this node.
+
+|SYM_SYNC_URL
+|sync.url
+|URL other nodes use to reach this node, in the form `http://<host>:31415/sync/<engine name>`. In a cluster, use the load balancer URL.
+
+|SYM_REGISTRATION_URL
+|registration.url
+|Sync URL of the registration server. Must be defined; set it to an empty value on the registration server itself.
+
+|SYM_DB_DRIVER
+|db.driver
+|JDBC driver class, for example `org.postgresql.Driver`.
+
+|SYM_DB_URL
+|db.url
+|JDBC URL of the runtime database.
+|===
+
+The following variables are optional. Blank values are skipped.
+
+[cols="3,2,5",options="header"]
+|===
+|Environment variable |Property |Description
+
+|SYM_DB_USER
+|db.user
+|Database user.
+
+|SYM_DB_PASSWORD
+|db.password
+|Database password. Supply it from a secret, never in the image.
+
+|SYM_DB_INIT_SQL
+|db.init.sql
+|SQL statement run on each new database connection.
+
+|SYM_DB_VALIDATION_QUERY
+|db.validation.query
+|SQL statement used to validate pooled connections, for example `select 1`.
+
+|SYM_DB_CONNECTION_PROPERTIES
+|db.connection.properties
+|Semicolon-separated JDBC driver properties, for example `ssl=true;sslmode=require`.
+|===
+
+Copy the following block into the `environment` section of a Docker Compose service and replace the example values:
+
+[source,yaml]
+----
+services:
+  symmetricds:
+ifndef::pro[]
+    image: jumpmind/symmetricds:<version>
+endif::pro[]
+ifdef::pro[]
+    image: jumpmind/symmetricds-pro:<version>
+endif::pro[]
+    ports:
+      - "31415:31415"
+    volumes:
+      - sym-engines:/opt/symmetric-ds/engines
+    environment:
+      # Required
+      SYM_ENGINE_NAME: store-001
+      SYM_GROUP_ID: store
+      SYM_EXTERNAL_ID: "001"
+      SYM_SYNC_URL: http://store-001:31415/sync/store-001
+      SYM_REGISTRATION_URL: http://corp:31415/sync/corp-000
+      SYM_DB_DRIVER: org.postgresql.Driver
+      SYM_DB_URL: jdbc:postgresql://store-db:5432/store
+      # Optional
+      SYM_DB_USER: symmetric
+      SYM_DB_PASSWORD: ${SYM_DB_PASSWORD}
+      SYM_DB_INIT_SQL: ""
+      SYM_DB_VALIDATION_QUERY: select 1
+      SYM_DB_CONNECTION_PROPERTIES: ""
+volumes:
+  sym-engines:
+----
+
+In Kubernetes, use the same names in the container `env` list and read the password from a `Secret`:
+
+[source,yaml]
+----
+env:
+  # Required
+  - name: SYM_ENGINE_NAME
+    value: store-001
+  - name: SYM_GROUP_ID
+    value: store
+  - name: SYM_EXTERNAL_ID
+    value: "001"
+  - name: SYM_SYNC_URL
+    value: http://store-001:31415/sync/store-001
+  - name: SYM_REGISTRATION_URL
+    value: http://corp:31415/sync/corp-000
+  - name: SYM_DB_DRIVER
+    value: org.postgresql.Driver
+  - name: SYM_DB_URL
+    value: jdbc:postgresql://store-db:5432/store
+  # Optional
+  - name: SYM_DB_USER
+    value: symmetric
+  - name: SYM_DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: symmetricds-db
+        key: password
+  - name: SYM_DB_INIT_SQL
+    value: ""
+  - name: SYM_DB_VALIDATION_QUERY
+    value: select 1
+  - name: SYM_DB_CONNECTION_PROPERTIES
+    value: ""
+----
+
 ==== Health Endpoints
 
 Container orchestrators can use the `/health/liveliness` endpoint to verify that SymmetricDS is running. When SymmetricDS is running, this endpoint returns HTTP code 200 along with the following JSON repsonse body:

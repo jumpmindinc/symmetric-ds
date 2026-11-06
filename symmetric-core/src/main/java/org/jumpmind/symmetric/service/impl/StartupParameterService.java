@@ -151,6 +151,20 @@ public class StartupParameterService implements IStartupParameterService {
     }
 
     @Override
+    public synchronized TypedProperties registerServerProperties(TypedProperties serverProperties) {
+        Map<String, Source> knownFileSources = new HashMap<>();
+        for (String key : serverProperties.stringPropertyNames()) {
+            knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
+        }
+        TypedProperties mergedProperties = serverProperties.copy();
+        if (!mergedProperties.isEmpty()) {
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(mergedProperties, false);
+        }
+        registerGlobal(mergedProperties, knownFileSources);
+        return mergedProperties;
+    }
+
+    @Override
     public void unregisterEngine(String engineName) {
         parametersByEngine.remove(engineName);
     }
@@ -425,9 +439,18 @@ public class StartupParameterService implements IStartupParameterService {
     @Override
     public synchronized void refreshSystemProperty(String key) {
         String value = System.getProperty(key);
-        jvmProperties.setProperty(key, value);
+        String previousValue = jvmProperties.getProperty(key);
+        if (value == null) {
+            jvmProperties.remove(key);
+        } else {
+            jvmProperties.setProperty(key, value);
+        }
         for (EngineParameters engineParameters : parametersByEngine.values()) {
-            engineParameters.mergedProperties.setProperty(key, value);
+            if (value != null) {
+                engineParameters.mergedProperties.setProperty(key, value);
+            } else if (previousValue != null && previousValue.equals(engineParameters.mergedProperties.getProperty(key))) {
+                engineParameters.mergedProperties.remove(key);
+            }
             engineParameters.parameters.put(key, resolve(engineParameters, key));
         }
     }

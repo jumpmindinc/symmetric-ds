@@ -49,27 +49,177 @@ The trade-off: shared storage now sits directly in the sync data path, so its la
 
 === Clustering and Networking
 
-See <<Firewall and Network Requirements>> for the TCP, UDP, and HTTP(S) ports used between cluster nodes and from the load balancer. Peer discovery uses two independent paths, and a node only needs one of them working: Apache JCS's own UDP multicast (fast, but only where the network permits IP multicast), and a database-driven path that announces hostnames found in <<NODE_HOST>> directly to JCS (works over TCP). The notes below cover known limiations for popular environments.
+Every server or container in a cluster connects to the same runtime database and must agree on a small set of startup parameters.
+Cluster communication starts before any engine is created, so the parameters marked *Startup* below are read once, at startup, from `conf/symmetric-server.properties`, a JVM system property (`-D`) or an environment variable.
+They are ignored when placed in an engine properties file (`engines/*.properties`) or in the <<PARAMETER>> table.
+When the same parameter is set in more than one place, a JVM system property wins over an environment variable, which wins over `conf/symmetric-server.properties`.
 
-Physical Servers or Virtual Machimes:: Multicast should work normally as long as every server is the same VLAN/subnet(Layer 2 segment). Network administrator should be consulted for UDP-compatible server configuration.
+Any parameter can be supplied as an environment variable: add the `SYM_` prefix, convert to upper case and replace dots with underscores (`cluster.peer.heartbeat.ms` becomes `SYM_CLUSTER_PEER_HEARTBEAT_MS`).
+An environment variable applies to every engine hosted by that server.
 
-Docker Compose:: Supports fast UDP-discovery on a single Docker host with a user-defined network delivering multicast to every attached SymmetricDS container. Multi-host Docker (Swarm overlay networks) does not support this.
+[cols="3,4,2,1,5",options="header"]
+|===
+|Parameter |Environment variable |Default |Startup |Notes
 
-AWS (ECS, EKS, Fargate):: AWS VPCs do not support multicast or broadcast traffic, regardless of subnet or security group configuration — a platform limitation. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+|cluster.lock.enabled
+|SYM_CLUSTER_LOCK_ENABLED
+|false
+|Yes
+|Must be `true` on every member. Enables distributed job locking and the peer heartbeat.
 
-Azure Kubernetes Service:: Azure VNETs and AKS's supported CNI plugins (Azure CNI, kubenet) do not forward multicast between pods, so clustering runs on the slower path here too. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+|cluster.server.id
+|SYM_CLUSTER_SERVER_ID
+|host name
+|Yes
+|Must be unique per member. The default works when each member has a stable, unique host name, such as a pod in a Kubernetes StatefulSet.
 
-Google Kubernetes Engine:: Google Cloud documents VPC multicast and broadcast as unsupported, with no workaround at the network layer. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+|cluster.partition.id
+|SYM_CLUSTER_PARTITION_ID
+|generated
+|Yes
+|(Example: `12345678-1111-1111-1111-111111111111`) Must be identical on every member of one cluster and different between clusters that can reach each other on the network. When blank, each member generates a random value and stores it in `conf/cluster-partition.uuid`, which only matches across members when `conf` is a shared volume.
 
-Oracle Cloud Infrastructure (OCI/OKE):: OCI VCNs explicitly disallow the Class D address range (224.0.0.0-239.255.255.255) used for multicast. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+|cluster.peer.discovery
+|SYM_CLUSTER_PEER_DISCOVERY
+|db
+|Yes
+|`db` (peers found through <<NODE_HOST>>, works on every network), `udp` (multicast, single Layer 2 segment only) or `static` (fixed list). `udp` and `static` require SymmetricDS Pro.
 
-Akamai Cloud (Linode/LKE):: Standard LKE clusters cannot join a VPC at all (VPC support is limited to LKE-Enterprise), so this inherits the same pod-to-pod multicast gap as the managed Kubernetes offerings above. The one exception in this survey: a non-containerized deployment directly on Linode VMs using their legacy private networking — a real Layer 2 segment, distinct from the newer VPC product — should support multicast normally, the same as the bare-metal/VM case above.
+|cluster.peer.discovery.static.servers
+|SYM_CLUSTER_PEER_DISCOVERY_STATIC_SERVERS
+|
+|Yes
+|(Optional, rarely needed) Comma-separated `host:port` list, used only with `static` discovery.
 
-[NOTE]
-.Discovery speed: UDP multicast vs. the SYM_NODE_HOST path
-====
-Every node announces itself to JCS from <<NODE_HOST>> in addition to (not instead of) UDP multicast, so clustering no longer depends on multicast routing — it only affects how fast a new peer is found. UDP multicast converges in roughly 15 seconds (JCS's fixed passive-broadcast interval). The <<NODE_HOST>> path is bounded by the heartbeat job instead: a node discovers all of its peers immediately at its own startup, but an *already-running* node only learns about a newly-joined peer at its own next heartbeat tick — `job.heartbeat.period.time.ms`, 15 minutes by default. In any environment above that lacks working multicast (every managed Kubernetes offering, or a LAN with misconfigured IGMP snooping), lower `job.heartbeat.period.time.ms` if fast convergence after scaling events matters more than the added heartbeat query load; leave it at the default for a stable cluster where convergence time isn't operationally significant.
-====
+|cluster.jcs.port
+|SYM_CLUSTER_JCS_PORT
+|1101
+|Yes
+|TCP port each member listens on for peer messages. Must be open between all members and closed to every other host, because peer traffic is unencrypted.
+
+|cluster.keystore.seed
+|SYM_CLUSTER_KEYSTORE_SEED
+|
+|Yes
+|Base64-encoded 256-bit AES key used when the keystore secret is first created. Must be identical on every member so any member can decrypt values stored in the database. Store it as a secret.
+
+|cluster.staging.enabled
+|SYM_CLUSTER_STAGING_ENABLED
+|false
+|No
+|Set to `true` when `staging.dir` is a volume shared by all members. Required when `initial.load.use.extract.job.enabled` is `true`.
+
+|staging.dir
+|SYM_STAGING_DIR
+|`tmp`
+|No
+|Path to the shared staging volume. Set it in the engine properties file or as an environment variable. `SYM_STAGING_DIR` also sets `java.io.tmpdir`.
+
+|cluster.peer.heartbeat.ms
+|SYM_CLUSTER_PEER_HEARTBEAT_MS
+|3000
+|No
+|Interval between heartbeats sent to peers.
+
+|cluster.peer.stale.ms
+|SYM_CLUSTER_PEER_STALE_MS
+|9000
+|No
+|A peer that sends no heartbeat for this long is treated as crashed, and its locks are released.
+
+|cluster.peer.obsolete.ms
+|SYM_CLUSTER_PEER_OBSOLETE_MS
+|28800000
+|No
+|Age at which the record of a departed peer is purged.
+
+|cluster.lock.timeout.ms
+|SYM_CLUSTER_LOCK_TIMEOUT_MS
+|7200000
+|No
+|Safety timeout that releases an abandoned lock.
+
+|sync.url
+|SYM_SYNC_URL
+|
+|No
+|The load balancer URL, identical on every member. Must end with `/sync/` followed by the engine name.
+|===
+
+See <<Firewall and Network Requirements>> for the TCP and HTTP(S) ports used between cluster members and from the load balancer.
+
+==== Peer Discovery by Environment
+
+Peer discovery uses <<NODE_HOST>> by default (`cluster.peer.discovery=db`): each member records itself in the runtime database and connects to the other members over TCP, which works on every network.
+UDP multicast (`cluster.peer.discovery=udp`) is an option only where every member shares one Layer 2 segment.
+Every environment below needs the same base parameters, set on every member in `conf/symmetric-server.properties` or as environment variables:
+
+* `cluster.lock.enabled=true` (`SYM_CLUSTER_LOCK_ENABLED=true`)
+* `cluster.partition.id` (`SYM_CLUSTER_PARTITION_ID`) set to one shared value, for example a UUID generated once for the cluster
+* `cluster.keystore.seed` (`SYM_CLUSTER_KEYSTORE_SEED`) set to one shared value
+
+Physical Servers or Virtual Machines:: Multicast works when every server is on the same VLAN or subnet (Layer 2 segment). Consult your network administrator before relying on UDP.
++
+Recommended parameters: the base parameters, plus `cluster.peer.discovery=udp` (`SYM_CLUSTER_PEER_DISCOVERY=udp`, SymmetricDS Pro) on a single Layer 2 segment, or `cluster.peer.discovery=db` (`SYM_CLUSTER_PEER_DISCOVERY=db`) on any other network.
+
+Docker Compose:: A user-defined network on a single Docker host delivers multicast to every attached SymmetricDS container. Multi-host Docker (Swarm overlay networks) does not deliver multicast.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=udp` (SymmetricDS Pro) on a single host, or `SYM_CLUSTER_PEER_DISCOVERY=db` for Swarm and multi-host deployments.
+
+AWS (ECS, EKS, Fargate):: AWS VPCs do not support multicast or broadcast traffic, regardless of subnet or security group configuration.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db`, a unique and stable `cluster.server.id` per task or pod (a StatefulSet host name, or `SYM_CLUSTER_SERVER_ID`), and TCP port 1101 open between members in the security group.
+
+Azure Kubernetes Service:: Azure VNets and the AKS CNI plugins (Azure CNI, kubenet) do not forward multicast between pods.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db`, a unique and stable `cluster.server.id` per pod (a StatefulSet host name, or `SYM_CLUSTER_SERVER_ID`), and TCP port 1101 open between pods.
+
+Google Kubernetes Engine:: Google Cloud documents VPC multicast and broadcast as unsupported.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db`, a unique and stable `cluster.server.id` per pod (a StatefulSet host name, or `SYM_CLUSTER_SERVER_ID`), and TCP port 1101 open between pods.
+
+Oracle Cloud Infrastructure (OCI/OKE):: OCI VCNs disallow the Class D address range (224.0.0.0-239.255.255.255) used for multicast.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db`, a unique and stable `cluster.server.id` per pod (a StatefulSet host name, or `SYM_CLUSTER_SERVER_ID`), and TCP port 1101 open between pods.
+
+Akamai Cloud (Linode/LKE):: Standard LKE clusters cannot join a VPC (VPC support is limited to LKE-Enterprise), so pods have the same multicast gap as the managed Kubernetes offerings above. Linode VMs on legacy private networking share a real Layer 2 segment and support multicast like physical servers.
++
+Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db`, a unique and stable `cluster.server.id` per pod, and TCP port 1101 open between pods on LKE. For Linode VMs on legacy private networking, `cluster.peer.discovery=udp` (SymmetricDS Pro) or `db`.
+
+==== Container and Kubernetes Checklist
+
+* Mount the same four volumes on every container: `engines`, `conf`, `security` and `tmp` (staging).
+* Set `SYM_CLUSTER_LOCK_ENABLED=true`, `SYM_CLUSTER_PARTITION_ID`, `SYM_CLUSTER_PEER_DISCOVERY=db` and `SYM_CLUSTER_KEYSTORE_SEED` in the container or pod specification. The container image starts Java directly, so settings in `conf/sym_service.conf` have no effect.
+* Give each container a unique, stable host name (for example a StatefulSet), or set `SYM_CLUSTER_SERVER_ID` per container.
+* Set `cluster.staging.enabled=true` and point `staging.dir` at the shared `tmp` volume.
+* Open TCP `cluster.jcs.port` (1101 by default) between containers, and route the load balancer to the HTTP(S) port (31415 by default).
+* Set `sync.url` to the load balancer URL, ending with `/sync/` and the engine name.
+* Confirm the cluster formed: every member logs `Cluster peer heartbeat completed: Active peers=N (plus myself)`, where N is the number of members minus one.
+
+==== Troubleshooting
+
+[cols="1,1",options="header"]
+|===
+|Log message |Resolution
+
+|`cluster.lock.enabled is set to true in the engine properties, but this node actually started with value=false`
+|`cluster.lock.enabled` is set in an engine properties file. Move it to `conf/symmetric-server.properties` or `SYM_CLUSTER_LOCK_ENABLED`, and restart.
+
+|`Ignoring parameter cluster.lock.enabled found in the database because it is not database-overridable`
+|The value in `sym_parameter` is ignored, for example the row the 3.18 upgrade saved. Set the parameter in `conf/symmetric-server.properties` or its environment variable, and delete the row.
+
+|`Rejecting cluster peer due to partition ID mismatch`
+|Members generated different partition ids. Set the same `cluster.partition.id` on every member.
+
+|`Unsupported value for parameter cluster.peer.discovery`
+|Use `db`, `udp` or `static`. `udp` and `static` require SymmetricDS Pro.
+
+|`The engine is named X but the sync.url property does not end with the same engine name`
+|Change `sync.url`, and the matching load balancer path rule, to end with `/sync/X`.
+
+|`The initial load extract job cannot be used when cluster locking is enabled but staging is not clustered`
+|Set `cluster.staging.enabled=true` with shared staging, or set `initial.load.use.extract.job.enabled=false`.
+|===
 
 === Security Hardening
 

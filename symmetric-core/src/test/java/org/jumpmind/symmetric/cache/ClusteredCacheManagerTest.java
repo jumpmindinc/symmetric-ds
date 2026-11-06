@@ -706,6 +706,29 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void addPeer_startedWithClusterLockingDisabled_returnsFalseWithoutConverter() throws Exception {
+        setClusterLockingEnabled(false);
+        setField("peerNetworkCoordinator", null);
+        setConverter(null);
+        assertFalse(manager.addPeer(PEER_1, new Date(), PARTITION_ID));
+    }
+
+    @Test
+    void addPeer_clusterLockingEnabledWithoutCoordinator_returnsFalse() throws Exception {
+        setField("peerNetworkCoordinator", null);
+        setConverter(null);
+        assertFalse(manager.addPeer(PEER_1, new Date(), null));
+    }
+
+    @Test
+    void addPeer_startedWithClusterLockingDisabled_skipsCoordinator() throws Exception {
+        setClusterLockingEnabled(false);
+        setConverter(mock(ClusterMessageConverter.class));
+        assertFalse(manager.addPeer(PEER_1, new Date(), null));
+        verify(mockCoordinator, never()).addPeer(anyString());
+    }
+
+    @Test
     void addPeer_ownServerId_returnsFalse() {
         assertFalse(manager.addPeer(MY_SERVER_ID, null, PARTITION_ID));
         verify(mockCoordinator, never()).addPeer(anyString());
@@ -813,6 +836,19 @@ class ClusteredCacheManagerTest {
     void announceDiscoveredPeer_nullServerId_returnsFalse() {
         assertFalse(manager.announceDiscoveredPeer(null, "host:1101"));
         verify(mockCoordinator, never()).announceDiscoveredPeer(anyString(), anyString());
+    }
+
+    @Test
+    void announceDiscoveredPeer_startedWithClusterLockingDisabled_returnsFalse() throws Exception {
+        setClusterLockingEnabled(false);
+        assertFalse(manager.announceDiscoveredPeer(PEER_1, "host:1101"));
+        verify(mockCoordinator, never()).announceDiscoveredPeer(anyString(), anyString());
+    }
+
+    @Test
+    void announceDiscoveredPeer_withoutCoordinator_returnsFalse() throws Exception {
+        setField("peerNetworkCoordinator", null);
+        assertFalse(manager.announceDiscoveredPeer(PEER_1, "host:1101"));
     }
 
     @Test

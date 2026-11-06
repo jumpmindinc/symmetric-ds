@@ -278,8 +278,33 @@ class AbstractParameterServiceTest {
         assertEquals("store-001/store", parameterService.rereadDatabaseParameters(identity).get("scope"));
     }
 
+    @Test
+    void rereadDatabaseParameters_nonOverridableParameter_isIgnored() {
+        parameterService.databaseHasBeenInitialized = true;
+        parameterService.databaseParameters.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "false");
+        TypedProperties databaseParameters = parameterService.rereadDatabaseParameters(new TypedProperties());
+        assertNull(databaseParameters.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
+    }
+
+    @Test
+    void rereadDatabaseParameters_overridableParameter_isKept() {
+        parameterService.databaseHasBeenInitialized = true;
+        parameterService.databaseParameters.setProperty(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW, "true");
+        TypedProperties databaseParameters = parameterService.rereadDatabaseParameters(new TypedProperties());
+        assertEquals("true", databaseParameters.getProperty(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW));
+    }
+
+    @Test
+    void rereadDatabaseParameters_unknownParameter_isKept() {
+        parameterService.databaseHasBeenInitialized = true;
+        parameterService.databaseParameters.setProperty("custom.parameter", "value");
+        TypedProperties databaseParameters = parameterService.rereadDatabaseParameters(new TypedProperties());
+        assertEquals("value", databaseParameters.getProperty("custom.parameter"));
+    }
+
     private static class TestParameterService extends AbstractParameterService {
         private final TypedProperties applicationParameters;
+        private final TypedProperties databaseParameters = new TypedProperties();
         private int rereadCount;
         private SqlException failure;
 
@@ -300,6 +325,7 @@ class AbstractParameterServiceTest {
         public TypedProperties getDatabaseParameters(String externalId, String nodeGroupId) {
             TypedProperties properties = new TypedProperties();
             properties.setProperty("scope", externalId + "/" + nodeGroupId);
+            properties.putAll(databaseParameters);
             return properties;
         }
     }

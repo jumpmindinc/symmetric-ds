@@ -26,9 +26,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -51,6 +54,7 @@ abstract public class AbstractParameterService {
     protected String nodeGroupId = null;
     protected String syncUrl = null;
     protected String registrationUrl = null;
+    private final Set<String> ignoredDatabaseParameterKeys = ConcurrentHashMap.newKeySet();
 
     public AbstractParameterService() {
         this.systemProperties = (Properties) System.getProperties().clone();
@@ -280,9 +284,25 @@ abstract public class AbstractParameterService {
             properties.putAll(getDatabaseParameters(
                     p.getProperty(ParameterConstants.EXTERNAL_ID),
                     p.getProperty(ParameterConstants.NODE_GROUP_ID)));
+            removeNonOverridableParameters(properties);
             return properties;
         } else {
             return new TypedProperties();
+        }
+    }
+
+    private void removeNonOverridableParameters(TypedProperties databaseParameters) {
+        Map<String, ParameterMetaData> parameterMetaData = ParameterConstants.getParameterMetaData();
+        for (String key : databaseParameters.stringPropertyNames()) {
+            ParameterMetaData metaData = parameterMetaData.get(key);
+            if (metaData != null && !metaData.isDatabaseOverridable()) {
+                databaseParameters.remove(key);
+                if (ignoredDatabaseParameterKeys.add(key)) {
+                    log.warn(
+                            "Ignoring parameter {} found in the database because it is not database-overridable. Set it in the properties file or "
+                                    + "environment variable instead and remove it from the database.", key);
+                }
+            }
         }
     }
 
