@@ -54,6 +54,7 @@ import org.jumpmind.symmetric.SyntaxParsingException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.ProtocolException;
@@ -90,7 +91,6 @@ import org.jumpmind.symmetric.route.CommonBatchCollisionException;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.ConvertToReloadRouter;
 import org.jumpmind.symmetric.route.DBFRouter;
-import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
@@ -565,7 +565,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         String channelId = channel.getChannelId();
         DefaultRoutersCheck lastCheck = defaultRoutersCheckByChannel.get(channelId);
         long cacheTime = parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS);
-        if (lastCheck != null && lastCheck.isCurrent(triggerRouters, cacheTime)) {
+        if (lastCheck != null && lastCheck.isCurrentlyValid(triggerRouters, cacheTime)) {
             return lastCheck.onlyDefaultRoutersAssigned();
         }
         boolean onlyDefaultRoutersAssigned = computeOnlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters);
@@ -1475,12 +1475,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
         }
     }
 
-    /**
-     * Whether a channel had only default routers, and the trigger routers that answer was worked out from. The trigger router cache builds a new list each time
-     * it reloads, so the answer is reused only while that same list is passed in and the cache time has not run out.
-     */
     private record DefaultRoutersCheck(boolean onlyDefaultRoutersAssigned, List<TriggerRouter> triggerRouters, long checkTime) {
-        boolean isCurrent(List<TriggerRouter> currentTriggerRouters, long cacheTime) {
+        boolean isCurrentlyValid(List<TriggerRouter> currentTriggerRouters, long cacheTime) {
             return triggerRouters == currentTriggerRouters && System.currentTimeMillis() - checkTime <= cacheTime;
         }
     }
