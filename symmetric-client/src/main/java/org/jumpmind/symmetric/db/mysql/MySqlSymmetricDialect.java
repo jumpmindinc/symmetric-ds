@@ -241,6 +241,14 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         return SYNC_TRIGGERS_DISABLED_USER_VARIABLE + " is null";
     }
 
+    protected boolean isConvertZeroDateToNull() {
+        return isConvertZeroDateToNull;
+    }
+
+    protected String getCharacterSet() {
+        return characterSet;
+    }
+
     public String getSyncTriggersOnIncomingExpression() {
         return "coalesce(" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + ", 0) != 2";
     }

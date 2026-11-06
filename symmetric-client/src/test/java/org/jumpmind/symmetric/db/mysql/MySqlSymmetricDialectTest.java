@@ -21,11 +21,13 @@
 package org.jumpmind.symmetric.db.mysql;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -37,6 +39,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.util.DataSourceProperties;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
@@ -117,6 +120,37 @@ class MySqlSymmetricDialectTest {
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplate, times(1)).queryForInt(sqlCaptor.capture(), any(Object[].class));
         assertFalse(sqlCaptor.getValue().contains("lower(event_object_table)"));
+    }
+
+    @Test
+    void getSyncTriggersExpression_capturesOnlyWhenVariableIsNull() {
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
+        assertEquals("@sync_triggers_disabled is null", dialect.getSyncTriggersExpression());
+        assertEquals("coalesce(@sync_triggers_disabled, 0) != 2", dialect.getSyncTriggersOnIncomingExpression());
+    }
+
+    @Test
+    void isConvertZeroDateToNull_isFalse_whenUrlOmitsZeroDateTimeBehavior() {
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
+        assertFalse(dialect.isConvertZeroDateToNull());
+    }
+
+    @Test
+    void isConvertZeroDateToNull_isTrue_whenUrlConvertsZeroDatesAndSqlModeAllowsZeroDates() {
+        IParameterService parameterService = createParameterService();
+        when(parameterService.getString(DataSourceProperties.DB_POOL_URL)).thenReturn("jdbc:mysql://localhost/test?zeroDateTimeBehavior=convertToNull");
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        when(platform.getSqlTemplate().queryForString("select @@sql_mode")).thenReturn("");
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, platform);
+        assertTrue(dialect.isConvertZeroDateToNull());
+    }
+
+    @Test
+    void getCharacterSet_returnsConfiguredMasterCollation() {
+        IParameterService parameterService = createParameterService();
+        when(parameterService.getString(eq(ParameterConstants.DB_MASTER_COLLATION), anyString())).thenReturn("latin1");
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, createPlatform("8.0.30"));
+        assertEquals("latin1", dialect.getCharacterSet());
     }
 
     private IParameterService createParameterService() {
