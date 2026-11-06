@@ -177,6 +177,51 @@ public class AbstractDatabaseWriterTest {
     }
 
     @Test
+    public void testTableColumnSourceReferences_ColumnsDifferOnlyByCase() {
+        String[] sourceColumnNames = { "id", "last_Name", "name", "last_name" };
+        String[] targetColumnNames = { "id", "last_name", "name", "last_Name" };
+        String[] keyNames = { "id" };
+        Table sourceTable = new Table("catalog1", "schema1", "buyers", sourceColumnNames, keyNames);
+        Table targetTable = new Table("catalog2", "schema2", "buyers", targetColumnNames, keyNames);
+        TableColumnSourceReferences columnReferences = new TableColumnSourceReferences(sourceTable, targetTable);
+        assertEquals(targetColumnNames.length, columnReferences.size());
+        for (TableColumnSourceReferences.ColumnSourceReferenceEntry referenceEntry : columnReferences) {
+            assertEquals(targetColumnNames[referenceEntry.targetColumnNo()], sourceColumnNames[referenceEntry.sourceColumnNo()]);
+        }
+    }
+
+    @Test
+    public void testTableColumnSourceReferences_FallsBackToCaseInsensitiveMatch() {
+        String[] sourceColumnNames = { "ID", "NAME" };
+        String[] targetColumnNames = { "name", "id" };
+        String[] keyNames = { "ID" };
+        Table sourceTable = new Table("catalog1", "schema1", "table1", sourceColumnNames, keyNames);
+        Table targetTable = new Table("catalog2", "schema2", "table2", targetColumnNames, keyNames);
+        TableColumnSourceReferences columnReferences = new TableColumnSourceReferences(sourceTable, targetTable);
+        assertEquals(targetColumnNames.length, columnReferences.size());
+        assertEquals(1, columnReferences.get(0).sourceColumnNo());
+        assertEquals(0, columnReferences.get(1).sourceColumnNo());
+    }
+
+    @Test
+    public void testGetRowData_ColumnsDifferOnlyByCase() {
+        String[] sourceColumnNames = { "id", "last_Name", "name", "last_name" };
+        String[] targetColumnNames = { "id", "last_Name", "name", "last_name" };
+        String[] keyNames = { "id" };
+        Table sourceTable = new Table("catalog1", "schema1", "customers", sourceColumnNames, keyNames);
+        setTableColumnTypes(sourceTable);
+        Table targetTable = new Table("catalog2", "schema2", "customers", targetColumnNames, keyNames);
+        setTableColumnTypes(targetTable);
+        String[] sourceRowData = { "110", "", "Customer", "{12}" };
+        CsvData csvData = new CsvData(DataEventType.UPDATE, sourceRowData);
+        StubAbstractDatabaseWriter abstractDatabaseWriter = new StubAbstractDatabaseWriter();
+        abstractDatabaseWriter.start(sourceTable, targetTable);
+        String[] rowData = abstractDatabaseWriter.getRowDataNew(csvData, CsvData.ROW_DATA);
+        assertArrayEquals(sourceRowData, rowData);
+        abstractDatabaseWriter.close();
+    }
+
+    @Test
     public void testClearTargetColumnReferencesMap() {
         String[] sourceColumnNames = { "c1", "c2", "c3", "c4", "c5" };
         String[] targetColumnNames = { "c2", "c5", "c3", "c1" };

@@ -297,10 +297,10 @@ public abstract class Relation extends SchemaObject {
     }
 
     public int getColumnIndex(String columnName) {
-        int idx = 0;
-        for (Iterator<Column> it = columns.iterator(); it.hasNext(); idx++) {
-            if (columnName != null && columnName.equalsIgnoreCase(it.next().getName())) {
-                return idx;
+        Column column = getColumnWithName(columnName);
+        for (int index = 0; column != null && index < columns.size(); index++) {
+            if (columns.get(index) == column) {
+                return index;
             }
         }
         return -1;
@@ -317,16 +317,15 @@ public abstract class Relation extends SchemaObject {
         return -1;
     }
 
+    /**
+     * Finds a column by name. An exact name match wins over a case-insensitive one, so columns whose names differ only by case resolve to themselves.
+     */
     public final Column getColumnWithName(String name) {
         Column[] cols = getColumns();
-        if (cols != null) {
-            for (Column column : cols) {
-                if (column.getName().equalsIgnoreCase(name)) {
-                    return column;
-                }
-            }
+        if (cols == null || name == null) {
+            return null;
         }
-        return null;
+        return findColumn(cols, name);
     }
 
     public Column[] getColumnsWithName(String[] columnNames) {
