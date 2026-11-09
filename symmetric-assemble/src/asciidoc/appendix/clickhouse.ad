@@ -33,10 +33,6 @@ The `clickhouse` and `ch` JDBC sub-protocols are both recognized. The driver con
 on a server that is not using TLS. The database named in the URL is the default schema for the target tables.
 The user needs permission to create, alter, and drop tables in that database, and to insert, update, and delete rows.
 
-The ClickHouse server compresses responses with ZSTD by default, and version 0.10.0 of the JDBC driver cannot read
-them, which fails with "Invalid LZ4 magic byte". SymmetricDS therefore sets the connection property `compress=false`
-whenever the ClickHouse driver is used.
-
 ==== How Tables Are Created
 
 When a table does not exist in ClickHouse, SymmetricDS creates it from the source definition as a `MergeTree` table:

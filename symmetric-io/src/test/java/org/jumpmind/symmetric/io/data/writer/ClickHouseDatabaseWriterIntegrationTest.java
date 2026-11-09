@@ -57,8 +57,7 @@ import org.jumpmind.db.util.BinaryEncoding;
 
 /**
  * Runs the ClickHouse writer against a real server. It is skipped unless CLICKHOUSE_URL is set, for example
- * <code>jdbc:clickhouse://localhost:8123/symds</code>, together with CLICKHOUSE_USER and CLICKHOUSE_PASSWORD. The URL is deliberately used as given, so the
- * default of turning off compression is exercised too.
+ * <code>jdbc:clickhouse://localhost:8123/symds</code>, together with CLICKHOUSE_USER and CLICKHOUSE_PASSWORD.
  */
 @EnabledIfEnvironmentVariable(named = "CLICKHOUSE_URL", matches = ".+")
 public class ClickHouseDatabaseWriterIntegrationTest extends AbstractWriterTest {

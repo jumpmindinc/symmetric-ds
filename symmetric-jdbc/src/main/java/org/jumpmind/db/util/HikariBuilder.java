@@ -59,11 +59,6 @@ class HikariBuilder extends DataSourceBuilder {
                     log.info("Setting HikariCP data source property {} to {}", key, value);
                     config.addDataSourceProperty(key, value);
                 });
-        for (String key : DataSourceFactory.requiredConnectionProperties.keySet()) {
-            String value = DataSourceFactory.requiredConnectionProperties.get(key);
-            log.info("Setting required database connection property {}={}", key, value);
-            config.addDataSourceProperty(key, value);
-        }
         applyLong(properties, DataSourceProperties.DB_POOL_MAX_LIFETIME, config::setMaxLifetime);
         applyLong(properties, DataSourceProperties.DB_POOL_IDLE_TIMEOUT, config::setIdleTimeout);
         applyLong(properties, DataSourceProperties.DB_POOL_KEEPALIVE_TIME, config::setKeepaliveTime);

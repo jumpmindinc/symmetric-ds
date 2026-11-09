@@ -47,12 +47,13 @@ class ClickHouseModuleTest {
     void testModuleInstallsTheDriverAndItsDependencies() throws Exception {
         List<MavenArtifact> artifacts = MavenArtifact.parseCsv(loadModules().getProperty("clickhouse"), "3.19.0");
         List<String> files = artifacts.stream().map(MavenArtifact::toFileName).collect(Collectors.toList());
-        assertTrue(files.contains("clickhouse-jdbc-0.10.0.jar"), files.toString());
-        assertTrue(files.contains("client-v2-0.10.0.jar"), files.toString());
-        assertTrue(files.contains("jdbc-v2-0.10.0.jar"), files.toString());
+        assertTrue(files.contains("clickhouse-jdbc-0.11.0.jar"), files.toString());
+        assertTrue(files.contains("client-v2-0.11.0.jar"), files.toString());
+        assertTrue(files.contains("jdbc-v2-0.11.0.jar"), files.toString());
         // The driver needs these, and the all jar is not used, so each one has to be installed
-        assertTrue(files.contains("httpclient5-5.4.4.jar"), files.toString());
-        assertTrue(files.contains("lz4-java-1.10.4.jar"), files.toString());
+        assertTrue(files.contains("httpclient5-5.6.4.jar"), files.toString());
+        assertTrue(files.contains("lz4-java-1.11.4.jar"), files.toString());
+        assertTrue(files.contains("zstd-jni-1.5.7-23.jar"), files.toString());
     }
 
     @Test
