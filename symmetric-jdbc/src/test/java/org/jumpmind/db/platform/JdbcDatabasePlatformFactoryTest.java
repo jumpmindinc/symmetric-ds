@@ -30,6 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.jumpmind.db.platform.clickhouse.ClickHouseDatabasePlatform;
 import org.jumpmind.db.platform.greenplum.GreenplumPlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
@@ -222,5 +223,32 @@ class JdbcDatabasePlatformFactoryTest {
         DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
         assertEquals(DatabaseNamesConstants.CLOUDSQL_MYSQL, nameVersion.getName());
+    }
+
+    @Test
+    void testFindPlatformClass_clickHouseByProductName() {
+        DatabaseVersion version = new DatabaseVersion();
+        version.setName("ClickHouse");
+        version.setVersion(26);
+        version.setProtocol("unknown");
+        assertEquals(ClickHouseDatabasePlatform.class, factory.findPlatformClass(version));
+    }
+
+    @Test
+    void testFindPlatformClass_clickHouseBySubprotocol() {
+        assertEquals(ClickHouseDatabasePlatform.class, factory.findPlatformClass(newClickHouseVersion("clickhouse")));
+    }
+
+    @Test
+    void testFindPlatformClass_clickHouseByShortSubprotocol() {
+        assertEquals(ClickHouseDatabasePlatform.class, factory.findPlatformClass(newClickHouseVersion("ch")));
+    }
+
+    private DatabaseVersion newClickHouseVersion(String protocol) {
+        DatabaseVersion version = new DatabaseVersion();
+        version.setName("Some Other Name");
+        version.setVersion(1);
+        version.setProtocol(protocol);
+        return version;
     }
 }

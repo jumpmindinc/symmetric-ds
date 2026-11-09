@@ -24,8 +24,11 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -52,6 +55,7 @@ public class ClickHouseDdlReader extends AbstractJdbcDdlReader {
             column.setMappedTypeCode(Types.VARBINARY);
             column.setJdbcTypeCode(Types.VARBINARY);
         }
+        readDefault(column);
         String typeName = stripWrappers(column.getJdbcTypeName());
         column.setJdbcTypeName(typeName);
         PlatformColumn platformColumn = column.findPlatformColumn(platform.getName());
@@ -59,6 +63,75 @@ public class ClickHouseDdlReader extends AbstractJdbcDdlReader {
             platformColumn.setType(baseTypeName(typeName));
         }
         return column;
+    }
+
+    /**
+     * A <code>generateSerialID</code> default is turned back into an auto-increment column, and an empty default is dropped because the driver reports it the
+     * same as no default.
+     */
+    protected void readDefault(Column column) {
+        String value = column.getDefaultValue();
+        if (StringUtils.isEmpty(value)) {
+            column.setDefaultValue(null);
+        } else if (value.startsWith(ClickHouseDdlBuilder.SERIAL_FUNCTION + "(")) {
+            column.setAutoIncrement(true);
+            column.setDefaultValue(null);
+        }
+    }
+
+    /**
+     * The base reader removes the quotes around a text or date default, which leaves the ClickHouse escapes in place. They are removed here and the value is
+     * quoted again as a SQL literal.
+     */
+    @Override
+    protected Relation postprocessRelationFromDatabase(Relation relation) {
+        Relation result = super.postprocessRelationFromDatabase(relation);
+        if (result != null) {
+            for (int i = 0; i < result.getColumnCount(); i++) {
+                Column column = result.getColumn(i);
+                String value = column.getDefaultValue();
+                int type = column.getMappedTypeCode();
+                if (value != null && (TypeMap.isTextType(type) || TypeMap.isDateTimeType(type))) {
+                    column.setDefaultValue("'" + unescape(value).replace("'", "''") + "'");
+                }
+            }
+        }
+        return result;
+    }
+
+    public static String unescape(String value) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\\' && i + 1 < value.length()) {
+                char next = value.charAt(++i);
+                switch (next) {
+                    case 'n':
+                        result.append('\n');
+                        break;
+                    case 't':
+                        result.append('\t');
+                        break;
+                    case 'r':
+                        result.append('\r');
+                        break;
+                    case 'b':
+                        result.append('\b');
+                        break;
+                    case 'f':
+                        result.append('\f');
+                        break;
+                    case '0':
+                        result.append('\0');
+                        break;
+                    default:
+                        result.append(next);
+                }
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
     }
 
     /**
@@ -85,13 +158,13 @@ public class ClickHouseDdlReader extends AbstractJdbcDdlReader {
 
     public static String stripWrappers(String typeName) {
         String result = typeName;
-        boolean stripped = true;
-        while (result != null && stripped) {
-            stripped = false;
+        boolean isStripped = true;
+        while (result != null && isStripped) {
+            isStripped = false;
             for (String wrapper : WRAPPERS) {
                 if (result.startsWith(wrapper + "(") && result.endsWith(")")) {
                     result = result.substring(wrapper.length() + 1, result.length() - 1).trim();
-                    stripped = true;
+                    isStripped = true;
                 }
             }
         }

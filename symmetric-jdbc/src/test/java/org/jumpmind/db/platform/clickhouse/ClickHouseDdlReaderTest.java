@@ -33,6 +33,7 @@ import java.util.Map;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -121,6 +122,58 @@ class ClickHouseDdlReaderTest {
         values.put("REMARKS", "some other comment");
         assertEquals(Types.VARCHAR, readColumn(values).getMappedTypeCode());
         assertEquals(Types.VARCHAR, readColumn(values("Nullable(String)", Types.VARCHAR, "0", 0, "YES")).getMappedTypeCode());
+    }
+
+    @Test
+    void testReadColumn_serialIdDefaultBecomesAutoIncrement() throws Exception {
+        Map<String, Object> values = values("Int64", Types.BIGINT, "19", 0, "NO");
+        values.put("COLUMN_DEF", "generateSerialID('item_id')");
+        Column column = readColumn(values);
+        assertTrue(column.isAutoIncrement());
+        assertNull(column.getDefaultValue());
+    }
+
+    @Test
+    void testPostprocess_textDefaultIsUnescapedAndQuoted() {
+        Table table = tableWithDefault(Types.VARCHAR, "'it\\'s'");
+        ddlReader.postprocessRelationFromDatabase(table);
+        assertEquals("'it''s'", table.getColumn(0).getDefaultValue());
+    }
+
+    @Test
+    void testPostprocess_dateDefaultIsQuoted() {
+        Table table = tableWithDefault(Types.DATE, "'2020-01-02'");
+        ddlReader.postprocessRelationFromDatabase(table);
+        assertEquals("'2020-01-02'", table.getColumn(0).getDefaultValue());
+    }
+
+    @Test
+    void testPostprocess_numericDefaultIsLeftAlone() {
+        Table table = tableWithDefault(Types.INTEGER, "5");
+        ddlReader.postprocessRelationFromDatabase(table);
+        assertEquals("5", table.getColumn(0).getDefaultValue());
+    }
+
+    @Test
+    void testReadColumn_emptyDefaultMeansNoDefault() throws Exception {
+        Map<String, Object> values = values("String", Types.VARCHAR, "0", 0, "NO");
+        values.put("COLUMN_DEF", "");
+        assertNull(readColumn(values).getDefaultValue());
+    }
+
+    @Test
+    void testUnescape() {
+        assertEquals("a'b\\c\nd", ClickHouseDdlReader.unescape("a\\'b\\\\c\\nd"));
+        assertEquals("plain", ClickHouseDdlReader.unescape("plain"));
+    }
+
+    private static Table tableWithDefault(int type, String defaultValue) {
+        Column column = new Column("c");
+        column.setMappedTypeCode(type);
+        column.setDefaultValue(defaultValue);
+        Table table = new Table("t");
+        table.addColumn(column);
+        return table;
     }
 
     private Column readColumn(Map<String, Object> values) throws Exception {

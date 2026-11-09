@@ -30,10 +30,9 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
-import org.jumpmind.db.platform.DdlBuilderFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.jumpmind.db.model.PlatformColumn;
 
 class ClickHouseDdlBuilderTest {
     private ClickHouseDdlBuilder ddlBuilder;
@@ -50,11 +49,6 @@ class ClickHouseDdlBuilderTest {
         assertFalse(info.isIndicesSupported());
         assertFalse(info.isForeignKeysSupported());
         assertFalse(info.isPrimaryKeyEmbedded());
-    }
-
-    @Test
-    void testFactory_createsClickHouseBuilder() {
-        assertTrue(DdlBuilderFactory.getInstance().create(DatabaseNamesConstants.CLICKHOUSE) instanceof ClickHouseDdlBuilder);
     }
 
     @Test
@@ -117,14 +111,85 @@ class ClickHouseDdlBuilderTest {
     }
 
     @Test
-    void testCreateTable_doesNotWriteDefaultsOrAutoIncrement() {
+    void testCreateTable_autoIncrementColumnDefaultsToSerialId() {
         Column id = column("id", true, Types.INTEGER, 10, 0);
         id.setAutoIncrement(true);
-        Column name = column("name", false, Types.VARCHAR, 50, 0);
-        name.setDefaultValue("abc");
-        String ddl = create(table("item", id, name));
-        assertFalse(ddl.contains("DEFAULT"), ddl);
+        String ddl = create(table("item", id));
+        assertTrue(ddl.contains("\"id\" Int32 DEFAULT generateSerialID('item_id')"), ddl);
         assertFalse(ddl.contains("IDENTITY"), ddl);
+    }
+
+    @Test
+    void testCreateTable_autoIncrementOnNonIntegerColumnIsIgnored() {
+        Column code = column("code", false, Types.VARCHAR, 10, 0);
+        code.setAutoIncrement(true);
+        assertFalse(create(table("item", column("id", true, Types.INTEGER, 10, 0), code)).contains("generateSerialID"));
+    }
+
+    @Test
+    void testCreateTable_writesLiteralDefaults() {
+        Column name = withDefault(column("name", false, Types.VARCHAR, 50, 0), "'it''s'");
+        Column qty = withDefault(column("qty", false, Types.INTEGER, 10, 0), "5");
+        Column price = withDefault(column("price", false, Types.DECIMAL, 10, 2), "1.50");
+        Column active = withDefault(column("active", false, Types.BIT, 1, 0), "1");
+        Column day = withDefault(column("day", false, Types.DATE, 0, 0), "'2020-01-02'");
+        Column created = withDefault(column("created", false, Types.TIMESTAMP, 26, 6), "'2020-01-02 03:04:05'");
+        String ddl = create(table("item", column("id", true, Types.INTEGER, 10, 0), name, qty, price, active, day, created));
+        assertTrue(ddl.contains("\"name\" Nullable(String) DEFAULT 'it\\'s'"), ddl);
+        assertTrue(ddl.contains("\"qty\" Nullable(Int32) DEFAULT 5"), ddl);
+        assertTrue(ddl.contains("DEFAULT 1.5"), ddl);
+        assertTrue(ddl.contains("\"active\" Nullable(Bool) DEFAULT true"), ddl);
+        assertTrue(ddl.contains("DEFAULT '2020-01-02'"), ddl);
+        assertTrue(ddl.contains("DEFAULT '2020-01-02 03:04:05.000000'"), ddl);
+    }
+
+    @Test
+    void testCreateTable_unquotedTextDefaultIsAccepted() {
+        assertTrue(create(table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("name", false, Types.VARCHAR, 50, 0), "abc")))
+                .contains("DEFAULT 'abc'"));
+    }
+
+    @Test
+    void testCreateTable_skipsDefaultsThatAreNotLiterals() {
+        for (String expression : new String[] { "CURRENT_TIMESTAMP", "now()", "nextval('seq')", "'abc'::character varying", "NULL", "" }) {
+            String ddl = create(table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("name", false, Types.VARCHAR, 50, 0), expression)));
+            assertFalse(ddl.contains("DEFAULT"), expression + " " + ddl);
+        }
+        String ddl = create(table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("qty", false, Types.INTEGER, 10, 0), "seq_next()"),
+                withDefault(column("created", false, Types.TIMESTAMP, 26, 6), "CURRENT_TIMESTAMP")));
+        assertFalse(ddl.contains("DEFAULT"), ddl);
+    }
+
+    @Test
+    void testCreateTable_binaryColumnHasNoDefault() {
+        assertFalse(create(table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("data", false, Types.VARBINARY, 10, 0), "'abc'")))
+                .contains("DEFAULT"));
+    }
+
+    @Test
+    void testAlter_addColumnWithDefault() {
+        Table current = table("item", column("id", true, Types.INTEGER, 10, 0));
+        Table desired = table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("status", false, Types.VARCHAR, 10, 0), "'new'"));
+        assertTrue(alter(current, desired).contains("ADD COLUMN \"status\" Nullable(String) DEFAULT 'new'"));
+    }
+
+    @Test
+    void testAlter_changedDefaultUsesModifyColumn() {
+        Table current = table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("qty", false, Types.INTEGER, 10, 0), "1"));
+        Table desired = table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("qty", false, Types.INTEGER, 10, 0), "2"));
+        assertTrue(alter(current, desired).contains("MODIFY COLUMN \"qty\" Nullable(Int32) DEFAULT 2"));
+    }
+
+    @Test
+    void testAlter_sameDefaultInDifferentFormsIsNotModified() {
+        Table current = table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("price", false, Types.DECIMAL, 10, 2), "1.5"));
+        Table desired = table("item", column("id", true, Types.INTEGER, 10, 0), withDefault(column("price", false, Types.DECIMAL, 10, 2), "1.50"));
+        assertEquals("", alter(current, desired).trim());
+    }
+
+    private static Column withDefault(Column column, String defaultValue) {
+        column.setDefaultValue(defaultValue);
+        return column;
     }
 
     @Test
@@ -145,7 +210,7 @@ class ClickHouseDdlBuilderTest {
     @Test
     void testSqlType_timestampTypeWithoutPrecisionFromPlatformColumnKeepsMicroseconds() {
         Column column = column("c", false, Types.TIMESTAMP, 26, 3);
-        column.addPlatformColumn(new org.jumpmind.db.model.PlatformColumn("clickhouse", "DateTime64", -1, -1, null));
+        column.addPlatformColumn(new PlatformColumn("clickhouse", "DateTime64", -1, -1, null));
         assertEquals("DateTime64(6)", ddlBuilder.getSqlType(column));
     }
 

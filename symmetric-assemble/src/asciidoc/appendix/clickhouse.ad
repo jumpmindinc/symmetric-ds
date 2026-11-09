@@ -55,7 +55,13 @@ ENGINE = MergeTree ORDER BY ("id", "region") SETTINGS enable_block_number_column
 * Columns that are not required are created as `Nullable(...)`. Key columns are never nullable, because ClickHouse
 rejects a nullable sorting key.
 * The two table settings are needed for `UPDATE` statements. Without them, an update fails with error 48.
-* Default values, auto-increment, indexes, foreign keys, and triggers are not created, because ClickHouse does not have them.
+* Literal default values (numbers, text, booleans, dates, and timestamps) are created as a `DEFAULT` on the column. A default that is an
+expression, such as `CURRENT_TIMESTAMP` or a sequence, is not created, because it would not mean the same thing in ClickHouse.
+A column added with a default has that value in the rows that were already in the table.
+* An auto-increment column is created with `DEFAULT generateSerialID('table_column')`. ClickHouse only runs the default when a row is
+inserted without a value for the column, which SymmetricDS never does, so the values come from the source. The default itself requires
+ClickHouse Keeper to be configured on the server. Without it the table is still created and loaded, but an insert that leaves the column out fails.
+* Indexes, foreign keys, and triggers are not created. Indexes are not supported in this release, and ClickHouse does not have foreign keys or triggers.
 
 The following table shows how types are mapped.
 

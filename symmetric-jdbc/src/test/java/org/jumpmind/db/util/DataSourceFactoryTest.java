@@ -21,6 +21,7 @@
 package org.jumpmind.db.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,6 +30,7 @@ import javax.sql.DataSource;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.properties.TypedProperties;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import com.zaxxer.hikari.HikariDataSource;
@@ -92,6 +94,39 @@ class DataSourceFactoryTest {
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "java.lang.String");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:h2:mem:test");
         assertThrows(NotJdbcDriverException.class, () -> DataSourceFactory.create(properties));
+    }
+
+    @AfterEach
+    void removeRequiredConnectionProperties() {
+        // The map is shared by every data source in the JVM, so leave it as it was found
+        DataSourceFactory.requiredConnectionProperties.remove("compress");
+        DataSourceFactory.requiredConnectionProperties.remove("IGNORECASE");
+    }
+
+    @Test
+    void prepareDriverForClickHouseTurnsOffCompression() throws Exception {
+        assertFalse(DataSourceFactory.requiredConnectionProperties.containsKey("compress"));
+        DataSourceFactory.prepareDriver("com.clickhouse.jdbc.ClickHouseDriver");
+        assertEquals("false", DataSourceFactory.requiredConnectionProperties.get("compress"));
+    }
+
+    @Test
+    void prepareDriverForOtherDriversDoesNotAddCompression() throws Exception {
+        DataSourceFactory.prepareDriver("org.h2.Driver");
+        assertFalse(DataSourceFactory.requiredConnectionProperties.containsKey("compress"));
+    }
+
+    @Test
+    void hikariBuilderAppliesRequiredConnectionProperties() {
+        DataSourceFactory.requiredConnectionProperties.put("IGNORECASE", "TRUE");
+        TypedProperties properties = new TypedProperties();
+        properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:h2:mem:required_props_test");
+        DataSource dataSource = new HikariBuilder().build(properties, "org.h2.Driver", "sa", "");
+        try {
+            assertEquals("TRUE", ((HikariDataSource) dataSource).getDataSourceProperties().getProperty("IGNORECASE"));
+        } finally {
+            ((HikariDataSource) dataSource).close();
+        }
     }
 
     private TypedProperties buildH2Properties() {

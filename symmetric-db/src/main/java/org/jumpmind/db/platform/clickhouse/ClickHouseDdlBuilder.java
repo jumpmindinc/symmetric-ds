@@ -20,17 +20,23 @@
  */
 package org.jumpmind.db.platform.clickhouse;
 
+import java.math.BigDecimal;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddPrimaryKeyChange;
+import org.jumpmind.db.alter.ColumnAutoIncrementChange;
 import org.jumpmind.db.alter.ColumnChange;
 import org.jumpmind.db.alter.ColumnDataTypeChange;
+import org.jumpmind.db.alter.ColumnDefaultValueChange;
 import org.jumpmind.db.alter.ColumnRequiredChange;
 import org.jumpmind.db.alter.ColumnSizeChange;
 import org.jumpmind.db.alter.PrimaryKeyChange;
@@ -40,6 +46,7 @@ import org.jumpmind.db.alter.TableChange;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.AbstractDdlBuilder;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 
@@ -60,6 +67,16 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
     public static final int MAX_DECIMAL_PRECISION = 76;
     public static final int DEFAULT_DECIMAL_PRECISION = 38;
     public static final int DEFAULT_DECIMAL_SCALE = 10;
+    /**
+     * ClickHouse has no auto-increment attribute, so an auto-increment column gets this function as its default. It needs ClickHouse Keeper to be configured on
+     * the server, and only runs when an insert leaves the column out.
+     */
+    public static final String SERIAL_FUNCTION = "generateSerialID";
+    private static final Pattern NUMBER = Pattern.compile("[-+]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?");
+    private static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+    private static final Pattern TIMESTAMP = Pattern.compile("\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?");
+    private static final Pattern TIME = Pattern.compile("\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?");
+    private static final Set<String> NON_LITERAL_DEFAULTS = Set.of("now", "sysdate", "systimestamp", "getdate", "user", "localtime", "localtimestamp");
     private static final int[] STRING_TYPES = { Types.CHAR, Types.VARCHAR, Types.LONGVARCHAR, Types.CLOB, Types.NCHAR, Types.NVARCHAR, Types.LONGNVARCHAR,
             Types.NCLOB, Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY, Types.BLOB, Types.SQLXML, Types.OTHER, Types.ARRAY, Types.STRUCT,
             Types.JAVA_OBJECT, Types.DISTINCT, Types.REF, Types.DATALINK, Types.ROWID };
@@ -144,9 +161,99 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
     @Override
     protected void writeColumn(Table table, Column column, StringBuilder ddl) {
         writeColumnTypeDefaultRequired(table, column, ddl);
+        String defaultExpression = getDefaultExpression(table, column);
+        if (defaultExpression != null) {
+            ddl.append(" DEFAULT ").append(defaultExpression);
+        }
         if (isBinary(column)) {
             ddl.append(" COMMENT '").append(BINARY_COLUMN_COMMENT).append("'");
         }
+    }
+
+    /**
+     * The expression for the DEFAULT of a column, or null for none. Only literal defaults are carried over, because an expression such as a function call or a
+     * sequence of the source database would not mean the same thing in ClickHouse.
+     */
+    protected String getDefaultExpression(Table table, Column column) {
+        if (column.isAutoIncrement() && isInteger(column)) {
+            return SERIAL_FUNCTION + "(" + quote(table.getName() + "_" + column.getName()) + ")";
+        }
+        return getLiteralDefault(column);
+    }
+
+    protected boolean isInteger(Column column) {
+        int type = column.getMappedTypeCode();
+        return type == Types.TINYINT || type == Types.SMALLINT || type == Types.INTEGER || type == Types.BIGINT;
+    }
+
+    protected String getLiteralDefault(Column column) {
+        String value = getNativeDefaultValue(column);
+        if (value == null || isBinary(column)) {
+            return null;
+        }
+        String text = value.trim();
+        while (text.length() > 1 && text.startsWith("(") && text.endsWith(")")) {
+            text = text.substring(1, text.length() - 1).trim();
+        }
+        boolean isQuoted = text.length() >= 2 && text.startsWith("'") && text.endsWith("'");
+        String literal = isQuoted ? text.substring(1, text.length() - 1).replace("''", "'") : text;
+        if (literal.isEmpty() || literal.equalsIgnoreCase("null") && !isQuoted) {
+            // The driver cannot tell an empty string default from no default, and a String column already defaults to empty
+            return null;
+        }
+        int type = column.getMappedTypeCode();
+        if (type == Types.BIT || type == Types.BOOLEAN) {
+            if (literal.equalsIgnoreCase("true") || literal.equals("1")) {
+                return "true";
+            } else if (literal.equalsIgnoreCase("false") || literal.equals("0")) {
+                return "false";
+            }
+            return null;
+        } else if (TypeMap.isNumericType(type)) {
+            return NUMBER.matcher(literal).matches() ? normalizeNumber(literal) : null;
+        } else if (type == Types.DATE) {
+            return DATE.matcher(literal).matches() ? quote(literal) : null;
+        } else if (type == Types.TIMESTAMP || type == Types.TIMESTAMP_WITH_TIMEZONE) {
+            return TIMESTAMP.matcher(literal).matches() ? quote(normalizeTimestamp(literal)) : null;
+        } else if (type == Types.TIME || type == Types.TIME_WITH_TIMEZONE) {
+            return TIME.matcher(literal).matches() ? quote(literal) : null;
+        } else if (TypeMap.isTextType(type)) {
+            return isQuoted || isPlainText(literal) ? quote(literal) : null;
+        }
+        return null;
+    }
+
+    /**
+     * Some databases report a character default without its quotes, so unquoted text is accepted unless it looks like a function or a cast.
+     */
+    protected boolean isPlainText(String literal) {
+        return !literal.contains("(") && !literal.contains("::") && !literal.toLowerCase().startsWith("current")
+                && !NON_LITERAL_DEFAULTS.contains(literal.toLowerCase());
+    }
+
+    /**
+     * The same value is written whether the source says 1.50 or ClickHouse reports 1.5, so that comparing the two does not look like a change.
+     */
+    protected String normalizeNumber(String literal) {
+        try {
+            BigDecimal number = new BigDecimal(literal).stripTrailingZeros();
+            return number.signum() == 0 ? "0" : number.toPlainString();
+        } catch (NumberFormatException e) {
+            return literal;
+        }
+    }
+
+    protected String normalizeTimestamp(String literal) {
+        String text = literal.replace('T', ' ');
+        int dot = text.indexOf('.');
+        String fraction = dot < 0 ? "" : text.substring(dot + 1);
+        String whole = dot < 0 ? text : text.substring(0, dot);
+        fraction = (fraction + "000000").substring(0, 6);
+        return whole + "." + fraction;
+    }
+
+    protected String quote(String literal) {
+        return "'" + literal.replace("\\", "\\\\").replace("'", "\\'") + "'";
     }
 
     protected boolean isBinary(Column column) {
@@ -154,13 +261,13 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
         return type == Types.BINARY || type == Types.VARBINARY || type == Types.LONGVARBINARY || type == Types.BLOB;
     }
 
-    protected boolean sameDefinition(Column first, Column second) {
-        return isNullable(first) == isNullable(second) && isBinary(first) == isBinary(second) && getSqlType(first).equals(getSqlType(second));
+    protected boolean sameDefinition(Table table, Column first, Column second) {
+        return isNullable(first) == isNullable(second) && isBinary(first) == isBinary(second) && getSqlType(first).equals(getSqlType(second))
+                && Objects.equals(getDefaultExpression(table, first), getDefaultExpression(table, second));
     }
 
     @Override
     protected void writeColumnType(Table table, Column column, StringBuilder ddl) {
-        // Defaults are not written because the loader always supplies every column value
         String type = getSqlType(column);
         ddl.append(isNullable(column) ? "Nullable(" + type + ")" : type);
     }
@@ -177,10 +284,10 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
         int type = column.getMappedTypeCode();
         if ((type == Types.DECIMAL || type == Types.NUMERIC) && column.findPlatformColumn(databaseName) == null) {
             int size = column.getSizeAsInt();
-            boolean sizeValid = size > 0 && size <= MAX_DECIMAL_PRECISION;
-            int precision = sizeValid ? size : DEFAULT_DECIMAL_PRECISION;
+            boolean isSizeValid = size > 0 && size <= MAX_DECIMAL_PRECISION;
+            int precision = isSizeValid ? size : DEFAULT_DECIMAL_PRECISION;
             int scale = column.getScale() < 0 ? 0 : column.getScale();
-            scale = sizeValid ? Math.min(scale, precision) : Math.min(scale, DEFAULT_DECIMAL_SCALE);
+            scale = isSizeValid ? Math.min(scale, precision) : Math.min(scale, DEFAULT_DECIMAL_SCALE);
             return "Decimal(" + precision + ", " + scale + ")";
         }
         String sqlType = super.getSqlType(column);
@@ -208,7 +315,8 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
                 printIdentifier(getColumnName(removeColumn.getColumn()), ddl);
                 printEndOfStatement(ddl);
                 removeColumn.apply(currentModel, delimitedIdentifierModeOn);
-            } else if (change instanceof ColumnDataTypeChange || change instanceof ColumnSizeChange || change instanceof ColumnRequiredChange) {
+            } else if (change instanceof ColumnDataTypeChange || change instanceof ColumnSizeChange || change instanceof ColumnRequiredChange
+                    || change instanceof ColumnDefaultValueChange || change instanceof ColumnAutoIncrementChange) {
                 Column changed = ((ColumnChange) change).getChangedColumn();
                 modifiedColumns.put(changed.getName(), changed);
             } else if (change instanceof PrimaryKeyChange || change instanceof AddPrimaryKeyChange || change instanceof RemovePrimaryKeyChange) {
@@ -219,7 +327,7 @@ public class ClickHouseDdlBuilder extends AbstractDdlBuilder {
         }
         for (Column changed : new ArrayList<Column>(modifiedColumns.values())) {
             Column desired = targetTable.findColumn(changed.getName(), false);
-            if (desired != null && !sameDefinition(changed, desired)) {
+            if (desired != null && !sameDefinition(targetTable, changed, desired)) {
                 writeTableAlterStmt(targetTable, ddl);
                 ddl.append(" MODIFY COLUMN ");
                 writeColumn(targetTable, desired, ddl);
