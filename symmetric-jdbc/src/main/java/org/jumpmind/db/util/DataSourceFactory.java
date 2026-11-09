@@ -65,6 +65,9 @@ public class DataSourceFactory {
         if (clazzName.equals("org.firebirdsql.jdbc.FBDriver")) {
             requiredConnectionProperties.put("columnLabelForName", "true");
         }
+        if (clazzName.equals("com.clickhouse.jdbc.ClickHouseDriver")) {
+            requiredConnectionProperties.put("compress", "false");
+        }
     }
 
     public static DataSource create(TypedProperties properties) {

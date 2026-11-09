@@ -39,6 +39,7 @@ import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.raima.RaimaDatabasePlatform;
+import org.jumpmind.db.platform.clickhouse.ClickHouseDatabasePlatform;
 import org.jumpmind.db.platform.redshift.RedshiftDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhere12DatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
@@ -66,6 +67,7 @@ import org.jumpmind.symmetric.db.nuodb.NuoDbSymmetricDialect;
 import org.jumpmind.symmetric.db.postgresql.GreenplumSymmetricDialect;
 import org.jumpmind.symmetric.db.postgresql.PostgreSqlSymmetricDialect;
 import org.jumpmind.symmetric.db.raima.RaimaSymmetricDialect;
+import org.jumpmind.symmetric.db.clickhouse.ClickHouseSymmetricDialect;
 import org.jumpmind.symmetric.db.redshift.RedshiftSymmetricDialect;
 import org.jumpmind.symmetric.db.sqlanywhere.SqlAnywhere12SymmetricDialect;
 import org.jumpmind.symmetric.db.sqlanywhere.SqlAnywhereSymmetricDialect;
@@ -104,6 +106,8 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
             dialect = new GreenplumSymmetricDialect(parameterService, platform);
         } else if (platform instanceof RedshiftDatabasePlatform) {
             dialect = new RedshiftSymmetricDialect(parameterService, platform);
+        } else if (platform instanceof ClickHouseDatabasePlatform) {
+            dialect = new ClickHouseSymmetricDialect(parameterService, platform);
         } else if (platform instanceof PostgreSqlDatabasePlatform) {
             dialect = new PostgreSqlSymmetricDialect(parameterService, platform);
         } else if (platform instanceof DerbyDatabasePlatform) {

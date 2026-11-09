@@ -38,6 +38,13 @@ A bulk channel that loads a SQL database in Microsoft Fabric loads inserts with 
 
 endif::pro[]
 
+=== ClickHouse Support
+--
+SymmetricDS can now load data into a https://clickhouse.com/[ClickHouse] database as a write-only target. Data from any other supported database can be inserted, updated, and deleted in ClickHouse tables. SymmetricDS creates missing tables as `MergeTree` tables, with the primary key as the sorting key, and applies added, modified, and dropped columns. Use `symadmin module install clickhouse` to install the JDBC driver.
+
+ClickHouse always reports zero rows changed for an update or delete, so the loader treats them as successful and conflict detection does not work on this target. Capture, use as a source, a bulk loader, and ClickHouse Cloud are not supported. See <<ClickHouse>> for details.
+--
+
 === Post-Quantum Key Exchange
 --
 On Java 25.0.5 and later, HTTPS connections between nodes use the hybrid TLS 1.3 key exchange groups `X25519MLKEM768`, `SecP256r1MLKEM768`, and `SecP384r1MLKEM1024`, which protect recorded traffic against future quantum computers. No configuration change is needed. When either side does not support a hybrid group, such as a node running Java 21, the connection falls back to a classical group and still succeeds.

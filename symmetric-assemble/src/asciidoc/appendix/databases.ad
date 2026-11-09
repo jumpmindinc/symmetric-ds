@@ -73,6 +73,19 @@ by database.
 |✔
 |
 
+|ClickHouse
+|Tested on 26.9
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+
 |DB2
 |9.5
 |
@@ -586,6 +599,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |✔
 |(dataset name)
 
+|ClickHouse
+|
+|
+|
+|✔
+|select currentDatabase()
+
 |DB2
 |
 |
@@ -821,6 +841,7 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 
 |===
 include::{includedir}/appendix/bigquery.ad[]
+include::{includedir}/appendix/clickhouse.ad[]
 include::{includedir}/appendix/databricks.ad[]
 include::{includedir}/appendix/db2.ad[]
 include::{includedir}/appendix/derby.ad[]
