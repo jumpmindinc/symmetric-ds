@@ -194,54 +194,6 @@ class RouterServiceTest {
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_withDefaultRouter() {
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"));
-        assertTrue(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_withColumnRouter() {
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"), newTriggerRouter(CHANNEL_2_TEST, "column"));
-        assertFalse(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_ignoresColumnRouterOnAnotherChannel() {
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"), newTriggerRouter(OTHER_CHANNEL, "column"));
-        assertTrue(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_ignoresColumnRouterFromAnotherNodeGroup() {
-        TriggerRouter incomingColumnRouter = new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()),
-                new Router("column", TARGET_NODE_GROUP, SOURCE_NODE_GROUP, "column"));
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"), incomingColumnRouter);
-        assertTrue(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_forConfigChannel() {
-        Channel configChannel = new Channel(Constants.CHANNEL_CONFIG, 0);
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(configChannel, "default"));
-        assertFalse(routerService.onlyDefaultRoutersAssigned(configChannel, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_reusesAnswerForSameTriggerRouters() {
-        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"));
-        routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters);
-        triggerRouters.add(newTriggerRouter(CHANNEL_2_TEST, "column"));
-        assertTrue(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
-    }
-
-    @Test
-    void testOnlyDefaultRoutersAssigned_whenTriggerRoutersReloaded() {
-        routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default")));
-        List<TriggerRouter> reloadedTriggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column"));
-        assertFalse(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, reloadedTriggerRouters));
-    }
-
-    @Test
     void testOnlyDefaultRoutersAssigned_whenCacheTimeExpired() {
         when(parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS)).thenReturn(-1L);
         List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"));

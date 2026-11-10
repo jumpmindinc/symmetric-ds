@@ -95,6 +95,7 @@ import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
 import org.jumpmind.symmetric.route.DefaultBatchAlgorithm;
+import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DefaultDataRouter;
 import org.jumpmind.symmetric.route.DelayRoutingException;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
@@ -138,7 +139,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected long triggerRouterCacheTime = 0;
     protected Map<String, Boolean> commonBatchesLastKnownState = new ConcurrentHashMap<String, Boolean>();
     protected long commonBatchesCacheTime;
-    private final Map<String, DefaultRoutersCheck> defaultRoutersCheckByChannel = new ConcurrentHashMap<String, DefaultRoutersCheck>();
+    private final DefaultRoutersOnlyDetector defaultRoutersOnlyDetector = new DefaultRoutersOnlyDetector();
     protected Map<String, Boolean> isAllDataReadByChannel = new ConcurrentHashMap<String, Boolean>();
     protected Map<String, Boolean> hasMaxDataRoutedByChannel = new ConcurrentHashMap<String, Boolean>();
     protected transient ExecutorService readThread = null;
@@ -203,7 +204,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     public void flushCache() {
-        defaultRoutersCheckByChannel.clear();
+        defaultRoutersOnlyDetector.clear();
     }
 
     /**
@@ -562,40 +563,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     protected boolean onlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
-        String channelId = channel.getChannelId();
-        DefaultRoutersCheck lastCheck = defaultRoutersCheckByChannel.get(channelId);
         long cacheTime = parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS);
-        if (lastCheck != null && lastCheck.isCurrentlyValid(triggerRouters, cacheTime)) {
-            return lastCheck.onlyDefaultRoutersAssigned();
-        }
-        // First Time calculation
-        boolean onlyDefaultRoutersAssigned = computeOnlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters);
-        if (onlyDefaultRoutersAssigned && (lastCheck == null || !lastCheck.onlyDefaultRoutersAssigned())) {
-            log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
-                    channelId, nodeGroupId);
-        }
-        defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(onlyDefaultRoutersAssigned, triggerRouters, System.currentTimeMillis()));
-        return onlyDefaultRoutersAssigned;
-    }
-
-    private boolean computeOnlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
-        String channelId = channel.getChannelId();
-        // maybe make the boolean pre-checks a different method? ....
-        boolean onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
-                && !channel.isFileSyncFlag()
-                && !channel.isReloadFlag()
-                && !Constants.CHANNEL_HEARTBEAT.equals(channelId) // rewrite this ordering to be better (move it up top geez)
-                && !Constants.CHANNEL_MONITOR.equals(channelId);
-        if (onlyDefaultRoutersAssigned && triggerRouters != null) {
-            for (TriggerRouter triggerRouter : triggerRouters) {
-                if (triggerRouter.getTrigger().getChannelId().equals(channelId) &&
-                        triggerRouter.getRouter().getNodeGroupLink().getSourceNodeGroupId()
-                                .equals(nodeGroupId) && !"default".equals(triggerRouter.getRouter().getRouterType())) {
-                    onlyDefaultRoutersAssigned = false;
-                }
-            }
-        }
-        return onlyDefaultRoutersAssigned;
+        return defaultRoutersOnlyDetector.onlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters, cacheTime);
     }
 
     @Override
@@ -1471,12 +1440,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
         @Override
         public String toString() {
             return "GapQualifiedQuery[sql=" + sql + ", args=" + Arrays.toString(args) + ", types=" + Arrays.toString(types) + "]";
-        }
-    }
-
-    private record DefaultRoutersCheck(boolean onlyDefaultRoutersAssigned, List<TriggerRouter> triggerRouters, long checkTime) {
-        boolean isCurrentlyValid(List<TriggerRouter> currentTriggerRouters, long cacheTime) {
-            return triggerRouters == currentTriggerRouters && System.currentTimeMillis() - checkTime <= cacheTime;
         }
     }
 }
