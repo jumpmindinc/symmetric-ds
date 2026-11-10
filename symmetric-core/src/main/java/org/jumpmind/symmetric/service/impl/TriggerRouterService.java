@@ -70,6 +70,7 @@ import org.jumpmind.symmetric.config.ITableResolver;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.config.TriggerSelector;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Lock;
@@ -2507,7 +2508,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     || trigger.toHashedValue() != latestHistoryBeforeRebuild.getTriggerRowHash()) {
                 reason = TriggerReBuildReason.TABLE_SYNC_CONFIGURATION_CHANGED;
                 forceRebuildOfTriggers = true;
-            } else if (symmetricDialect.getTriggerTemplate().toHashedValue() != latestHistoryBeforeRebuild.getTriggerTemplateHash()) {
+            } else if (getTriggerTemplateFor(trigger).toHashedValue() != latestHistoryBeforeRebuild.getTriggerTemplateHash()) {
                 reason = TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED;
                 forceRebuildOfTriggers = true;
             } else if (force) {
@@ -2546,9 +2547,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         } catch (Exception ex) {
             log.error(String.format("Failed to create triggers for %s", trigger.qualifiedSourceTableName()), ex);
             invalidateTriggerHistory(newestHistory, ex);
-            boolean usingTargetDialect = (!getSymmetricDialect().equals(getTargetDialect()) && !trigger.getSourceTableName().startsWith(getSymmetricDialect()
-                    .getTablePrefix()));
-            if (newestHistory != null && !usingTargetDialect) {
+            if (newestHistory != null && !isUsingTargetDialect(trigger)) {
                 dropTriggers(newestHistory, sqlBuffer);
             }
             context.incrementTriggersSyncedCount(1);
@@ -2557,6 +2556,15 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 l.triggerFailed(context.getTriggersToSyncCount(), context.getTriggersSyncedCount(), trigger, ex);
             }
         }
+    }
+
+    private boolean isUsingTargetDialect(Trigger trigger) {
+        return !getSymmetricDialect().equals(getTargetDialect())
+                && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
+    }
+
+    private AbstractTriggerTemplate getTriggerTemplateFor(Trigger trigger) {
+        return (isUsingTargetDialect(trigger) ? getTargetDialect() : getSymmetricDialect()).getTriggerTemplate();
     }
 
     protected TriggerHistory rebuildTriggerIfNecessary(StringBuilder sqlBuffer,
@@ -2593,14 +2601,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             TriggerTableSupportingInfo triggerTableSupportingInfo) {
         boolean triggerExists = false;
         boolean triggerRemoved = false;
-        boolean usingTargetDialect = false;
-        if (!getSymmetricDialect().equals(getTargetDialect()) &&
-                !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix())) {
-            usingTargetDialect = true;
-        }
-        TriggerHistory newTriggerHist = new TriggerHistory(table, trigger,
-                usingTargetDialect ? getTargetDialect().getTriggerTemplate() : getSymmetricDialect().getTriggerTemplate(), reason);
-        if (usingTargetDialect) {
+        TriggerHistory newTriggerHist = new TriggerHistory(table, trigger, getTriggerTemplateFor(trigger), reason);
+        if (isUsingTargetDialect(trigger)) {
             if (hist == null && (oldhist == null || forceRebuild)) {
                 insert(newTriggerHist);
                 synchronized (activeTriggerHistories) {
