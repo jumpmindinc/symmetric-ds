@@ -51,6 +51,8 @@ Data loaders can also use other techniques to increase performance of data loads
 
 |mongodb|MongoDB data loader.
 
+|clickhouse|ClickHouse data loader.  Applies updates and deletes to a ClickHouse target and clears a table before a reload.  Set it on every channel that carries data for ClickHouse tables, including the reload channel.  See <<ClickHouse>>.
+
 |===
 
 TIP: Tables that should be data loaded should be configured to use this channel.  Many times, a reload channel will 

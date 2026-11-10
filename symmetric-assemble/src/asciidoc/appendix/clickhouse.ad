@@ -1,0 +1,139 @@
+[id="ClickHouse",reftext="ClickHouse"]
+=== ClickHouse
+
+Use `symadmin module install clickhouse` to install driver files, or copy your own files into the `lib` sub-directory.
+
+ClickHouse is a column-oriented database for analytics. SymmetricDS supports ClickHouse as a write-only target, where
+changes from another database are loaded into ClickHouse tables. Capturing changes from ClickHouse and using it as a
+source are not supported, and neither is a bulk loader.
+
+==== Setup
+
+ClickHouse runs as a write-only node in SymmetricDS.  See <<Write-Only>> for details on setting up a write-only node in SymmetricDS.
+
+ifndef::pro[]
+
+.Example properties to setup a ClickHouse write-only node
+----
+load.only=true
+target.db.driver=com.clickhouse.jdbc.ClickHouseDriver
+target.db.url=jdbc:clickhouse://<host>:8123/<database_name>
+target.db.user=<clickhouse_user>
+target.db.password=<clickhouse_password>
+----
+
+endif::pro[]
+
+Next, set the `data_loader_type` of each <<Channels, channel>> that carries data for ClickHouse tables to *clickhouse*, which includes
+the `reload` channel because it is set to *bulk* by default. The ClickHouse data loader is what makes updates and deletes work and
+what clears a table before a reload. A channel left on another data loader type does not use it, so updates and deletes are
+reported as conflicts and a reload fails when it clears the table.
+
+The `clickhouse` and `ch` JDBC sub-protocols are both recognized. The driver connects over HTTP, which is port 8123
+on a server that is not using TLS. The database named in the URL is the default schema for the target tables.
+The user needs permission to create, alter, and drop tables in that database, and to insert, update, and delete rows.
+
+==== How Tables Are Created
+
+When a table does not exist in ClickHouse, SymmetricDS creates it from the source definition as a `MergeTree` table:
+
+[source,SQL]
+----
+CREATE TABLE "orders"(
+    "id" Int32,
+    "region" String,
+    "total" Nullable(Decimal(10, 2))
+)
+ENGINE = MergeTree ORDER BY ("id", "region") SETTINGS enable_block_number_column = 1, enable_block_offset_column = 1;
+----
+
+* The primary key of the source becomes the `ORDER BY` sorting key. A table without a primary key uses `ORDER BY tuple()`.
+* Columns that are not required are created as `Nullable(...)`. Key columns are never nullable, because ClickHouse
+rejects a nullable sorting key.
+* The two table settings are needed for `UPDATE` statements. Without them, an update fails with error 48.
+* Literal default values (numbers, text, booleans, dates, and timestamps) are created as a `DEFAULT` on the column. A default that is an
+expression, such as `CURRENT_TIMESTAMP` or a sequence, is not created, because it would not mean the same thing in ClickHouse.
+A column added with a default has that value in the rows that were already in the table.
+* An auto-increment column is created with `DEFAULT generateSerialID('table_column')`. ClickHouse only runs the default when a row is
+inserted without a value for the column, which SymmetricDS never does, so the values come from the source. The default itself requires
+ClickHouse Keeper to be configured on the server. Without it the table is still created and loaded, but an insert that leaves the column out fails.
+* Indexes, foreign keys, and triggers are not created. Indexes are not supported in this release, and ClickHouse does not have foreign keys or triggers.
+
+The following table shows how types are mapped.
+
+[cols="40,60", options="header"]
+|===
+|Source Type |ClickHouse Type
+
+|BIT, BOOLEAN |Bool
+|TINYINT |Int8
+|SMALLINT |Int16
+|INTEGER |Int32
+|BIGINT |Int64
+|REAL |Float32
+|FLOAT, DOUBLE |Float64
+|DECIMAL, NUMERIC |Decimal(precision, scale). ClickHouse allows a precision of at most 76. When the source has no precision, or more than 76, the precision is 38 and the scale is at most 10.
+|CHAR, VARCHAR, LONGVARCHAR, CLOB |String
+|BINARY, VARBINARY, BLOB |String, with the column comment `symds:binary`
+|DATE |Date32
+|TIMESTAMP |DateTime64(6)
+|TIME |String
+|===
+
+Binary data is stored as bytes in a `String` column. The column comment `symds:binary` records that the column holds binary
+data, so the loader decodes the hex or base64 from the data stream into bytes. Do not remove the comment, or the encoded text is
+stored instead. Use `hex()` or `base64Encode()` to display such a column. A time of day is stored as text, because ClickHouse
+has no type for it.
+
+A table that already exists in ClickHouse can use any of its types as the target. A `UUID` column accepts the text form of a
+UUID, so a source column of 36 characters loads into it directly.
+
+==== Schema Changes
+
+When the definition of a source table changes, SymmetricDS alters the ClickHouse table:
+
+* A new column is added with `ALTER TABLE ... ADD COLUMN`.
+* A removed column is dropped with `ALTER TABLE ... DROP COLUMN`. ClickHouse does not allow dropping a column that is part of the sorting key.
+* A change of type, size, or whether a column is required is applied with `ALTER TABLE ... MODIFY COLUMN`.
+* A change of a column between text and binary is not detected, because both are stored as a `String`.
+* A change to the primary key is not applied, and a warning is logged. ClickHouse cannot change the sorting key of an existing table. Create
+a new table and copy the data when the key must change.
+
+An existing table is never dropped and rebuilt to apply a change.
+
+==== Updates, Deletes, and Conflicts
+
+ClickHouse applies `UPDATE` and `DELETE` statements, but it always reports that zero rows were changed, whether or not a row matched.
+The default data loader treats a count of zero as a conflict, which would send every update and delete into conflict resolution.
+For that reason, the ClickHouse writer treats every `UPDATE` and `DELETE` as successful and counts it as one row.
+
+This has the following effects:
+
+* Conflict detection does not work on a ClickHouse target. An update or delete of a row that does not exist is silently ignored,
+and the loader never falls back to an insert. Conflict detection and resolution settings do not apply to updates and deletes.
+* Inserts are counted correctly. In the batch statistics, the insert count is the number of rows inserted. The update and delete
+counts are the number of statements sent, not the number of rows changed.
+* ClickHouse does not enforce keys. Loading the same insert twice, for example when a batch is sent again after a failure, stores
+the row twice. An insert never conflicts with an existing row.
+* Rows are found by primary key only. The loader does not add the old values of other columns to the `WHERE` clause, because a
+row that does not match would be skipped without any sign of it.
+* Updating the primary key is not supported. ClickHouse cannot update a column of the sorting key (error 420, `CANNOT_UPDATE_COLUMN`),
+so an update that changes a primary key value fails the batch with the error "ClickHouse does not support updating the primary key",
+which names the table and the key columns. The batch stays in error until the change is removed or the target is corrected by hand.
+* ClickHouse has no multi-statement transactions. A batch that fails part way through can leave the rows of its earlier statements loaded, and the retry then inserts those rows again.
+* Updates and deletes are heavier operations in ClickHouse than inserts, which are fastest when sent in large batches. A source that
+mostly sends inserts suits ClickHouse best.
+
+==== Initial Load and Reload
+
+The initial load creates missing tables and loads rows with insert statements. A reload clears the target table first with the statement from
+the `initial.load.delete.first.sql` parameter, which is `delete from %s` by default. ClickHouse does not accept a `DELETE` without a `WHERE`
+clause, so SymmetricDS runs `truncate table` instead. A custom statement that has a `WHERE` clause is run as it is.
+
+==== Limitations
+
+* Capturing changes and using ClickHouse as a source are not supported.
+* There is no bulk loader. Batches are loaded with JDBC batch inserts.
+* ClickHouse Cloud, including TLS connections on port 8443, has not been validated.
+* The primary key of an existing table cannot be changed.
+* Table names that contain the source node ID, which are used when the target external ID is in use, are not supported.

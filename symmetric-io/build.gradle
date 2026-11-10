@@ -40,6 +40,7 @@ apply from: symAssembleDir + '/common.gradle'
         }
 
         testImplementation project(path: ':symmetric-util', configuration: 'testArtifacts')
+        testImplementation("com.clickhouse:clickhouse-jdbc:0.11.0:all") { transitive = false }
         testImplementation project(path: ':symmetric-jdbc', configuration: 'testArtifacts')
         testImplementation project(':symmetric-jdbc').sourceSets.test.output
         testImplementation project(':symmetric-jdbc').sourceSets.main.output

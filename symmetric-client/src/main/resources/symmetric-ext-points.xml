@@ -17,6 +17,8 @@
     <bean id="hbaseLoaderFactory" class="org.jumpmind.symmetric.io.HbaseDataLoaderFactory">
         <property name="typeName" value="hbase" />
     </bean>
+
+    <bean id="clickhouseLoaderFactory" class="org.jumpmind.symmetric.io.ClickHouseDataLoaderFactory" />
     
     <bean id="databaseUpgradeListener" class="org.jumpmind.symmetric.db.DatabaseUpgradeListener" />
     

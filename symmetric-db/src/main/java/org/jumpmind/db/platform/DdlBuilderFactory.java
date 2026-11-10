@@ -37,6 +37,7 @@ import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder95;
+import org.jumpmind.db.platform.clickhouse.ClickHouseDdlBuilder;
 import org.jumpmind.db.platform.redshift.RedshiftDdlBuilder;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDdlBuilder;
 import org.jumpmind.db.platform.sqlite.SqliteDdlBuilder;
@@ -97,6 +98,8 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new SqlAnywhereDdlBuilder();
         } else if (DatabaseNamesConstants.REDSHIFT.equalsIgnoreCase(databaseName)) {
             return new RedshiftDdlBuilder();
+        } else if (DatabaseNamesConstants.CLICKHOUSE.equalsIgnoreCase(databaseName)) {
+            return new ClickHouseDdlBuilder();
         } else if (DatabaseNamesConstants.VOLTDB.equalsIgnoreCase(databaseName)) {
             return new VoltDbDdlBuilder();
         } else if (DatabaseNamesConstants.NUODB.equalsIgnoreCase(databaseName)) {

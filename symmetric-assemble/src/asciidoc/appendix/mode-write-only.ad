@@ -6,7 +6,7 @@ A write-only node (previously load only) is unable to capture any changes and in
 *Overview*
 
 * User has the choice to install the SymmetricDS runtime tables in a different database than the targeted database.
-* Many more end points are available including NoSQL (Redshift, Mongo), non relational (Cassandra) and even message queues (Kafka).
+* Many more end points are available including NoSQL (Redshift, Mongo), column-oriented analytics (ClickHouse), non relational (Cassandra) and even message queues (Kafka).
 
 
 *More to Consider*
