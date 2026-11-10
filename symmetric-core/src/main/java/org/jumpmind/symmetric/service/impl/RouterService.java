@@ -1341,17 +1341,13 @@ public class RouterService extends AbstractService implements IRouterService, IN
 
     // Start of data skipping
     protected void selectDataSkippedForDefaultRouters(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
-        if (context.isOnlyDefaultRoutersAssigned() && isAnyDataUsedToRoute(context.getChannel()) && StringUtils.isBlank(data.getNodeList())
+        if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
                 && hasNonDefaultRouter(triggerRouters)) {
             Data selectedData = engine.getDataService().findData(data.getDataId());
             if (selectedData != null) {
-                copyDataUsedToRoute(selectedData, data, context.getChannel());
+                copyDataUsedToRoute(selectedData, data, context);
             }
         }
-    }
-
-    private boolean isAnyDataUsedToRoute(NodeChannel channel) {
-        return channel.isUseRowDataToRoute() || channel.isUseOldDataToRoute() || channel.isUsePkDataToRoute();
     }
 
     private boolean hasNonDefaultRouter(List<TriggerRouter> triggerRouters) {
@@ -1366,14 +1362,14 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return false;
     }
 
-    private void copyDataUsedToRoute(Data source, Data target, NodeChannel channel) {
-        if (channel.isUseRowDataToRoute()) {
+    private void copyDataUsedToRoute(Data source, Data target, ChannelRouterContext context) {
+        if (context.isRowDataUsedToRoute()) {
             target.setRowData(source.getRowData());
         }
-        if (channel.isUseOldDataToRoute()) {
+        if (context.isOldDataUsedToRoute()) {
             target.setOldData(source.getOldData());
         }
-        if (channel.isUsePkDataToRoute()) {
+        if (context.isPkDataUsedToRoute()) {
             target.setPkData(source.getPkData());
         }
     }
