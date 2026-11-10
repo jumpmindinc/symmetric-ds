@@ -564,7 +564,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
 
     protected boolean onlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
         long cacheTime = parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS);
-        return defaultRoutersOnlyDetector.onlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters, cacheTime);
+        return defaultRoutersOnlyDetector.hasOnlyDefaultRouters(channel, nodeGroupId, triggerRouters, cacheTime);
     }
 
     @Override
@@ -996,7 +996,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
-        selectDataSkippedForDefaultRouters(data, triggerRouters, context);
+        reloadRoutingColumnsIfSkipped(data, triggerRouters, context);
         Relation relation = null;
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
             relation = platform.getRelationFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
@@ -1309,7 +1309,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     // Start of data skipping
-    protected void selectDataSkippedForDefaultRouters(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
+    protected void reloadRoutingColumnsIfSkipped(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
         if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
                 && hasNonDefaultRouter(triggerRouters)) {
             Data selectedData = engine.getDataService().findData(data.getDataId());

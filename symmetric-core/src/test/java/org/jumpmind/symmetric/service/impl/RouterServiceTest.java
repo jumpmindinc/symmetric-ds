@@ -214,30 +214,30 @@ class RouterServiceTest {
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_withColumnRouter() {
+    void testReloadRoutingColumnsIfSkipped_withColumnRouter() {
         Data data = newDataWithoutValues();
         when(dataService.findData(DATA_ID)).thenReturn(newData(PK_DATA, ROW_DATA, OLD_DATA));
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
         assertEquals(ROW_DATA, data.getRowData());
         assertEquals(OLD_DATA, data.getOldData());
         assertEquals(PK_DATA, data.getPkData());
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_keepsDataTheChannelDoesNotRouteOn() {
+    void testReloadRoutingColumnsIfSkipped_keepsDataTheChannelDoesNotRouteOn() {
         Data data = newDataWithoutValues();
         when(dataService.findData(DATA_ID)).thenReturn(newData(PK_DATA, ROW_DATA, OLD_DATA));
         NodeChannel channel = new NodeChannel(new Channel(CHANNEL_2_TEST.getChannelId(), 1));
         channel.getChannel().setUseOldDataToRoute(false);
         ChannelRouterContext context = newContext(channel);
         context.setOnlyDefaultRoutersAssigned(true);
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
         assertEquals(ROW_DATA, data.getRowData());
         assertEquals("", data.getOldData());
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_whenChannelRoutesOnNoData() {
+    void testReloadRoutingColumnsIfSkipped_whenChannelRoutesOnNoData() {
         Data data = newDataWithoutValues();
         NodeChannel channel = new NodeChannel(new Channel(CHANNEL_2_TEST.getChannelId(), 1));
         channel.getChannel().setUseRowDataToRoute(false);
@@ -245,44 +245,44 @@ class RouterServiceTest {
         channel.getChannel().setUsePkDataToRoute(false);
         ChannelRouterContext context = newContext(channel);
         context.setOnlyDefaultRoutersAssigned(true);
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
         verify(dataService, never()).findData(DATA_ID);
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_withNodeList() {
+    void testReloadRoutingColumnsIfSkipped_withNodeList() {
         Data data = newDataWithoutValues();
         data.setNodeList(TARGET_NODE_ID);
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
         verify(dataService, never()).findData(DATA_ID);
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_withMissingRouter() {
+    void testReloadRoutingColumnsIfSkipped_withMissingRouter() {
         Data data = newDataWithoutValues();
         TriggerRouter triggerRouterWithoutRouter = new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), null);
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(triggerRouterWithoutRouter), newDefaultRoutersOnlyContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(triggerRouterWithoutRouter), newDefaultRoutersOnlyContext());
         verify(dataService, never()).findData(DATA_ID);
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_withDefaultRouter() {
+    void testReloadRoutingColumnsIfSkipped_withDefaultRouter() {
         Data data = newDataWithoutValues();
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default")), newDefaultRoutersOnlyContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default")), newDefaultRoutersOnlyContext());
         verify(dataService, never()).findData(DATA_ID);
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_whenDataWasSelected() {
+    void testReloadRoutingColumnsIfSkipped_whenDataWasSelected() {
         Data data = newDataWithoutValues();
-        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newContext());
         verify(dataService, never()).findData(DATA_ID);
     }
 
     @Test
-    void testSelectDataSkippedForDefaultRouters_withNoTriggerRouters() {
+    void testReloadRoutingColumnsIfSkipped_withNoTriggerRouters() {
         Data data = newDataWithoutValues();
-        routerService.selectDataSkippedForDefaultRouters(data, null, newDefaultRoutersOnlyContext());
+        routerService.reloadRoutingColumnsIfSkipped(data, null, newDefaultRoutersOnlyContext());
         verify(dataService, never()).findData(DATA_ID);
     }
 

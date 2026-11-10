@@ -49,80 +49,80 @@ class DefaultRoutersOnlyDetectorTest {
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_withDefaultRouter() {
-        assertTrue(onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"))));
+    void testHasOnlyDefaultRouters_withDefaultRouter() {
+        assertTrue(hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_withColumnRouter() {
-        assertFalse(onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), newTriggerRouter(CHANNEL, "column"))));
+    void testHasOnlyDefaultRouters_withColumnRouter() {
+        assertFalse(hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), newTriggerRouter(CHANNEL, "column"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_withNoTriggerRouters() {
-        assertTrue(onlyDefaultRoutersAssigned(CHANNEL, null));
+    void testHasOnlyDefaultRouters_withNoTriggerRouters() {
+        assertTrue(hasOnlyDefaultRouters(CHANNEL, null));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_ignoresColumnRouterOnAnotherChannel() {
-        assertTrue(onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), newTriggerRouter(OTHER_CHANNEL, "column"))));
+    void testHasOnlyDefaultRouters_ignoresColumnRouterOnAnotherChannel() {
+        assertTrue(hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), newTriggerRouter(OTHER_CHANNEL, "column"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_ignoresColumnRouterFromAnotherNodeGroup() {
+    void testHasOnlyDefaultRouters_ignoresColumnRouterFromAnotherNodeGroup() {
         TriggerRouter incomingColumnRouter = new TriggerRouter(new Trigger("a", CHANNEL.getChannelId()),
                 new Router("column", TARGET_NODE_GROUP, SOURCE_NODE_GROUP, "column"));
-        assertTrue(onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), incomingColumnRouter)));
+        assertTrue(hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default"), incomingColumnRouter)));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_forConfigChannel() {
+    void testHasOnlyDefaultRouters_forConfigChannel() {
         Channel configChannel = new Channel(Constants.CHANNEL_CONFIG, 0);
-        assertFalse(onlyDefaultRoutersAssigned(configChannel, newTriggerRouters(newTriggerRouter(configChannel, "default"))));
+        assertFalse(hasOnlyDefaultRouters(configChannel, newTriggerRouters(newTriggerRouter(configChannel, "default"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_forFileSyncChannel() {
+    void testHasOnlyDefaultRouters_forFileSyncChannel() {
         Channel fileSyncChannel = new Channel("filesync", 3);
         fileSyncChannel.setFileSyncFlag(true);
-        assertFalse(onlyDefaultRoutersAssigned(fileSyncChannel, newTriggerRouters(newTriggerRouter(fileSyncChannel, "default"))));
+        assertFalse(hasOnlyDefaultRouters(fileSyncChannel, newTriggerRouters(newTriggerRouter(fileSyncChannel, "default"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_reusesAnswerForSameTriggerRouters() {
+    void testHasOnlyDefaultRouters_reusesAnswerForSameTriggerRouters() {
         List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL, "default"));
-        onlyDefaultRoutersAssigned(CHANNEL, triggerRouters);
+        hasOnlyDefaultRouters(CHANNEL, triggerRouters);
         triggerRouters.add(newTriggerRouter(CHANNEL, "column"));
-        assertTrue(onlyDefaultRoutersAssigned(CHANNEL, triggerRouters));
+        assertTrue(hasOnlyDefaultRouters(CHANNEL, triggerRouters));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_whenTriggerRoutersReloaded() {
-        onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default")));
-        assertFalse(onlyDefaultRoutersAssigned(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "column"))));
+    void testHasOnlyDefaultRouters_whenTriggerRoutersReloaded() {
+        hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "default")));
+        assertFalse(hasOnlyDefaultRouters(CHANNEL, newTriggerRouters(newTriggerRouter(CHANNEL, "column"))));
     }
 
     @Test
-    void testOnlyDefaultRoutersAssigned_whenCacheTimeExpired() {
+    void testHasOnlyDefaultRouters_whenCacheTimeExpired() {
         List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL, "default"));
-        detector.onlyDefaultRoutersAssigned(CHANNEL, SOURCE_NODE_GROUP, triggerRouters, -1);
+        detector.hasOnlyDefaultRouters(CHANNEL, SOURCE_NODE_GROUP, triggerRouters, -1);
         triggerRouters.add(newTriggerRouter(CHANNEL, "column"));
-        assertFalse(detector.onlyDefaultRoutersAssigned(CHANNEL, SOURCE_NODE_GROUP, triggerRouters, -1));
+        assertFalse(detector.hasOnlyDefaultRouters(CHANNEL, SOURCE_NODE_GROUP, triggerRouters, -1));
     }
 
     @Test
     void testClear_recalculatesEveryChannel() {
         List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL, "default"), newTriggerRouter(OTHER_CHANNEL, "default"));
-        onlyDefaultRoutersAssigned(CHANNEL, triggerRouters);
-        onlyDefaultRoutersAssigned(OTHER_CHANNEL, triggerRouters);
+        hasOnlyDefaultRouters(CHANNEL, triggerRouters);
+        hasOnlyDefaultRouters(OTHER_CHANNEL, triggerRouters);
         triggerRouters.add(newTriggerRouter(CHANNEL, "column"));
         detector.clear();
-        onlyDefaultRoutersAssigned(OTHER_CHANNEL, triggerRouters);
-        assertFalse(onlyDefaultRoutersAssigned(CHANNEL, triggerRouters));
+        hasOnlyDefaultRouters(OTHER_CHANNEL, triggerRouters);
+        assertFalse(hasOnlyDefaultRouters(CHANNEL, triggerRouters));
     }
 
-    private boolean onlyDefaultRoutersAssigned(Channel channel, List<TriggerRouter> triggerRouters) {
-        return detector.onlyDefaultRoutersAssigned(channel, SOURCE_NODE_GROUP, triggerRouters, CACHE_TIME_MS);
+    private boolean hasOnlyDefaultRouters(Channel channel, List<TriggerRouter> triggerRouters) {
+        return detector.hasOnlyDefaultRouters(channel, SOURCE_NODE_GROUP, triggerRouters, CACHE_TIME_MS);
     }
 
     private TriggerRouter newTriggerRouter(Channel channel, String routerType) {

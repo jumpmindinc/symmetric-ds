@@ -34,44 +34,44 @@ public class DefaultRoutersOnlyDetector {
     private static final Logger log = LoggerFactory.getLogger(DefaultRoutersOnlyDetector.class);
     private final Map<String, DefaultRoutersCheck> defaultRoutersCheckByChannel = new ConcurrentHashMap<String, DefaultRoutersCheck>();
 
-    public boolean onlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters, long cacheTime) {
+    public boolean hasOnlyDefaultRouters(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters, long cacheTime) {
         String channelId = channel.getChannelId();
         DefaultRoutersCheck lastCheck = defaultRoutersCheckByChannel.get(channelId);
         if (lastCheck != null && lastCheck.isCurrentlyValid(triggerRouters, cacheTime)) {
             return lastCheck.hasOnlyDefaultRouters();
         }
         // First Time calculation
-        boolean onlyDefaultRoutersAssigned = computeOnlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters);
-        if (onlyDefaultRoutersAssigned && (lastCheck == null || !lastCheck.hasOnlyDefaultRouters())) {
+        boolean hasOnlyDefaultRouters = computeHasOnlyDefaultRouters(channel, nodeGroupId, triggerRouters);
+        if (hasOnlyDefaultRouters && (lastCheck == null || !lastCheck.hasOnlyDefaultRouters())) {
             log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
                     channelId, nodeGroupId);
         }
-        defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(onlyDefaultRoutersAssigned, triggerRouters, System.currentTimeMillis()));
-        return onlyDefaultRoutersAssigned;
+        defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(hasOnlyDefaultRouters, triggerRouters, System.currentTimeMillis()));
+        return hasOnlyDefaultRouters;
     }
 
     public void clear() {
         defaultRoutersCheckByChannel.clear();
     }
 
-    private boolean computeOnlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
+    private boolean computeHasOnlyDefaultRouters(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
         String channelId = channel.getChannelId();
         // maybe make the boolean pre-checks a different method? ....
-        boolean onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
+        boolean hasOnlyDefaultRouters = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
                 && !channel.isFileSyncFlag()
                 && !channel.isReloadFlag()
                 && !Constants.CHANNEL_HEARTBEAT.equals(channelId) // rewrite this ordering to be better (move it up top geez)
                 && !Constants.CHANNEL_MONITOR.equals(channelId);
-        if (onlyDefaultRoutersAssigned && triggerRouters != null) {
+        if (hasOnlyDefaultRouters && triggerRouters != null) {
             for (TriggerRouter triggerRouter : triggerRouters) {
                 if (triggerRouter.getTrigger().getChannelId().equals(channelId) &&
                         triggerRouter.getRouter().getNodeGroupLink().getSourceNodeGroupId()
                                 .equals(nodeGroupId) && !DefaultDataRouter.ROUTER_TYPE.equals(triggerRouter.getRouter().getRouterType())) {
-                    onlyDefaultRoutersAssigned = false;
+                    hasOnlyDefaultRouters = false;
                 }
             }
         }
-        return onlyDefaultRoutersAssigned;
+        return hasOnlyDefaultRouters;
     }
 
     private record DefaultRoutersCheck(boolean hasOnlyDefaultRouters, List<TriggerRouter> triggerRouters, long checkTime) {
