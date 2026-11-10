@@ -20,11 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-<<<<<<< HEAD
-=======
-import java.lang.reflect.Method;
 import java.sql.Types;
->>>>>>> 0ec3c79126 (SYM-8299: Prevented Sync Triggers from creating a new active trigger history on every run when the target dialect differs from the runtime dialect and the templates hash differently (#1283))
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -38,6 +34,7 @@ import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.UniqueIndex;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -45,6 +42,7 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
@@ -805,64 +803,70 @@ class TriggerRouterServiceTest {
     }
 
     @Test
-    void testDetermineForceRebuildReason_nonSymTableWithUnchangedTargetTemplate_returnsNull() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_nonSymTableWithUnchangedTargetTemplate_doesNotForceRebuild() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         Trigger trigger = newTrigger("customer_trigger", "customer");
-        Table relation = buildKeyedTable("customer");
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
-        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        Table table = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertFalse(capturedForceRebuild(service));
     }
 
     @Test
-    void testDetermineForceRebuildReason_nonSymTableWithChangedTargetTemplate_returnsTemplateChanged() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_nonSymTableWithChangedTargetTemplate_rebuildsForTemplateChange() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         Trigger trigger = newTrigger("customer_trigger", "customer");
-        Table relation = buildKeyedTable("customer");
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        Table table = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
         when(targetTemplate.toHashedValue()).thenReturn(TARGET_TEMPLATE_HASH + 1);
-        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, capturedRebuildReason(service));
     }
 
     @Test
-    void testDetermineForceRebuildReason_symTableWithUnchangedRuntimeTemplate_returnsNull() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_symTableWithUnchangedRuntimeTemplate_doesNotForceRebuild() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
         Trigger trigger = newTrigger("node_trigger", tableName);
-        Table relation = buildKeyedTable(tableName);
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
-        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        Table table = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertFalse(capturedForceRebuild(service));
     }
 
     @Test
-    void testDetermineForceRebuildReason_symTableWithChangedRuntimeTemplate_returnsTemplateChanged() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_symTableWithChangedRuntimeTemplate_rebuildsForTemplateChange() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
         Trigger trigger = newTrigger("node_trigger", tableName);
-        Table relation = buildKeyedTable(tableName);
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        Table table = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
         when(runtimeTemplate.toHashedValue()).thenReturn(RUNTIME_TEMPLATE_HASH + 1);
-        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, capturedRebuildReason(service));
     }
 
     @Test
-    void testDetermineForceRebuildReason_symTableIgnoresTargetTemplateChange() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_symTableIgnoresTargetTemplateChange() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
         Trigger trigger = newTrigger("node_trigger", tableName);
-        Table relation = buildKeyedTable(tableName);
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        Table table = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
         when(targetTemplate.toHashedValue()).thenReturn(TARGET_TEMPLATE_HASH + 1);
-        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertFalse(capturedForceRebuild(service));
     }
 
     @Test
-    void testDetermineForceRebuildReason_withoutSeparateTargetDialect_comparesRuntimeTemplate() throws Exception {
+    void testUpdateOrCreateDatabaseTriggers_withoutSeparateTargetDialect_comparesRuntimeTemplate() {
         TriggerRouterService service = buildServiceWithSeparateTargetDialect();
         when(symmetricDialect.getTargetDialect()).thenReturn(symmetricDialect);
         Trigger trigger = newTrigger("customer_trigger", "customer");
-        Table relation = buildKeyedTable("customer");
-        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
-        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+        Table table = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(table, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        updateOrCreateDatabaseTriggers(service, trigger, table, latestHistory);
+        assertFalse(capturedForceRebuild(service));
     }
 
     private TriggerRouterService buildServiceWithSeparateTargetDialect() {
@@ -875,20 +879,36 @@ class TriggerRouterServiceTest {
         when(symmetricDialect.getTablePrefix()).thenReturn(tablePrefix);
         when(symmetricDialect.getTargetDialect()).thenReturn(targetDialect);
         when(targetDialect.getTriggerTemplate()).thenReturn(targetTemplate);
-        return buildService();
+        when(platform.getDatabaseInfo()).thenReturn(mock(DatabaseInfo.class));
+        TriggerRouterService service = createSpyService();
+        doReturn(null).when(service).rebuildTriggerIfNecessary(any(), anyBoolean(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any());
+        return service;
     }
 
     private Table buildKeyedTable(String tableName) {
         return new Table(tableName, new Column("id", true, Types.INTEGER, 10, 0), new Column("name", false, Types.VARCHAR, 50, 0));
     }
 
-    private TriggerReBuildReason invokeDetermineForceRebuildReason(TriggerRouterService service, TriggerHistory latestHistory, Relation relation,
-            Trigger trigger) throws Exception {
+    private void updateOrCreateDatabaseTriggers(TriggerRouterService service, Trigger trigger, Table table, TriggerHistory latestHistory) {
         trigger.setLastUpdateTime(new Date(0));
         latestHistory.setCreateTime(new Date());
-        Method method = TriggerRouterService.class.getDeclaredMethod("determineForceRebuildReason", TriggerHistory.class, Relation.class, Trigger.class,
-                boolean.class);
-        method.setAccessible(true);
-        return (TriggerReBuildReason) method.invoke(service, latestHistory, relation, trigger, false);
+        TriggerTableSupportingInfo supportingInfo = service.new TriggerTableSupportingInfo(trigger.getTriggerId(), "insert_trigger", "update_trigger",
+                "delete_trigger", latestHistory, table);
+        service.updateOrCreateDatabaseTriggers(trigger, table, new StringBuilder(), false, false, new ArrayList<TriggerHistory>(), supportingInfo,
+                mock(TriggerRouterContext.class));
+    }
+
+    private boolean capturedForceRebuild(TriggerRouterService service) {
+        ArgumentCaptor<Boolean> forceRebuild = ArgumentCaptor.forClass(Boolean.class);
+        verify(service, times(3)).rebuildTriggerIfNecessary(any(), forceRebuild.capture(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(),
+                any());
+        return forceRebuild.getValue();
+    }
+
+    private TriggerReBuildReason capturedRebuildReason(TriggerRouterService service) {
+        ArgumentCaptor<TriggerReBuildReason> reason = ArgumentCaptor.forClass(TriggerReBuildReason.class);
+        verify(service, times(3)).rebuildTriggerIfNecessary(any(), anyBoolean(), any(), any(), reason.capture(), any(), any(), anyBoolean(), any(), any(),
+                any());
+        return reason.getValue();
     }
 }
