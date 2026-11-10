@@ -24,6 +24,26 @@ cd symmetric-assemble
 
 This will generate Eclipse projects that can be imported into your workspace.  To contribute code changes back to the community, make sure you sign and submit the [Contributor License Agreement](https://www.symmetricds.org/developer/contributor).
 
+## Maven Repository
+Releases after 3.18.3 are published to the Jumpmind Maven repository, not Maven Central.
+Maven Central keeps 3.18.3 and earlier.
+
+Gradle:
+```
+repositories {
+    maven { url = 'https://downloads.jumpmind.com/files/maven/releases' }
+    mavenCentral()
+}
+```
+
+Maven:
+```
+<repository>
+    <id>jumpmind</id>
+    <url>https://downloads.jumpmind.com/files/maven/releases</url>
+</repository>
+```
+
 ## Join the Community
 - Discuss on Forums: https://sourceforge.net/p/symmetricds/discussion
 - Ask a question in Discord: https://discord.gg/r6EN9v3P2j

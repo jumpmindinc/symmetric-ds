@@ -346,8 +346,12 @@ public class ReleaseNotesGenerator {
         Map<String, ParameterMetaData> previousParamMap = parser.parse();
         parser = new DefaultParameterParser(new FileInputStream(PROPERTIES_DIR));
         Map<String, ParameterMetaData> currentParamMap = parser.parse();
-        parser = new DefaultParameterParser(new FileInputStream(proPropertiesLoc));
-        Map<String, ParameterMetaData> previousProParamMap = parser.parse();
+        Map<String, ParameterMetaData> previousProParamMap = new HashMap<String, ParameterMetaData>();
+        File previousProProperties = new File(proPropertiesLoc);
+        if (previousProProperties.canRead()) {
+            parser = new DefaultParameterParser(new FileInputStream(previousProProperties));
+            previousProParamMap = parser.parse();
+        }
         Map<String, ParameterMetaData> currentProParamMap = new HashMap<String, ParameterMetaData>();
         try {
             parser = new DefaultParameterParser(new FileInputStream(PRO_PROPERTIES_DIR));

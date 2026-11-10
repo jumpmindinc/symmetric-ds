@@ -12,26 +12,69 @@ dependencies {
     generateReleaseNotesDependencies project(":symmetric-db")
 }
 
-def downloadURLCore = 'https://repo1.maven.org/maven2/org/jumpmind/symmetric/symmetric-core/%s/symmetric-core-%s.jar'
-def downloadURLPro = 'https://repo1.maven.org/maven2/org/jumpmind/symmetric/symmetric-pro/%s/symmetric-pro-%s.jar'
+def previousDocsVersion = latestPreviousVersion
+def docJarsDir = file(symAssembleDir + '/build/docJars')
+def saturnMavenUrl = (findProperty('saturnUrl') ?: 'https://downloads.jumpmind.com').toString().replaceAll('/+$', '') + '/files/maven/releases'
+def previousCoreJarPath = "org/jumpmind/symmetric/symmetric-core/${previousDocsVersion}/symmetric-core-${previousDocsVersion}.jar"
+def proRepositoryDir = file(symAssembleDir + '/../../symmetric-pro')
 
-task downloadJars {
-	doFirst{
-		println("Downloading jars for docs...")
-		def previousURL = String.format(downloadURLCore, latestPreviousVersion, latestPreviousVersion)
-		new File(symAssembleDir + '/build').mkdirs()
-		new File(symAssembleDir + '/build/docJars').mkdirs()
-		def out = new BufferedOutputStream(new FileOutputStream(symAssembleDir + '/build/docJars/download-core-' + latestPreviousVersion + '.zip'))
-		out << new URL(previousURL).openStream()
-		out.close()
-		
-		def formattedURL = String.format(downloadURLPro, latestPreviousVersion, latestPreviousVersion)
-		out = new BufferedOutputStream(new FileOutputStream(symAssembleDir + '/build/docJars/download-pro-' + latestPreviousVersion + '.zip'))
-		out << new URL(formattedURL).openStream()
-		out.close()
-	}
+def downloadZip = { String url, File target ->
+    try {
+        def connection = new URL(url).openConnection()
+        connection.connectTimeout = 30000
+        connection.readTimeout = 120000
+        if (connection instanceof HttpURLConnection && connection.responseCode != 200) {
+            return false
+        }
+        byte[] bytes = connection.inputStream.withCloseable { it.bytes }
+        if (bytes.length < 4 || bytes[0] != (byte) 0x50 || bytes[1] != (byte) 0x4B) {
+            return false
+        }
+        target.bytes = bytes
+        return true
+    } catch (IOException e) {
+        return false
+    }
 }
 
+def proGit = { List<String> arguments ->
+    def process = new ProcessBuilder(['git', '-C', proRepositoryDir.path] + arguments).start()
+    byte[] output = process.inputStream.bytes
+    process.errorStream.text
+    return process.waitFor() == 0 ? output : null
+}
+
+task downloadJars {
+    doFirst {
+        docJarsDir.mkdirs()
+        def coreZip = new File(docJarsDir, "download-core-${previousDocsVersion}.zip")
+        def coreSources = ["${saturnMavenUrl}/${previousCoreJarPath}", "https://repo1.maven.org/maven2/${previousCoreJarPath}"]
+        def coreSource = coreSources.find { url -> downloadZip(url.toString(), coreZip) }
+        if (coreSource == null) {
+            throw new GradleException("symmetric-core ${previousDocsVersion} is missing from ${coreSources}")
+        }
+        logger.lifecycle("Release notes compare against symmetric-core ${previousDocsVersion} from ${coreSource}")
+
+        def proDir = new File(docJarsDir, "pro-${previousDocsVersion}")
+        proDir.mkdirs()
+        if (!new File(proRepositoryDir, '.git').exists()) {
+            logger.lifecycle("No symmetric-pro checkout at ${proRepositoryDir}: release notes cover the open-source parameters and tables only")
+            return
+        }
+        def tagRef = "refs/tags/${previousDocsVersion}".toString()
+        if (proGit(['rev-parse', '--verify', '--quiet', tagRef]) == null) {
+            proGit(['fetch', '--quiet', '--no-tags', 'origin', "${tagRef}:${tagRef}".toString()])
+        }
+        ['symmetric-console-default.properties', 'console-schema.xml'].each { name ->
+            byte[] content = proGit(['show', "${tagRef}:symmetric-pro/src/main/resources/${name}".toString()])
+            if (content == null) {
+                throw new GradleException("symmetric-pro tag ${previousDocsVersion} lacks symmetric-pro/src/main/resources/${name}; fetch the tag into ${proRepositoryDir}")
+            }
+            new File(proDir, name).bytes = content
+        }
+        logger.lifecycle("Release notes compare against symmetric-pro ${previousDocsVersion} from git tag ${previousDocsVersion}")
+    }
+}
 task unzipCoreJar(type: Copy) {
 	dependsOn downloadJars
 		def zipFile1 = file(symAssembleDir + '/build/docJars/download-core-' + latestPreviousVersion + '.zip')
@@ -40,12 +83,9 @@ task unzipCoreJar(type: Copy) {
 		into outputDir1	
 }
 
-task unzipProJar(type: Copy) {
+// downloadJars now writes the previous pro files straight into build/docJars/pro-<version>; the task name stays for its dependents.
+task unzipProJar {
 	dependsOn unzipCoreJar
-		def zipFile2 = file(symAssembleDir + '/build/docJars/download-pro-' + latestPreviousVersion + '.zip')
-		def outputDir2 = file(symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion)
-		from zipTree(zipFile2)
-		into outputDir2
 }
 
 task generateReleaseNotesActual(type: JavaExec) {
