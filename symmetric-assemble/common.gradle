@@ -77,6 +77,14 @@ def ignoreDerivedResources(projectDescription, directories = ["build", "test-out
   }
 }  
 
+// Build-Time drives license checks (AbstractVersion.getBuildTime against a license's maximum build time). A
+// release passes -PbuildTime so every Gradle run of the release builds the same jar bytes.
+def requestedBuildTime = findProperty('buildTime')
+if (requestedBuildTime != null && !(requestedBuildTime ==~ /\d{8}-\d{4}/)) {
+    throw new GradleException("buildTime must be yyyyMMdd-HHmm; it is ${requestedBuildTime}")
+}
+ext.buildTimeStamp = requestedBuildTime ?: new SimpleDateFormat("yyyyMMdd-HHmm").format(new Date())
+
 // The modules symmetric-pro's release publishes to Saturn's Maven repository; nothing else is public.
 ext.saturnModules = ['symmetric-util', 'symmetric-db', 'symmetric-csv', 'symmetric-jdbc', 'symmetric-io',
                      'symmetric-core', 'symmetric-stats', 'symmetric-client', 'symmetric-server',
@@ -276,6 +284,7 @@ subprojects { subproject ->
                        "Implementation-Version": archiveVersion,
                        "Project-Artifact": project.name,                       
                        "Build-Version": archiveVersion,
+                       "Build-Time": rootProject.buildTimeStamp,
                        "Build-Scm-Version": scmVersion)
         }    
     }
