@@ -72,4 +72,16 @@ class ParametersUtilTest {
         ParametersUtil.redactParameters(parameters);
         assertEquals(ParameterConstants.REDACTED, parameters.getProperty("http.jwt.client.token"));
     }
+
+    @Test
+    void testRedactParameters_withRestSourceSecrets() {
+        Properties parameters = new Properties();
+        parameters.put("rest.source.oauth.client.secret", "client-secret");
+        parameters.put("rest.source.bearer.token", "bearer-token");
+        parameters.put("rest.source.oauth.client.id", "client-id");
+        ParametersUtil.redactParameters(parameters);
+        assertEquals(ParameterConstants.REDACTED, parameters.getProperty("rest.source.oauth.client.secret"));
+        assertEquals(ParameterConstants.REDACTED, parameters.getProperty("rest.source.bearer.token"));
+        assertEquals("client-id", parameters.getProperty("rest.source.oauth.client.id"));
+    }
 }
