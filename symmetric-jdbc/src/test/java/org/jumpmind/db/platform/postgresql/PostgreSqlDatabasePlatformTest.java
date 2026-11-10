@@ -23,6 +23,8 @@ package org.jumpmind.db.platform.postgresql;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,6 +34,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Array;
+import java.sql.SQLException;
+import java.sql.Types;
+
+import org.jumpmind.db.model.Column;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlException;
 import org.junit.jupiter.api.Test;
@@ -90,5 +97,47 @@ class PostgreSqlDatabasePlatformTest {
         assertEquals("test_database", catalog1);
         assertEquals("test_database", catalog2);
         verify(sqlTemplate, times(1)).queryForObject(anyString(), eq(String.class));
+    }
+
+    private static Column arrayColumn(boolean required) {
+        Column column = new Column("item_code");
+        column.setMappedTypeCode(Types.ARRAY);
+        column.setJdbcTypeName("_int8");
+        column.setRequired(required);
+        return column;
+    }
+
+    @Test
+    void testCreateArray_blankValueForRequiredColumnFailsWithColumnName() {
+        Column requiredColumn = arrayColumn(true);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> platform.createArray(requiredColumn, ""));
+        assertTrue(ex.getMessage().contains("item_code"));
+        assertTrue(ex.getMessage().contains("Blank value for required array column"));
+    }
+
+    @Test
+    void testCreateArray_whitespaceValueForRequiredColumnFails() {
+        Column requiredColumn = arrayColumn(true);
+        assertThrows(IllegalArgumentException.class, () -> platform.createArray(requiredColumn, "  "));
+    }
+
+    @Test
+    void testCreateArray_blankValueForOptionalColumnReturnsNull() {
+        assertNull(platform.createArray(arrayColumn(false), ""));
+    }
+
+    @Test
+    void testCreateArray_nonBlankValueBindsArrayLiteral() throws SQLException {
+        Array array = platform.createArray(arrayColumn(true), "{12}");
+        assertNotNull(array);
+        assertEquals("{12}", array.toString());
+        assertEquals("int8", array.getBaseTypeName());
+        assertEquals(Types.INTEGER, array.getBaseType());
+    }
+
+    @Test
+    void testCreateArray_emptyArrayLiteralForRequiredColumnBinds() {
+        Array array = platform.createArray(arrayColumn(true), "{}");
+        assertEquals("{}", array.toString());
     }
 }
