@@ -163,80 +163,84 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     protected Array createArray(Column column, final String value) {
-        if (StringUtils.isNotBlank(value)) {
-            String jdbcTypeName = column.getJdbcTypeName();
-            if (jdbcTypeName.startsWith("_")) {
-                jdbcTypeName = jdbcTypeName.substring(1);
+        if (StringUtils.isBlank(value)) {
+            if (column.isRequired()) {
+                throw new IllegalArgumentException("Blank value for required array column " + column.getName() + " (" + column.getJdbcTypeName()
+                        + "). A NOT NULL array column needs an array literal such as '{}'. A blank value usually means the source value"
+                        + " was mapped to the wrong target column.");
             }
-            int jdbcBaseType = Types.VARCHAR;
-            if (jdbcTypeName.toLowerCase().contains("int")) {
-                jdbcBaseType = Types.INTEGER;
-            }
-            final String baseTypeName = jdbcTypeName;
-            final int baseType = jdbcBaseType;
-            return new Array() {
-                @Override
-                public String getBaseTypeName() {
-                    return baseTypeName;
-                }
-
-                @Override
-                public void free() {
-                }
-
-                @Override
-                public int getBaseType() {
-                    return baseType;
-                }
-
-                @Override
-                public Object getArray() {
-                    return null;
-                }
-
-                @Override
-                public Object getArray(Map<String, Class<?>> map) {
-                    return null;
-                }
-
-                @Override
-                public Object getArray(long index, int count) {
-                    return null;
-                }
-
-                @Override
-                public Object getArray(long index, int count, Map<String, Class<?>> map) {
-                    return null;
-                }
-
-                @Override
-                public ResultSet getResultSet() {
-                    return null;
-                }
-
-                @Override
-                public ResultSet getResultSet(Map<String, Class<?>> map) {
-                    return null;
-                }
-
-                @Override
-                public ResultSet getResultSet(long index, int count) {
-                    return null;
-                }
-
-                @Override
-                public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map) {
-                    return null;
-                }
-
-                @Override
-                public String toString() {
-                    return value;
-                }
-            };
-        } else {
             return null;
         }
+        String jdbcTypeName = column.getJdbcTypeName();
+        if (jdbcTypeName.startsWith("_")) {
+            jdbcTypeName = jdbcTypeName.substring(1);
+        }
+        int jdbcBaseType = Types.VARCHAR;
+        if (jdbcTypeName.toLowerCase().contains("int")) {
+            jdbcBaseType = Types.INTEGER;
+        }
+        final String baseTypeName = jdbcTypeName;
+        final int baseType = jdbcBaseType;
+        return new Array() {
+            @Override
+            public String getBaseTypeName() {
+                return baseTypeName;
+            }
+
+            @Override
+            public void free() {
+            }
+
+            @Override
+            public int getBaseType() {
+                return baseType;
+            }
+
+            @Override
+            public Object getArray() {
+                return null;
+            }
+
+            @Override
+            public Object getArray(Map<String, Class<?>> map) {
+                return null;
+            }
+
+            @Override
+            public Object getArray(long index, int count) {
+                return null;
+            }
+
+            @Override
+            public Object getArray(long index, int count, Map<String, Class<?>> map) {
+                return null;
+            }
+
+            @Override
+            public ResultSet getResultSet() {
+                return null;
+            }
+
+            @Override
+            public ResultSet getResultSet(Map<String, Class<?>> map) {
+                return null;
+            }
+
+            @Override
+            public ResultSet getResultSet(long index, int count) {
+                return null;
+            }
+
+            @Override
+            public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map) {
+                return null;
+            }
+
+            @Override
+            public String toString() {
+                return value;
+            }
+        };
     }
 
     @Override
