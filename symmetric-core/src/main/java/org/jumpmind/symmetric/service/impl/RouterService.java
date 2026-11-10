@@ -568,6 +568,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         if (lastCheck != null && lastCheck.isCurrentlyValid(triggerRouters, cacheTime)) {
             return lastCheck.onlyDefaultRoutersAssigned();
         }
+        // First Time calculation
         boolean onlyDefaultRoutersAssigned = computeOnlyDefaultRoutersAssigned(channel, nodeGroupId, triggerRouters);
         if (onlyDefaultRoutersAssigned && (lastCheck == null || !lastCheck.onlyDefaultRoutersAssigned())) {
             log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
@@ -579,10 +580,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
 
     private boolean computeOnlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
         String channelId = channel.getChannelId();
+        // maybe make the boolean pre-checks a different method? ....
         boolean onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
                 && !channel.isFileSyncFlag()
                 && !channel.isReloadFlag()
-                && !Constants.CHANNEL_HEARTBEAT.equals(channelId)
+                && !Constants.CHANNEL_HEARTBEAT.equals(channelId) // rewrite this ordering to be better (move it up top geez)
                 && !Constants.CHANNEL_MONITOR.equals(channelId);
         if (onlyDefaultRoutersAssigned && triggerRouters != null) {
             for (TriggerRouter triggerRouter : triggerRouters) {
@@ -1337,18 +1339,19 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
-    /**
-     * Change data is not selected for a channel with only default routers. A non-default router can still be found for the data when the configuration changed
-     * after routing started, or when a table moved to another channel and left data behind. Select the skipped data so that router can see the column values.
-     * Data with a node list is skipped because it is routed to those nodes without a router.
-     */
+    // Start of data skipping
     protected void selectDataSkippedForDefaultRouters(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
-        if (context.isOnlyDefaultRoutersAssigned() && StringUtils.isBlank(data.getNodeList()) && hasNonDefaultRouter(triggerRouters)) {
+        if (context.isOnlyDefaultRoutersAssigned() && isAnyDataUsedToRoute(context.getChannel()) && StringUtils.isBlank(data.getNodeList())
+                && hasNonDefaultRouter(triggerRouters)) {
             Data selectedData = engine.getDataService().findData(data.getDataId());
             if (selectedData != null) {
                 copyDataUsedToRoute(selectedData, data, context.getChannel());
             }
         }
+    }
+
+    private boolean isAnyDataUsedToRoute(NodeChannel channel) {
+        return channel.isUseRowDataToRoute() || channel.isUseOldDataToRoute() || channel.isUsePkDataToRoute();
     }
 
     private boolean hasNonDefaultRouter(List<TriggerRouter> triggerRouters) {

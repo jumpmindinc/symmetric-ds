@@ -285,6 +285,19 @@ class RouterServiceTest {
     }
 
     @Test
+    void testSelectDataSkippedForDefaultRouters_whenChannelRoutesOnNoData() {
+        Data data = newDataWithoutValues();
+        NodeChannel channel = new NodeChannel(new Channel(CHANNEL_2_TEST.getChannelId(), 1));
+        channel.getChannel().setUseRowDataToRoute(false);
+        channel.getChannel().setUseOldDataToRoute(false);
+        channel.getChannel().setUsePkDataToRoute(false);
+        ChannelRouterContext context = newContext(channel);
+        context.setOnlyDefaultRoutersAssigned(true);
+        routerService.selectDataSkippedForDefaultRouters(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
     void testSelectDataSkippedForDefaultRouters_withNodeList() {
         Data data = newDataWithoutValues();
         data.setNodeList(TARGET_NODE_ID);
