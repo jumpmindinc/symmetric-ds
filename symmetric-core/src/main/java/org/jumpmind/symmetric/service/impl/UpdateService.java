@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.service.impl;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -63,6 +64,8 @@ import com.google.gson.stream.JsonToken;
 public class UpdateService extends AbstractService implements IUpdateService {
     protected final long MILLIS_BETWEEN_CHECKS = 86400000l;
     protected final long MILLIS_AFTER_NODE_OFFLINE = 86400000l;
+    protected static final int CONNECT_TIMEOUT_MILLIS = 10000;
+    protected static final int READ_TIMEOUT_MILLIS = 30000;
     protected ISymmetricEngine engine;
     protected boolean sendUsage;
     protected boolean checkUpdates;
@@ -133,19 +136,46 @@ public class UpdateService extends AbstractService implements IUpdateService {
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
+    protected int getConnectTimeoutMillis() {
+        return CONNECT_TIMEOUT_MILLIS;
+    }
+
+    protected int getReadTimeoutMillis() {
+        return READ_TIMEOUT_MILLIS;
+    }
+
     protected void postDataForVersion(URL url, byte[] postData) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setFixedLengthStreamingMode(postData.length);
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-        conn.connect();
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(postData);
+        try {
+            conn.setConnectTimeout(getConnectTimeoutMillis());
+            conn.setReadTimeout(getReadTimeoutMillis());
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setFixedLengthStreamingMode(postData.length);
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            conn.connect();
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(postData);
+            }
+            int responseCode = conn.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                parseHeaders(conn);
+                parseResponse(conn);
+            } else {
+                log.debug("Check for updates at {} returned HTTP response code {}", url, responseCode);
+                drainErrorStream(conn);
+            }
+        } finally {
+            conn.disconnect();
         }
-        parseHeaders(conn);
-        parseResponse(conn);
-        conn.disconnect();
+    }
+
+    protected void drainErrorStream(HttpURLConnection conn) throws IOException {
+        try (InputStream errorStream = conn.getErrorStream()) {
+            if (errorStream != null) {
+                errorStream.transferTo(OutputStream.nullOutputStream());
+            }
+        }
     }
 
     protected void parseHeaders(HttpURLConnection conn) {
@@ -153,26 +183,22 @@ public class UpdateService extends AbstractService implements IUpdateService {
 
     protected void parseResponse(HttpURLConnection conn) throws IOException {
         Gson gson = new Gson();
-        JsonReader reader = gson.newJsonReader(new InputStreamReader(conn.getInputStream()));
-        String fieldName = "";
-        while (reader.hasNext()) {
-            JsonToken jsonToken = reader.peek();
-            if (jsonToken == JsonToken.BEGIN_OBJECT) {
-                reader.beginObject();
-            } else if (jsonToken == JsonToken.NAME) {
-                fieldName = reader.nextName();
-            } else if (jsonToken == JsonToken.STRING) {
-                String value = reader.nextString();
-                if ("version".equals(fieldName)) {
-                    latestVersion = value;
+        try (JsonReader reader = gson.newJsonReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            reader.beginObject();
+            while (reader.hasNext()) {
+                String fieldName = reader.nextName();
+                if (reader.peek() != JsonToken.STRING) {
+                    reader.skipValue();
+                } else if ("version".equals(fieldName)) {
+                    latestVersion = reader.nextString();
                 } else if ("link".equals(fieldName)) {
-                    downloadUrl = value;
+                    downloadUrl = reader.nextString();
+                } else {
+                    reader.skipValue();
                 }
-            } else if (jsonToken == JsonToken.NUMBER) {
-                reader.nextLong();
             }
+            reader.endObject();
         }
-        reader.close();
     }
 
     protected Map<String, Object> getProperties() {
@@ -289,7 +315,7 @@ public class UpdateService extends AbstractService implements IUpdateService {
         prop.put("out_bytes", outMap.get("byte_count") == null ? 0L : outMap.get("byte_count"));
         prop.put("out_rows", outMap.get("rows_count") == null ? 0L : outMap.get("rows_count"));
         Map<String, Object> inMap = sqlTemplateDirty.queryForMap(getSql("countIncoming"), cal.getTime());
-        prop.put("in_batches", outMap.get("batch_count"));
+        prop.put("in_batches", inMap.get("batch_count"));
         prop.put("in_bytes", inMap.get("byte_count") == null ? 0L : inMap.get("byte_count"));
         prop.put("in_rows", inMap.get("rows_count") == null ? 0L : inMap.get("rows_count"));
     }
