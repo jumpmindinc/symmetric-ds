@@ -70,6 +70,7 @@ import org.jumpmind.symmetric.config.ITableResolver;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.config.TriggerSelector;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Lock;
@@ -2529,6 +2530,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 inactivateTriggerHistory(latestHistoryBeforeRebuild);
             }
             context.incrementTriggersSyncedCount(1);
+<<<<<<< HEAD
             if (newestHistory != null) {
                 if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS)) {
                     for (ITriggerCreationListener l : extensionService.getExtensionPointList(ITriggerCreationListener.class)) {
@@ -2539,6 +2541,57 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     activeTriggerHistories.add(newestHistory);
                 }
             } else {
+=======
+            notifyListenersAfterTriggerSync(newestHistory, trigger, activeTriggerHistories, context);
+        } catch (Exception ex) {
+            handleTriggerSyncError(newestHistory, trigger, options, context, ex);
+        }
+    }
+
+    private void handleTriggerSyncError(TriggerHistory newestHistory, Trigger trigger,
+            TriggerSyncOptions options, TriggerRouterContext context, Exception ex) {
+        log.error(String.format("Failed to create triggers for %s", trigger.qualifiedSourceTableName()), ex);
+        invalidateTriggerHistory(newestHistory, ex);
+        if (newestHistory != null && !isUsingTargetDialect(trigger)) {
+            dropTriggers(newestHistory, options.sqlBuffer);
+        }
+        context.incrementTriggersSyncedCount(1);
+        context.addTriggersFailed(trigger.qualifiedSourceTableName(), ex);
+        for (ITriggerCreationListener l : extensionService.getExtensionPointList(ITriggerCreationListener.class)) {
+            l.triggerFailed(context.getTriggersToSyncCount(), context.getTriggersSyncedCount(), trigger, ex);
+        }
+    }
+
+    private TriggerReBuildReason determineForceRebuildReason(TriggerHistory latestHistory, Relation relation, Trigger trigger, boolean force) {
+        if (latestHistory == null) {
+            return TriggerReBuildReason.NEW_TRIGGERS;
+        } else if (relation.calculateHashcode() != latestHistory.getTableHash()) {
+            return TriggerReBuildReason.TABLE_SCHEMA_CHANGED;
+        } else if (trigger.hasChangedSinceLastTriggerBuild(latestHistory.getCreateTime())
+                || trigger.toHashedValue() != latestHistory.getTriggerRowHash()) {
+            return TriggerReBuildReason.TABLE_SYNC_CONFIGURATION_CHANGED;
+        } else if (getTriggerTemplateFor(trigger).toHashedValue() != latestHistory.getTriggerTemplateHash()) {
+            return TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED;
+        } else if (force) {
+            return TriggerReBuildReason.FORCED;
+        }
+        return null;
+    }
+
+    private boolean isUsingTargetDialect(Trigger trigger) {
+        return !getSymmetricDialect().equals(getTargetDialect())
+                && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
+    }
+
+    private AbstractTriggerTemplate getTriggerTemplateFor(Trigger trigger) {
+        return (isUsingTargetDialect(trigger) ? getTargetDialect() : getSymmetricDialect()).getTriggerTemplate();
+    }
+
+    private void notifyListenersAfterTriggerSync(TriggerHistory newestHistory, Trigger trigger,
+            List<TriggerHistory> activeTriggerHistories, TriggerRouterContext context) {
+        if (newestHistory != null) {
+            if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS)) {
+>>>>>>> 0ec3c79126 (SYM-8299: Prevented Sync Triggers from creating a new active trigger history on every run when the target dialect differs from the runtime dialect and the templates hash differently (#1283))
                 for (ITriggerCreationListener l : extensionService.getExtensionPointList(ITriggerCreationListener.class)) {
                     l.triggerChecked(context.getTriggersToSyncCount(), context.getTriggersSyncedCount());
                 }
@@ -2593,6 +2646,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             TriggerTableSupportingInfo triggerTableSupportingInfo) {
         boolean triggerExists = false;
         boolean triggerRemoved = false;
+<<<<<<< HEAD
         boolean usingTargetDialect = false;
         if (!getSymmetricDialect().equals(getTargetDialect()) &&
                 !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix())) {
@@ -2601,6 +2655,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         TriggerHistory newTriggerHist = new TriggerHistory(table, trigger,
                 usingTargetDialect ? getTargetDialect().getTriggerTemplate() : getSymmetricDialect().getTriggerTemplate(), reason);
         if (usingTargetDialect) {
+=======
+        boolean isTriggerRebuilt = false;
+        TriggerHistory newTriggerHist = new TriggerHistory(relation, trigger, getTriggerTemplateFor(trigger), reason);
+        if (isUsingTargetDialect(trigger)) {
+>>>>>>> 0ec3c79126 (SYM-8299: Prevented Sync Triggers from creating a new active trigger history on every run when the target dialect differs from the runtime dialect and the templates hash differently (#1283))
             if (hist == null && (oldhist == null || forceRebuild)) {
                 insert(newTriggerHist);
                 synchronized (activeTriggerHistories) {
