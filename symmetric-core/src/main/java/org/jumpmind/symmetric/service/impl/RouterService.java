@@ -162,7 +162,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(RegistrationServerRouter.ROUTER_TYPE, new RegistrationServerRouter(engine));
         extensionService.addExtensionPoint("java", new JavaDataRouter(engine));
         extensionService.addExtensionPoint("bsh", new BshDataRouter(engine));
-        extensionService.addExtensionPoint("default", new DefaultDataRouter());
+        extensionService.addExtensionPoint(DefaultDataRouter.ROUTER_TYPE, new DefaultDataRouter());
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
         extensionService.addExtensionPoint("dbf", new DBFRouter(engine));
@@ -517,7 +517,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     }
                 }
                 for (TriggerRouter triggerRouter : testableTriggerRouters) {
-                    boolean isDefaultRouter = "default".equals(triggerRouter.getRouter().getRouterType());
+                    boolean isDefaultRouter = DefaultDataRouter.ROUTER_TYPE.equals(triggerRouter.getRouter().getRouterType());
                     /*
                      * If the data router is not a default data router or there will be incoming data on the channel where sync_on_incoming_batch is on, then we
                      * can not do 'optimal' routing. When sync_on_incoming_batch is on, then we might not be sending data to all nodes in a node_group. We can
@@ -1269,7 +1269,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
             }
         }
         if (dataRouter == null) {
-            return getRouters().get("default");
+            return getRouters().get(DefaultDataRouter.ROUTER_TYPE);
         }
         return dataRouter;
     }
@@ -1323,7 +1323,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         if (triggerRouters != null) {
             for (TriggerRouter triggerRouter : triggerRouters) {
                 Router router = triggerRouter.getRouter();
-                if (router != null && !"default".equals(router.getRouterType())) {
+                if (router != null && !DefaultDataRouter.ROUTER_TYPE.equals(router.getRouterType())) {
                     return true;
                 }
             }
