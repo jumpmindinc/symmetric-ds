@@ -1269,8 +1269,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             saveRouter(triggerRouter.getRouter());
         }
         triggerRouter.setLastUpdateTime(new Date());
-        if (0 >= sqlTemplate.update(getSql("updateTriggerRouterSql"), getTriggerRouterUpdateSqlValues(triggerRouter),
-                getTriggerRouterUpdateSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+        if (0 >= sqlTemplate.update(updateSql, getTriggerRouterUpdateSqlValues(triggerRouter), getTriggerRouterUpdateSqlTypes())) {
             triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
             sqlTemplate.update(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
                     getTriggerRouterSqlTypes());
@@ -1285,8 +1285,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             saveRouter(transaction, triggerRouter.getRouter());
         }
         triggerRouter.setLastUpdateTime(new Date());
-        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerRouterSql"), getTriggerRouterUpdateSqlValues(triggerRouter),
-                getTriggerRouterUpdateSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerRouterUpdateSqlValues(triggerRouter), getTriggerRouterUpdateSqlTypes())) {
             triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
             transaction.prepareAndExecute(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
                     getTriggerRouterSqlTypes());
@@ -1358,7 +1358,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             if (triggers != null) {
                 insertUpdateTriggers(transaction, triggers, isInsert);
             }
-            transaction.prepare(isInsert ? getSql("insertTriggerRouterSql") : getSql("updateTriggerRouterSql"));
+            String sql = isInsert ? getSql("insertTriggerRouterSql") : getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+            transaction.prepare(sql);
             int[] types = isInsert ? getTriggerRouterSqlTypes() : getTriggerRouterUpdateSqlTypes();
             int rowCount = 0;
             for (TriggerRouter triggerRouter : triggerRouters) {
@@ -1576,7 +1577,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public void saveTrigger(Trigger trigger) {
         trigger.setLastUpdateTime(new Date());
         trigger.nullOutBlankFields();
-        if (0 >= sqlTemplate.update(getSql("updateTriggerSql"), getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        if (0 >= sqlTemplate.update(updateSql, getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
             trigger.setCreateTime(trigger.getLastUpdateTime());
             sqlTemplate.update(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
         }
@@ -1587,7 +1589,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public void saveTrigger(ISqlTransaction transaction, Trigger trigger) {
         trigger.setLastUpdateTime(new Date());
         trigger.nullOutBlankFields();
-        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerSql"), getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
             trigger.setCreateTime(trigger.getLastUpdateTime());
             transaction.prepareAndExecute(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
         }
@@ -1646,7 +1649,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected void insertUpdateTriggers(ISqlTransaction transaction, Collection<Trigger> triggers, boolean isInsert) {
         int maxRowsToFlush = parameterService.getInt(ParameterConstants.DATA_FLUSH_JDBC_BATCH_SIZE);
-        transaction.prepare(isInsert ? getSql("insertTriggerSql") : getSql("updateTriggerSql"));
+        String sql = isInsert ? getSql("insertTriggerSql") : getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        transaction.prepare(sql);
         int[] types = isInsert ? getTriggerSqlTypes() : getTriggerUpdateSqlTypes();
         int rowCount = 0;
         for (Trigger trigger : triggers) {

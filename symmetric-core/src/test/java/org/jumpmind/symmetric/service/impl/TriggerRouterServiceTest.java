@@ -658,7 +658,7 @@ class TriggerRouterServiceTest {
         ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
         verify(sqlTemplate, times(2)).update(sql.capture(), values.capture(), types.capture());
         String insertSql = service.getSql("insertTriggerSql");
-        assertEquals(service.getSql("updateTriggerSql"), sql.getAllValues().get(0));
+        assertEquals(service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER), sql.getAllValues().get(0));
         UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
                 values.getAllValues().get(0), types.getAllValues().get(0));
         assertEquals(insertSql, sql.getAllValues().get(1));
@@ -708,7 +708,7 @@ class TriggerRouterServiceTest {
         ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
         verify(sqlTemplate, times(2)).update(sql.capture(), values.capture(), types.capture());
         String insertSql = service.getSql("insertTriggerRouterSql");
-        assertEquals(service.getSql("updateTriggerRouterSql"), sql.getAllValues().get(0));
+        assertEquals(service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER), sql.getAllValues().get(0));
         UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
                 values.getAllValues().get(0), types.getAllValues().get(0));
         assertEquals(insertSql, sql.getAllValues().get(1));
@@ -742,7 +742,7 @@ class TriggerRouterServiceTest {
         service.updateTriggerRouters(triggerRouters);
         ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
         ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
-        String updateSql = service.getSql("updateTriggerRouterSql");
+        String updateSql = service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
         verify(sqlTransaction).prepare(updateSql);
         verify(sqlTransaction).addRow(ArgumentMatchers.isNull(), values.capture(), types.capture());
         UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(service.getSql("insertTriggerRouterSql"), updateSql,

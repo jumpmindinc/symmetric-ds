@@ -25,6 +25,9 @@ import java.util.Map;
 import org.jumpmind.db.platform.IDatabasePlatform;
 
 public class TriggerRouterServiceSqlMap extends AbstractSqlMap {
+    static final String SQL_UPDATE_TRIGGER = "updateTriggerSql";
+    static final String SQL_UPDATE_TRIGGER_ROUTER = "updateTriggerRouterSql";
+
     public TriggerRouterServiceSqlMap(IDatabasePlatform platform,
             Map<String, String> replacementTokens) {
         super(platform, replacementTokens);
@@ -144,7 +147,7 @@ public class TriggerRouterServiceSqlMap extends AbstractSqlMap {
                         + "  create_time,last_update_by,last_update_time,external_select,channel_expression,stream_row,capture_changes_only,time_based_column_name,trigger_id)                                                            "
                         + "  values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)                                                                             ");
 
-        putSql("updateTriggerSql",
+        putSql(SQL_UPDATE_TRIGGER,
                 ""
                         + "update $(trigger)                                                                                                                                "
                         + "  set source_catalog_name=?,source_schema_name=?,source_table_name=?,                                                                            "
@@ -189,7 +192,7 @@ public class TriggerRouterServiceSqlMap extends AbstractSqlMap {
                         + "  (initial_load_order,initial_load_select,initial_load_delete_stmt,ping_back_enabled,create_time,last_update_by,last_update_time,enabled,description,data_refresh_type,data_refresh_job_name,trigger_id,router_id)   "
                         + "  values(?,?,?,?,?,?,?,?,?,?,?,?,?)                                                                                                       ");
 
-        putSql("updateTriggerRouterSql",
+        putSql(SQL_UPDATE_TRIGGER_ROUTER,
                 ""
                         + "update $(trigger_router)                                                                             "
                         + "  set initial_load_order=?,initial_load_select=?,initial_load_delete_stmt=?,ping_back_enabled=?,last_update_by=?,last_update_time=?,enabled=?,description=?,data_refresh_type=?,data_refresh_job_name=?   "
