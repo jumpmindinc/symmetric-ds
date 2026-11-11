@@ -12,91 +12,120 @@ dependencies {
     generateReleaseNotesDependencies project(":symmetric-db")
 }
 
-def previousDocsVersion = latestPreviousVersion
-def docJarsDir = file(symAssembleDir + '/build/docJars')
-def saturnMavenUrl = (findProperty('saturnUrl') ?: 'https://downloads.jumpmind.com').toString().replaceAll('/+$', '') + '/files/maven/releases'
-def previousCoreJarPath = "org/jumpmind/symmetric/symmetric-core/${previousDocsVersion}/symmetric-core-${previousDocsVersion}.jar"
+def previousReleaseDir = file(symAssembleDir + '/build/previous-release')
+def coreRepositoryDir = file(symAssembleDir + '/..')
 def proRepositoryDir = file(symAssembleDir + '/../../symmetric-pro')
 
-def downloadZip = { String url, File target ->
-    try {
-        def connection = new URL(url).openConnection()
-        connection.connectTimeout = 30000
-        connection.readTimeout = 120000
-        if (connection instanceof HttpURLConnection && connection.responseCode != 200) {
-            return false
-        }
-        byte[] bytes = connection.inputStream.withCloseable { it.bytes }
-        if (bytes.length < 4 || bytes[0] != (byte) 0x50 || bytes[1] != (byte) 0x4B) {
-            return false
-        }
-        target.bytes = bytes
-        return true
-    } catch (IOException e) {
-        return false
-    }
-}
-
-def proGit = { List<String> arguments ->
-    def process = new ProcessBuilder(['git', '-C', proRepositoryDir.path] + arguments).start()
+def runGit = { File repositoryDir, List<String> arguments ->
+    def process = new ProcessBuilder(['git', '-C', repositoryDir.path] + arguments).start()
+    def errorText = new StringBuilder()
+    def errorReader = Thread.start { errorText.append(process.errorStream.text) }
     byte[] output = process.inputStream.bytes
-    process.errorStream.text
-    return process.waitFor() == 0 ? output : null
+    int exitCode = process.waitFor()
+    errorReader.join()
+    return [isSuccess: exitCode == 0, output: output, error: errorText.toString().trim()]
 }
 
-task downloadJars {
-    doFirst {
-        docJarsDir.mkdirs()
-        def coreZip = new File(docJarsDir, "download-core-${previousDocsVersion}.zip")
-        def coreSources = ["${saturnMavenUrl}/${previousCoreJarPath}", "https://repo1.maven.org/maven2/${previousCoreJarPath}"]
-        def coreSource = coreSources.find { url -> downloadZip(url.toString(), coreZip) }
-        if (coreSource == null) {
-            throw new GradleException("symmetric-core ${previousDocsVersion} is missing from ${coreSources}")
-        }
-        logger.lifecycle("Release notes compare against symmetric-core ${previousDocsVersion} from ${coreSource}")
+def releaseVersionPattern = ~/\d+(\.\d+)+/
 
-        def proDir = new File(docJarsDir, "pro-${previousDocsVersion}")
-        proDir.mkdirs()
-        if (!new File(proRepositoryDir, '.git').exists()) {
-            logger.lifecycle("No symmetric-pro checkout at ${proRepositoryDir}: release notes cover the open-source parameters and tables only")
-            return
+// "x" in 3.18.x sorts above every number, so 3.18.x-SNAPSHOT compares after every 3.18 release.
+def toVersionParts = { String releaseVersion ->
+    releaseVersion.tokenize('.').collect { part -> part == 'x' ? Integer.MAX_VALUE : part.toInteger() }
+}
+
+def compareVersions = { String left, String right ->
+    def leftParts = toVersionParts(left)
+    def rightParts = toVersionParts(right)
+    for (int i = 0; i < Math.max(leftParts.size(), rightParts.size()); i++) {
+        int difference = (i < leftParts.size() ? leftParts[i] : 0) <=> (i < rightParts.size() ? rightParts[i] : 0)
+        if (difference != 0) {
+            return difference
         }
-        def tagRef = "refs/tags/${previousDocsVersion}".toString()
-        if (proGit(['rev-parse', '--verify', '--quiet', tagRef]) == null) {
-            proGit(['fetch', '--quiet', '--no-tags', 'origin', "${tagRef}:${tagRef}".toString()])
+    }
+    return 0
+}
+
+def toReleaseVersion = { String buildVersion ->
+    buildVersion.replaceFirst(/-SNAPSHOT$/, '').replaceFirst(/(?i)\.RC\d+$/, '')
+}
+
+def listReleaseTags = { File repositoryDir ->
+    def remoteTags = runGit(repositoryDir, ['ls-remote', '--tags', '--refs', 'origin'])
+    List<String> tagNames
+    if (remoteTags.isSuccess) {
+        tagNames = new String(remoteTags.output).readLines().collect { line -> line.replaceFirst(/^.*refs\/tags\//, '') }
+    } else {
+        logger.warn("Cannot list the tags of origin in ${repositoryDir}, using the local tags: ${remoteTags.error}")
+        tagNames = new String(runGit(repositoryDir, ['tag', '--list']).output).readLines()
+    }
+    return tagNames.findAll { tagName -> tagName ==~ releaseVersionPattern }
+}
+
+def findPreviousReleaseVersion = {
+    def overrideVersion = findProperty('latestPreviousVersion')
+    if (overrideVersion) {
+        return overrideVersion.toString()
+    }
+    def releaseVersion = toReleaseVersion(project.version.toString())
+    def previousVersion = listReleaseTags(coreRepositoryDir)
+            .findAll { tagName -> compareVersions(tagName, releaseVersion) < 0 }
+            .max { left, right -> compareVersions(left, right) }
+    if (previousVersion == null) {
+        throw new GradleException("symmetric-ds has no release tag below ${releaseVersion}; pass -PlatestPreviousVersion=<version>")
+    }
+    return previousVersion
+}
+
+def copyFilesFromReleaseTag = { File repositoryDir, String releaseVersion, String sourceDir, List<String> fileNames ->
+    def releaseTag = "refs/tags/${releaseVersion}".toString()
+    if (!runGit(repositoryDir, ['rev-parse', '--verify', '--quiet', releaseTag]).isSuccess) {
+        def fetchArguments = ['fetch', '--quiet', '--no-tags']
+        // A shallow CI checkout needs only the tagged commit; a full clone keeps its full history.
+        if (new String(runGit(repositoryDir, ['rev-parse', '--is-shallow-repository']).output).trim() == 'true') {
+            fetchArguments << '--depth=1'
         }
-        ['symmetric-console-default.properties', 'console-schema.xml'].each { name ->
-            byte[] content = proGit(['show', "${tagRef}:symmetric-pro/src/main/resources/${name}".toString()])
-            if (content == null) {
-                throw new GradleException("symmetric-pro tag ${previousDocsVersion} lacks symmetric-pro/src/main/resources/${name}; fetch the tag into ${proRepositoryDir}")
-            }
-            new File(proDir, name).bytes = content
+        def fetch = runGit(repositoryDir, fetchArguments + ['origin', "${releaseTag}:${releaseTag}".toString()])
+        if (!fetch.isSuccess) {
+            throw new GradleException("Cannot fetch tag ${releaseVersion} into ${repositoryDir}: ${fetch.error}")
         }
-        logger.lifecycle("Release notes compare against symmetric-pro ${previousDocsVersion} from git tag ${previousDocsVersion}")
+    }
+    fileNames.each { fileName ->
+        def show = runGit(repositoryDir, ['show', "${releaseTag}:${sourceDir}/${fileName}".toString()])
+        if (!show.isSuccess) {
+            throw new GradleException("Tag ${releaseVersion} in ${repositoryDir} lacks ${sourceDir}/${fileName}: ${show.error}")
+        }
+        new File(previousReleaseDir, fileName).bytes = show.output
     }
 }
-task unzipCoreJar(type: Copy) {
-	dependsOn downloadJars
-		def zipFile1 = file(symAssembleDir + '/build/docJars/download-core-' + latestPreviousVersion + '.zip')
-		def outputDir1 = file(symAssembleDir + '/build/docJars/core-' + latestPreviousVersion)
-		from zipTree(zipFile1)
-		into outputDir1	
-}
 
-// downloadJars now writes the previous pro files straight into build/docJars/pro-<version>; the task name stays for its dependents.
-task unzipProJar {
-	dependsOn unzipCoreJar
+task copyPreviousReleaseFiles {
+    group = 'documentation'
+    description = 'Copies the parameter and schema files of the previous release from its git tag, for the release notes to compare against. -PlatestPreviousVersion=<version> picks the release.'
+    doLast {
+        def previousVersion = findPreviousReleaseVersion()
+        project.delete(previousReleaseDir)
+        previousReleaseDir.mkdirs()
+        copyFilesFromReleaseTag(coreRepositoryDir, previousVersion, 'symmetric-core/src/main/resources',
+                ['symmetric-default.properties', 'symmetric-schema.xml'])
+        if (new File(proRepositoryDir, '.git').exists()) {
+            copyFilesFromReleaseTag(proRepositoryDir, previousVersion, 'symmetric-pro/src/main/resources',
+                    ['symmetric-console-default.properties', 'console-schema.xml'])
+            logger.lifecycle("Release notes for ${project.version} compare against symmetric-ds and symmetric-pro ${previousVersion} from their git tags")
+        } else {
+            logger.lifecycle("Release notes for ${project.version} compare against symmetric-ds ${previousVersion} from its git tag; no symmetric-pro checkout at ${proRepositoryDir}, so they cover the open-source parameters and tables only")
+        }
+    }
 }
 
 task generateReleaseNotesActual(type: JavaExec) {
-	dependsOn unzipProJar
+	dependsOn copyPreviousReleaseFiles
 	mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
 	classpath = configurations.generateReleaseNotesDependencies
 	args = [
-		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-default.properties",
-		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-schema.xml",
-		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
-		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
+		"${previousReleaseDir}/symmetric-default.properties",
+		"${previousReleaseDir}/symmetric-schema.xml",
+		"${previousReleaseDir}/symmetric-console-default.properties",
+		"${previousReleaseDir}/console-schema.xml",
 		symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
 		majorMinorVersion,
 		"https://jumpmind.atlassian.net"
@@ -104,7 +133,6 @@ task generateReleaseNotesActual(type: JavaExec) {
 }
 
 task generateReleaseNotes {
-	dependsOn unzipProJar
 	dependsOn project(":symmetric-util").jar
 	dependsOn project(":symmetric-db").jar
 	dependsOn generateReleaseNotesActual
