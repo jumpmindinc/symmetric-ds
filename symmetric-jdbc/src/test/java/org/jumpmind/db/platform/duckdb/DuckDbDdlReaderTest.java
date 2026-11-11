@@ -110,6 +110,30 @@ class DuckDbDdlReaderTest {
     }
 
     @Test
+    void testReadIndices_sameIndexInAttachedDatabase_isNotDuplicated() throws SQLException {
+        platform.getSqlTemplate().update("ATTACH ':memory:' AS other_db");
+        platform.getSqlTemplate().update("CREATE TABLE item (id INTEGER, sku VARCHAR)");
+        platform.getSqlTemplate().update("CREATE INDEX idx_item ON item (id, sku)");
+        platform.getSqlTemplate().update("CREATE TABLE other_db.main.item (id INTEGER, sku VARCHAR)");
+        platform.getSqlTemplate().update("CREATE INDEX idx_item ON other_db.main.item (id, sku)");
+        List<IIndex> indices = readIndices("item");
+        assertEquals(1, indices.size());
+        IndexColumn[] columns = indices.get(0).getColumns();
+        assertEquals(2, columns.length);
+        assertEquals("id", columns[0].getName());
+        assertEquals("sku", columns[1].getName());
+    }
+
+    @Test
+    void testReadIndices_indexOnlyInAttachedDatabase_isNotReturned() throws SQLException {
+        platform.getSqlTemplate().update("ATTACH ':memory:' AS other_db");
+        platform.getSqlTemplate().update("CREATE TABLE item (sku VARCHAR)");
+        platform.getSqlTemplate().update("CREATE TABLE other_db.main.item (sku VARCHAR)");
+        platform.getSqlTemplate().update("CREATE INDEX idx_other_item ON other_db.main.item (sku)");
+        assertTrue(readIndices("item").isEmpty());
+    }
+
+    @Test
     void testReadColumn_nextvalDefault_marksAutoIncrementAndClearsDefault() throws SQLException {
         Column column = readColumn("nextval('\"main\".\"item_id_seq\"')");
         assertTrue(column.isAutoIncrement());

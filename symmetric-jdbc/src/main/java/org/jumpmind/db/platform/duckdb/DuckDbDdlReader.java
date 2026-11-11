@@ -49,9 +49,11 @@ public class DuckDbDdlReader extends AbstractJdbcDdlReader {
         query.append("unnest(expressions::varchar[]) as COLUMN_NAME, ");
         query.append("generate_subscripts(expressions::varchar[], 1) as ORDINAL_POSITION ");
         query.append("from duckdb_indexes() where table_name = ? and schema_name = ?");
+        query.append(" and database_name = coalesce(?, current_catalog())");
         try (PreparedStatement stmt = connection.prepareStatement(query.toString())) {
             stmt.setString(1, tableName);
             stmt.setString(2, metaData.getSchemaPattern());
+            stmt.setString(3, metaData.getCatalog());
             try (ResultSet indexData = stmt.executeQuery()) {
                 while (indexData.next()) {
                     Map<String, Object> values = readMetaData(indexData, getColumnsForIndex());
