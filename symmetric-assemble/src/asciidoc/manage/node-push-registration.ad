@@ -14,3 +14,17 @@ You can open registration from the command line with the following command:
 `bin/symadmin open-registration --engine <engine name> <node group> <external id> <sync url>`
 
 The <node group>, <external id>, and <sync url> should match the `group.id`, `external.id`, and `sync.url` in the registering node's <<Node Properties File>>.
+
+[IMPORTANT]
+====
+The push job skips nodes that have no batches to send, which includes a node waiting for push registration.
+The registration stays open and nothing is logged.
+Set these parameters on the server before opening registration:
+
+* `sync.use.ready.queues=false`
+* `push.thread.per.server.count` should be at least the number of nodes the server pushes to multiplied by the number of queues per node.
+Each node has one queue per distinct channel queue (`default`, `system`, and `reload` by default).
+ifdef::pro[]
+SymmetricDS Pro by default also adds 20 additional reload queues. So for example, one push node with default settings has 23 queues and a value of `push.thread.per.server.count=30` will correctly push registration.
+endif::pro[]
+====
