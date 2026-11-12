@@ -1624,8 +1624,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 trigger.getTimeBasedCaptureColumn(), trigger.getTriggerId() };
     }
 
-<<<<<<< HEAD
-=======
     protected int[] getTriggerUpdateSqlTypes() {
         return ArrayUtils.remove(getTriggerSqlTypes(), TRIGGER_CREATE_TIME_INDEX);
     }
@@ -1634,8 +1632,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return ArrayUtils.remove(getTriggerSqlValues(trigger), TRIGGER_CREATE_TIME_INDEX);
     }
 
-    @Override
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     public boolean syncTriggers() {
         return syncTriggers(false);
     }

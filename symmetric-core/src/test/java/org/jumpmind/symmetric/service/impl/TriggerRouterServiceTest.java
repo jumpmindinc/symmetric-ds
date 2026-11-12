@@ -607,14 +607,6 @@ class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
     }
 
-<<<<<<< HEAD
-    /**
-     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
-     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
-     * assembly -- is exercised.
-     */
-    private TriggerRouterService createSpyService() {
-=======
     @Test
     void testSaveTriggerInsertsNewTriggerAfterUpdateWithoutCreateTime() {
         TriggerRouterService service = buildService();
@@ -764,7 +756,16 @@ class TriggerRouterServiceTest {
     }
 
     private TriggerRouterService buildService() {
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
+        when(platform.scrubSql(ArgumentMatchers.anyString())).thenAnswer(AdditionalAnswers.returnsFirstArg());
+        return createSpyService();
+    }
+
+    /**
+     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
+     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
+     * assembly -- is exercised.
+     */
+    private TriggerRouterService createSpyService() {
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -779,26 +780,7 @@ class TriggerRouterServiceTest {
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(symmetricDialect.getPlatform().getSqlTemplate()).thenReturn(sqlTemplate);
         when(symmetricDialect.getPlatform().getSqlTemplateDirty()).thenReturn(sqlTemplate);
-<<<<<<< HEAD
         return spy(new TriggerRouterService(engine));
-=======
-        when(platform.scrubSql(ArgumentMatchers.anyString())).thenAnswer(AdditionalAnswers.returnsFirstArg());
-        return new TriggerRouterService(engine);
-    }
-
-    private TriggerRelationSupportingInfo invokeFindMatchingTriggerInfo(TriggerRouterService spy,
-            List<TriggerRelationSupportingInfo> list, Relation relation) throws Exception {
-        Method method = TriggerRouterService.class.getDeclaredMethod("findMatchingTriggerInfo", List.class, Relation.class);
-        method.setAccessible(true);
-        return (TriggerRelationSupportingInfo) method.invoke(spy, list, relation);
-    }
-
-    private void stubGetFullyQualifiedName(TriggerRouterService spy) {
-        doAnswer(invocation -> {
-            Relation r = invocation.getArgument(0);
-            return r.getCatalog() + "." + r.getSchema() + "." + r.getName();
-        }).when(spy).getFullyQualifiedName(ArgumentMatchers.any(Relation.class));
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     }
 
     private Trigger newTrigger(String triggerId, String tableName) {
