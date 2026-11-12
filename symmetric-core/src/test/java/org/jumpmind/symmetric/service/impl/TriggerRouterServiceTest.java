@@ -20,6 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -598,14 +599,6 @@ public class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
     }
 
-<<<<<<< HEAD
-    /**
-     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
-     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
-     * assembly -- is exercised.
-     */
-    private TriggerRouterService createSpyService() {
-=======
     @Test
     void testSaveTriggerInsertsNewTriggerAfterUpdateWithoutCreateTime() {
         TriggerRouterService service = buildService();
@@ -640,23 +633,6 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testSaveTriggerInTransactionUpdatesWithoutCreateTime() {
-        TriggerRouterService service = buildService();
-        Trigger trigger = newTrigger();
-        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class),
-                ArgumentMatchers.any(int[].class))).thenReturn(0, 1);
-        service.saveTrigger(sqlTransaction, trigger);
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
-        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
-        verify(sqlTransaction, times(2)).prepareAndExecute(sql.capture(), values.capture(), types.capture());
-        String insertSql = service.getSql("insertTriggerSql");
-        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
-                values.getAllValues().get(0), types.getAllValues().get(0));
-        assertEquals(trigger.getCreateTime(), values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
-    }
-
-    @Test
     void testSaveTriggerRouterInsertsNewTriggerRouterAfterUpdateWithoutCreateTime() {
         TriggerRouterService service = buildService();
         TriggerRouter triggerRouter = newTriggerRouter();
@@ -675,22 +651,6 @@ public class TriggerRouterServiceTest {
         assertNotNull(triggerRouter.getCreateTime());
         assertEquals(triggerRouter.getCreateTime(), values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
         assertEquals(Types.TIMESTAMP, types.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
-    }
-
-    @Test
-    void testSaveTriggerRouterInTransactionUpdatesWithoutCreateTime() {
-        TriggerRouterService service = buildService();
-        TriggerRouter triggerRouter = newTriggerRouter();
-        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class),
-                ArgumentMatchers.any(int[].class))).thenReturn(1);
-        service.saveTriggerRouter(sqlTransaction, triggerRouter, true);
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
-        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
-        verify(sqlTransaction, times(1)).prepareAndExecute(sql.capture(), values.capture(), types.capture());
-        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(service.getSql("insertTriggerRouterSql"), sql.getValue(),
-                values.getValue(), types.getValue());
-        assertNull(triggerRouter.getCreateTime());
     }
 
     @Test
@@ -755,7 +715,16 @@ public class TriggerRouterServiceTest {
     }
 
     private TriggerRouterService buildService() {
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
+        when(platform.scrubSql(ArgumentMatchers.anyString())).thenAnswer(AdditionalAnswers.returnsFirstArg());
+        return createSpyService();
+    }
+
+    /**
+     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
+     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
+     * assembly -- is exercised.
+     */
+    private TriggerRouterService createSpyService() {
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -770,26 +739,7 @@ public class TriggerRouterServiceTest {
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(symmetricDialect.getPlatform().getSqlTemplate()).thenReturn(sqlTemplate);
         when(symmetricDialect.getPlatform().getSqlTemplateDirty()).thenReturn(sqlTemplate);
-<<<<<<< HEAD
         return spy(new TriggerRouterService(engine));
-=======
-        when(platform.scrubSql(ArgumentMatchers.anyString())).thenAnswer(AdditionalAnswers.returnsFirstArg());
-        return new TriggerRouterService(engine);
-    }
-
-    private TriggerRelationSupportingInfo invokeFindMatchingTriggerInfo(TriggerRouterService spy,
-            List<TriggerRelationSupportingInfo> list, Relation relation) throws Exception {
-        Method method = TriggerRouterService.class.getDeclaredMethod("findMatchingTriggerInfo", List.class, Relation.class);
-        method.setAccessible(true);
-        return (TriggerRelationSupportingInfo) method.invoke(spy, list, relation);
-    }
-
-    private void stubGetFullyQualifiedName(TriggerRouterService spy) {
-        doAnswer(invocation -> {
-            Relation r = invocation.getArgument(0);
-            return r.getCatalog() + "." + r.getSchema() + "." + r.getName();
-        }).when(spy).getFullyQualifiedName(ArgumentMatchers.any(Relation.class));
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     }
 
     private Trigger newTrigger(String triggerId, String tableName) {

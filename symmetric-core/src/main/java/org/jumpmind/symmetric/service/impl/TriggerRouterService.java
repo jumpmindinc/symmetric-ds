@@ -1194,25 +1194,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         clearCache();
     }
 
-<<<<<<< HEAD
-=======
-    @Override
-    public void saveTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly) {
-        if (!updateTriggerRouterTableOnly) {
-            saveTrigger(transaction, triggerRouter.getTrigger());
-            saveRouter(transaction, triggerRouter.getRouter());
-        }
-        triggerRouter.setLastUpdateTime(new Date());
-        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
-        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerRouterUpdateSqlValues(triggerRouter), getTriggerRouterUpdateSqlTypes())) {
-            triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
-            transaction.prepareAndExecute(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
-                    getTriggerRouterSqlTypes());
-        }
-    }
-
-    @Override
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     public void renameTriggerRouter(String oldTriggerId, String oldRouterId, TriggerRouter triggerRouter) {
         ISqlTransaction transaction = null;
         try {
@@ -1422,21 +1403,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         clearCache();
     }
 
-<<<<<<< HEAD
-=======
-    @Override
-    public void saveTrigger(ISqlTransaction transaction, Trigger trigger) {
-        trigger.setLastUpdateTime(new Date());
-        trigger.nullOutBlankFields();
-        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
-        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
-            trigger.setCreateTime(trigger.getLastUpdateTime());
-            transaction.prepareAndExecute(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
-        }
-    }
-
-    @Override
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     public void saveTriggerAsCopy(String originalId, Trigger trigger) {
         String newId = trigger.getTriggerId();
         List<Trigger> triggers = sqlTemplate.query(getSql("selectTriggersWhereTriggerIdLikeSql"), new TriggerMapper(), newId + "%");
@@ -1533,8 +1499,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 trigger.getTriggerId() };
     }
 
-<<<<<<< HEAD
-=======
     protected int[] getTriggerUpdateSqlTypes() {
         return ArrayUtils.remove(getTriggerSqlTypes(), TRIGGER_CREATE_TIME_INDEX);
     }
@@ -1543,8 +1507,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return ArrayUtils.remove(getTriggerSqlValues(trigger), TRIGGER_CREATE_TIME_INDEX);
     }
 
-    @Override
->>>>>>> abce0a3dbc (SYM-8267: Set create_time only on insert for triggers, trigger routers and grouplets (#1288))
     public boolean syncTriggers() {
         return syncTriggers(false);
     }
