@@ -21,11 +21,13 @@
 package org.jumpmind.symmetric.db.mysql;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -37,11 +39,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.util.DataSourceProperties;
-<<<<<<< HEAD
-=======
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.SequenceIdentifier;
->>>>>>> 6f58903f22 (SYM-8109: MySQL findMaxDataId() returns 0 when lower_case_table_names=0 because the auto_increment lookup uses mixed-CASE table name sym_DATA (#1294))
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
@@ -94,39 +92,6 @@ class MySqlSymmetricDialectTest {
         assertFalse(sqlCaptor.getValue().contains("lower(event_object_table)"));
     }
 
-<<<<<<< HEAD
-=======
-    @Test
-    void getSyncTriggersExpression_capturesOnlyWhenVariableIsNull() {
-        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
-        assertEquals("@sync_triggers_disabled is null", dialect.getSyncTriggersExpression());
-        assertEquals("coalesce(@sync_triggers_disabled, 0) != 2", dialect.getSyncTriggersOnIncomingExpression());
-    }
-
-    @Test
-    void isConvertZeroDateToNull_isFalse_whenUrlOmitsZeroDateTimeBehavior() {
-        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
-        assertFalse(dialect.isConvertZeroDateToNull());
-    }
-
-    @Test
-    void isConvertZeroDateToNull_isTrue_whenUrlConvertsZeroDatesAndSqlModeAllowsZeroDates() {
-        IParameterService parameterService = createParameterService();
-        when(parameterService.getString(DataSourceProperties.DB_POOL_URL)).thenReturn("jdbc:mysql://localhost/test?zeroDateTimeBehavior=convertToNull");
-        IDatabasePlatform platform = createPlatform("8.0.30");
-        when(platform.getSqlTemplate().queryForString("select @@sql_mode")).thenReturn("");
-        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, platform);
-        assertTrue(dialect.isConvertZeroDateToNull());
-    }
-
-    @Test
-    void getCharacterSet_returnsConfiguredMasterCollation() {
-        IParameterService parameterService = createParameterService();
-        when(parameterService.getString(eq(ParameterConstants.DB_MASTER_COLLATION), anyString())).thenReturn("latin1");
-        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, createPlatform("8.0.30"));
-        assertEquals("latin1", dialect.getCharacterSet());
-    }
-
     @Test
     void getCurrentSequenceValue_queriesLowerCaseDataTableName_notEnumCasing() {
         IDatabasePlatform platform = createPlatform("8.0.30");
@@ -158,7 +123,6 @@ class MySqlSymmetricDialectTest {
         assertEquals(-1L, dialect.getCurrentSequenceValue(SequenceIdentifier.DATA));
     }
 
->>>>>>> 6f58903f22 (SYM-8109: MySQL findMaxDataId() returns 0 when lower_case_table_names=0 because the auto_increment lookup uses mixed-CASE table name sym_DATA (#1294))
     private IParameterService createParameterService() {
         IParameterService parameterService = mock(ParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
