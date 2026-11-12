@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.CatalogSchema;
@@ -74,6 +75,7 @@ import org.jumpmind.symmetric.config.ITableResolver;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.config.TriggerSelector;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Lock;
@@ -105,6 +107,8 @@ import org.slf4j.MDC;
  * @see ITriggerRouterService
  */
 public class TriggerRouterService extends AbstractService implements ITriggerRouterService {
+    static final int TRIGGER_CREATE_TIME_INDEX = 29;
+    static final int TRIGGER_ROUTER_CREATE_TIME_INDEX = 4;
     private IClusterService clusterService;
     private IConfigurationService configurationService;
     private ISequenceService sequenceService;
@@ -1265,8 +1269,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             saveRouter(triggerRouter.getRouter());
         }
         triggerRouter.setLastUpdateTime(new Date());
-        if (0 >= sqlTemplate.update(getSql("updateTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
-                getTriggerRouterSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+        if (0 >= sqlTemplate.update(updateSql, getTriggerRouterUpdateSqlValues(triggerRouter), getTriggerRouterUpdateSqlTypes())) {
             triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
             sqlTemplate.update(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
                     getTriggerRouterSqlTypes());
@@ -1281,8 +1285,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             saveRouter(transaction, triggerRouter.getRouter());
         }
         triggerRouter.setLastUpdateTime(new Date());
-        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
-                getTriggerRouterSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerRouterUpdateSqlValues(triggerRouter), getTriggerRouterUpdateSqlTypes())) {
             triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
             transaction.prepareAndExecute(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
                     getTriggerRouterSqlTypes());
@@ -1354,15 +1358,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             if (triggers != null) {
                 insertUpdateTriggers(transaction, triggers, isInsert);
             }
-            transaction.prepare(isInsert ? getSql("insertTriggerRouterSql") : getSql("updateTriggerRouterSql"));
-            int[] types = getTriggerRouterSqlTypes();
+            String sql = isInsert ? getSql("insertTriggerRouterSql") : getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+            transaction.prepare(sql);
+            int[] types = isInsert ? getTriggerRouterSqlTypes() : getTriggerRouterUpdateSqlTypes();
             int rowCount = 0;
             for (TriggerRouter triggerRouter : triggerRouters) {
                 triggerRouter.setLastUpdateTime(new Date());
                 if (triggerRouter.getCreateTime() == null) {
                     triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
                 }
-                transaction.addRow(null, getTriggerRouterSqlValues(triggerRouter), types);
+                transaction.addRow(null, isInsert ? getTriggerRouterSqlValues(triggerRouter) : getTriggerRouterUpdateSqlValues(triggerRouter),
+                        types);
                 if (++rowCount > maxRowsToFlush) {
                     transaction.flush();
                 }
@@ -1391,6 +1397,14 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 triggerRouter.isEnabled() ? 1 : 0, triggerRouter.getDescription(), triggerRouter.getDataRefreshType(),
                 triggerRouter.getDataRefreshJobName(),
                 triggerRouter.getTrigger().getTriggerId(), triggerRouter.getRouter().getRouterId() };
+    }
+
+    protected int[] getTriggerRouterUpdateSqlTypes() {
+        return ArrayUtils.remove(getTriggerRouterSqlTypes(), TRIGGER_ROUTER_CREATE_TIME_INDEX);
+    }
+
+    protected Object[] getTriggerRouterUpdateSqlValues(TriggerRouter triggerRouter) {
+        return ArrayUtils.remove(getTriggerRouterSqlValues(triggerRouter), TRIGGER_ROUTER_CREATE_TIME_INDEX);
     }
 
     protected void resetTriggerRouterCacheByNodeGroupId() {
@@ -1563,7 +1577,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public void saveTrigger(Trigger trigger) {
         trigger.setLastUpdateTime(new Date());
         trigger.nullOutBlankFields();
-        if (0 >= sqlTemplate.update(getSql("updateTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        if (0 >= sqlTemplate.update(updateSql, getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
             trigger.setCreateTime(trigger.getLastUpdateTime());
             sqlTemplate.update(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
         }
@@ -1574,7 +1589,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public void saveTrigger(ISqlTransaction transaction, Trigger trigger) {
         trigger.setLastUpdateTime(new Date());
         trigger.nullOutBlankFields();
-        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes())) {
+        String updateSql = getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        if (0 >= transaction.prepareAndExecute(updateSql, getTriggerUpdateSqlValues(trigger), getTriggerUpdateSqlTypes())) {
             trigger.setCreateTime(trigger.getLastUpdateTime());
             transaction.prepareAndExecute(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
         }
@@ -1633,8 +1649,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected void insertUpdateTriggers(ISqlTransaction transaction, Collection<Trigger> triggers, boolean isInsert) {
         int maxRowsToFlush = parameterService.getInt(ParameterConstants.DATA_FLUSH_JDBC_BATCH_SIZE);
-        transaction.prepare(isInsert ? getSql("insertTriggerSql") : getSql("updateTriggerSql"));
-        int[] types = getTriggerSqlTypes();
+        String sql = isInsert ? getSql("insertTriggerSql") : getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER);
+        transaction.prepare(sql);
+        int[] types = isInsert ? getTriggerSqlTypes() : getTriggerUpdateSqlTypes();
         int rowCount = 0;
         for (Trigger trigger : triggers) {
             trigger.setLastUpdateTime(new Date());
@@ -1642,7 +1659,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             if (trigger.getCreateTime() == null) {
                 trigger.setCreateTime(trigger.getLastUpdateTime());
             }
-            transaction.addRow(null, getTriggerSqlValues(trigger), types);
+            transaction.addRow(null, isInsert ? getTriggerSqlValues(trigger) : getTriggerUpdateSqlValues(trigger), types);
             if (++rowCount > maxRowsToFlush) {
                 transaction.flush();
             }
@@ -1675,6 +1692,14 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 trigger.getSyncKeyNames(), trigger.getCreateTime(), trigger.getLastUpdateBy(), trigger.getLastUpdateTime(),
                 trigger.getExternalSelect(), trigger.getChannelExpression(), trigger.isStreamRow(), trigger.isCaptureChangesOnly(),
                 trigger.getTimeBasedCaptureColumn(), trigger.getTriggerId() };
+    }
+
+    protected int[] getTriggerUpdateSqlTypes() {
+        return ArrayUtils.remove(getTriggerSqlTypes(), TRIGGER_CREATE_TIME_INDEX);
+    }
+
+    protected Object[] getTriggerUpdateSqlValues(Trigger trigger) {
+        return ArrayUtils.remove(getTriggerSqlValues(trigger), TRIGGER_CREATE_TIME_INDEX);
     }
 
     @Override
@@ -2684,9 +2709,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             TriggerSyncOptions options, TriggerRouterContext context, Exception ex) {
         log.error(String.format("Failed to create triggers for %s", trigger.qualifiedSourceTableName()), ex);
         invalidateTriggerHistory(newestHistory, ex);
-        boolean usingTargetDialect = !getSymmetricDialect().equals(getTargetDialect())
-                && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
-        if (newestHistory != null && !usingTargetDialect) {
+        if (newestHistory != null && !isUsingTargetDialect(trigger)) {
             dropTriggers(newestHistory, options.sqlBuffer);
         }
         context.incrementTriggersSyncedCount(1);
@@ -2704,12 +2727,21 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         } else if (trigger.hasChangedSinceLastTriggerBuild(latestHistory.getCreateTime())
                 || trigger.toHashedValue() != latestHistory.getTriggerRowHash()) {
             return TriggerReBuildReason.TABLE_SYNC_CONFIGURATION_CHANGED;
-        } else if (symmetricDialect.getTriggerTemplate().toHashedValue() != latestHistory.getTriggerTemplateHash()) {
+        } else if (getTriggerTemplateFor(trigger).toHashedValue() != latestHistory.getTriggerTemplateHash()) {
             return TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED;
         } else if (force) {
             return TriggerReBuildReason.FORCED;
         }
         return null;
+    }
+
+    private boolean isUsingTargetDialect(Trigger trigger) {
+        return !getSymmetricDialect().equals(getTargetDialect())
+                && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
+    }
+
+    private AbstractTriggerTemplate getTriggerTemplateFor(Trigger trigger) {
+        return (isUsingTargetDialect(trigger) ? getTargetDialect() : getSymmetricDialect()).getTriggerTemplate();
     }
 
     private void notifyListenersAfterTriggerSync(TriggerHistory newestHistory, Trigger trigger,
@@ -2764,15 +2796,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             TriggerRelationSupportingInfo triggerRelationSupportingInfo) {
         boolean triggerExists = false;
         boolean triggerRemoved = false;
-        boolean usingTargetDialect = false;
         boolean isTriggerRebuilt = false;
-        if (!getSymmetricDialect().equals(getTargetDialect()) &&
-                !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix())) {
-            usingTargetDialect = true;
-        }
-        TriggerHistory newTriggerHist = new TriggerHistory(relation, trigger,
-                usingTargetDialect ? getTargetDialect().getTriggerTemplate() : getSymmetricDialect().getTriggerTemplate(), reason);
-        if (usingTargetDialect) {
+        TriggerHistory newTriggerHist = new TriggerHistory(relation, trigger, getTriggerTemplateFor(trigger), reason);
+        if (isUsingTargetDialect(trigger)) {
             if (hist == null && (oldhist == null || forceRebuild)) {
                 insert(newTriggerHist);
                 synchronized (activeTriggerHistories) {
