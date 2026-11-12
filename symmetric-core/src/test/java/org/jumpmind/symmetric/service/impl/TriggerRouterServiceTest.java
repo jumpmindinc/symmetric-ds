@@ -20,6 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -43,6 +44,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
@@ -60,6 +62,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 
@@ -594,6 +597,126 @@ public class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
         actualList = spyTriggerRouterService.findTriggerHistories("", "schem", "table");
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
+    }
+
+    @Test
+    void testSaveTriggerInsertsNewTriggerAfterUpdateWithoutCreateTime() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger();
+        when(sqlTemplate.update(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class), ArgumentMatchers.any(int[].class)))
+                .thenReturn(0, 1);
+        service.saveTrigger(trigger);
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
+        verify(sqlTemplate, times(2)).update(sql.capture(), values.capture(), types.capture());
+        String insertSql = service.getSql("insertTriggerSql");
+        assertEquals(service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER), sql.getAllValues().get(0));
+        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
+                values.getAllValues().get(0), types.getAllValues().get(0));
+        assertEquals(insertSql, sql.getAllValues().get(1));
+        assertNotNull(trigger.getCreateTime());
+        assertEquals(trigger.getCreateTime(), values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+        assertEquals(Types.TIMESTAMP, types.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+    }
+
+    @Test
+    void testSaveTriggerUpdatesExistingTriggerWithoutTouchingCreateTime() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger();
+        when(sqlTemplate.update(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class), ArgumentMatchers.any(int[].class)))
+                .thenReturn(1);
+        service.saveTrigger(trigger);
+        verify(sqlTemplate, times(1)).update(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class),
+                ArgumentMatchers.any(int[].class));
+        assertNull(trigger.getCreateTime());
+    }
+
+    @Test
+    void testSaveTriggerRouterInsertsNewTriggerRouterAfterUpdateWithoutCreateTime() {
+        TriggerRouterService service = buildService();
+        TriggerRouter triggerRouter = newTriggerRouter();
+        when(sqlTemplate.update(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class), ArgumentMatchers.any(int[].class)))
+                .thenReturn(0, 1);
+        service.saveTriggerRouter(triggerRouter, true);
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
+        verify(sqlTemplate, times(2)).update(sql.capture(), values.capture(), types.capture());
+        String insertSql = service.getSql("insertTriggerRouterSql");
+        assertEquals(service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER), sql.getAllValues().get(0));
+        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
+                values.getAllValues().get(0), types.getAllValues().get(0));
+        assertEquals(insertSql, sql.getAllValues().get(1));
+        assertNotNull(triggerRouter.getCreateTime());
+        assertEquals(triggerRouter.getCreateTime(), values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+        assertEquals(Types.TIMESTAMP, types.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+    }
+
+    @Test
+    void testUpdateTriggerRoutersBatchesUpdateWithoutCreateTime() {
+        TriggerRouterService service = buildService();
+        when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
+        List<TriggerRouter> triggerRouters = new ArrayList<>();
+        triggerRouters.add(newTriggerRouter());
+        service.updateTriggerRouters(triggerRouters);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
+        String updateSql = service.getSql(TriggerRouterServiceSqlMap.SQL_UPDATE_TRIGGER_ROUTER);
+        verify(sqlTransaction).prepare(updateSql);
+        verify(sqlTransaction).addRow(ArgumentMatchers.isNull(), values.capture(), types.capture());
+        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(service.getSql("insertTriggerRouterSql"), updateSql,
+                values.getValue(), types.getValue());
+        verify(sqlTransaction).commit();
+    }
+
+    @Test
+    void testInsertTriggersAndTriggerRoutersBatchesInsertWithCreateTime() {
+        TriggerRouterService service = buildService();
+        when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
+        TriggerRouter triggerRouter = newTriggerRouter();
+        List<Trigger> triggers = new ArrayList<>();
+        triggers.add(triggerRouter.getTrigger());
+        List<TriggerRouter> triggerRouters = new ArrayList<>();
+        triggerRouters.add(triggerRouter);
+        service.insertTriggersAndTriggerRouters(triggers, triggerRouters);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        verify(sqlTransaction, times(2)).addRow(ArgumentMatchers.isNull(), values.capture(), ArgumentMatchers.any(int[].class));
+        String insertTriggerSql = service.getSql("insertTriggerSql");
+        String insertTriggerRouterSql = service.getSql("insertTriggerRouterSql");
+        assertEquals(UpsertSqlAssertions.getInsertColumns(insertTriggerSql).size(), values.getAllValues().get(0).length);
+        assertEquals(triggerRouter.getTrigger().getCreateTime(),
+                values.getAllValues().get(0)[UpsertSqlAssertions.getCreateTimeIndex(insertTriggerSql)]);
+        assertEquals(UpsertSqlAssertions.getInsertColumns(insertTriggerRouterSql).size(), values.getAllValues().get(1).length);
+        assertEquals(triggerRouter.getCreateTime(), values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertTriggerRouterSql)]);
+    }
+
+    @Test
+    void testCreateTimeIndexesMatchInsertColumns() {
+        TriggerRouterService service = buildService();
+        assertEquals(TriggerRouterService.TRIGGER_CREATE_TIME_INDEX, UpsertSqlAssertions.getCreateTimeIndex(service.getSql("insertTriggerSql")));
+        assertEquals(TriggerRouterService.TRIGGER_ROUTER_CREATE_TIME_INDEX,
+                UpsertSqlAssertions.getCreateTimeIndex(service.getSql("insertTriggerRouterSql")));
+    }
+
+    private Trigger newTrigger() {
+        Trigger trigger = new Trigger("item", "default");
+        trigger.setTriggerId("item_trigger");
+        trigger.setCreateTime(null);
+        return trigger;
+    }
+
+    private TriggerRouter newTriggerRouter() {
+        Router router = new Router();
+        router.setRouterId("corp_2_store");
+        TriggerRouter triggerRouter = new TriggerRouter(newTrigger(), router);
+        triggerRouter.setCreateTime(null);
+        return triggerRouter;
+    }
+
+    private TriggerRouterService buildService() {
+        when(platform.scrubSql(ArgumentMatchers.anyString())).thenAnswer(AdditionalAnswers.returnsFirstArg());
+        return createSpyService();
     }
 
     /**
