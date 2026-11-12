@@ -94,6 +94,7 @@ import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
 import org.jumpmind.symmetric.route.DefaultBatchAlgorithm;
 import org.jumpmind.symmetric.route.DefaultDataRouter;
+import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DelayRoutingException;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
 import org.jumpmind.symmetric.route.IBatchAlgorithm;
@@ -1257,7 +1258,45 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
+<<<<<<< HEAD
     public long getUnroutedDataCount() {
+=======
+    protected void reloadRoutingColumnsIfSkipped(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
+        if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
+                && hasNonDefaultRouter(triggerRouters)) {
+            Data selectedData = engine.getDataService().findData(data.getDataId());
+            if (selectedData != null) {
+                copyDataUsedToRoute(selectedData, data, context);
+            }
+        }
+    }
+
+    private boolean hasNonDefaultRouter(List<TriggerRouter> triggerRouters) {
+        if (triggerRouters != null) {
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                Router router = triggerRouter.getRouter();
+                if (router != null && !DefaultDataRouter.ROUTER_TYPE.equals(router.getRouterType())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void copyDataUsedToRoute(Data source, Data target, ChannelRouterContext context) {
+        if (context.isRowDataUsedToRoute()) {
+            target.setRowData(source.getRowData());
+        }
+        if (context.isOldDataUsedToRoute()) {
+            target.setOldData(source.getOldData());
+        }
+        if (context.isPkDataUsedToRoute()) {
+            target.setPkData(source.getPkData());
+        }
+    }
+
+    public long getMaxDataIdAlreadyRouted() {
+>>>>>>> 26c15c8eb5 (SYM-8244: Set new default for cache.channel.default.router.time.ms (1 minute) (#1311))
         long maxDataIdAlreadyRouted = 0;
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             maxDataIdAlreadyRouted = sqlTemplateDirty.queryForLong(getSql("selectLastDataIdRoutedUsingDataGapSql"));
