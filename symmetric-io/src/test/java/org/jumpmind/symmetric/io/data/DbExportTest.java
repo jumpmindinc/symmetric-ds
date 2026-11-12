@@ -21,12 +21,18 @@
 package org.jumpmind.symmetric.io.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.sql.Types;
+
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.io.data.DbExport.Compatible;
+import org.jumpmind.symmetric.io.data.DbExport.Format;
 import org.junit.jupiter.api.Test;
 
 class DbExportTest {
@@ -42,5 +48,41 @@ class DbExportTest {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
         assertEquals(Compatible.H2, new DbExport(platform).getCompatible());
+    }
+
+    @Test
+    void testSqlExportFromHanaPlatformWritesHanaDdl() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.HANA);
+        String output = exportTableDefinition(new DbExport(platform)).toLowerCase();
+        assertTrue(output.contains("create table"), output);
+        assertTrue(output.contains("nvarchar(50)"), output);
+    }
+
+    @Test
+    void testSqlExportWithHdbCompatibleWritesHanaDdl() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
+        DbExport export = new DbExport(platform);
+        export.setCompatible(Compatible.HDB);
+        String output = exportTableDefinition(export).toLowerCase();
+        assertTrue(output.contains("nvarchar(50)"), output);
+    }
+
+    private String exportTableDefinition(DbExport export) throws Exception {
+        export.setFormat(Format.SQL);
+        export.setNoCreateInfo(false);
+        export.setNoData(true);
+        return export.exportTables(new Table[] { newTable() });
+    }
+
+    private Table newTable() {
+        Column id = new Column("id", true, Types.INTEGER, 10, 0);
+        id.setJdbcTypeCode(Types.INTEGER);
+        id.setJdbcTypeName("INTEGER");
+        Column name = new Column("name", false, Types.VARCHAR, 50, 0);
+        name.setJdbcTypeCode(Types.VARCHAR);
+        name.setJdbcTypeName("VARCHAR");
+        return new Table("export_test", id, name);
     }
 }
