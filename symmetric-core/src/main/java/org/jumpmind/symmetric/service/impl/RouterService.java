@@ -53,7 +53,6 @@ import org.jumpmind.symmetric.SyntaxParsingException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.ProtocolException;
@@ -152,13 +151,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(ConfigurationChangedDataRouter.ROUTER_TYPE, new ConfigurationChangedDataRouter(engine));
         extensionService.addExtensionPoint("java", new JavaDataRouter(engine));
         extensionService.addExtensionPoint("bsh", new BshDataRouter(engine));
-<<<<<<< HEAD
         extensionService.addExtensionPoint("subselect", new SubSelectDataRouter(symmetricDialect));
         extensionService.addExtensionPoint("lookuptable", new LookupTableDataRouter(symmetricDialect));
-        extensionService.addExtensionPoint("default", new DefaultDataRouter());
-=======
         extensionService.addExtensionPoint(DefaultDataRouter.ROUTER_TYPE, new DefaultDataRouter());
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
         extensionService.addExtensionPoint("column", new ColumnMatchDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
@@ -936,12 +931,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
-<<<<<<< HEAD
-        Table table = null;
-=======
         reloadRoutingColumnsIfSkipped(data, triggerRouters, context);
-        Relation relation = null;
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
+        Table table = null;
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
             table = platform.getTableFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
                     data.getTriggerHistory().getSourceTableName(), false);
@@ -1241,9 +1232,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
-<<<<<<< HEAD
-    public long getUnroutedDataCount() {
-=======
     // Start of data skipping
     protected void reloadRoutingColumnsIfSkipped(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
         if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
@@ -1279,8 +1267,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         }
     }
 
-    public long getMaxDataIdAlreadyRouted() {
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
+    public long getUnroutedDataCount() {
         long maxDataIdAlreadyRouted = 0;
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             maxDataIdAlreadyRouted = sqlTemplateDirty.queryForLong(getSql("selectLastDataIdRoutedUsingDataGapSql"));

@@ -28,61 +28,45 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-<<<<<<< HEAD
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.Table;
-import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.io.data.CsvData;
-import org.jumpmind.symmetric.io.data.DataEventType;
-import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.service.impl.RouterService;
-=======
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
+import org.jumpmind.symmetric.service.impl.RouterService;
 import org.jumpmind.util.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ConfigurationChangedHelperTest {
-<<<<<<< HEAD
+    private static final String TABLE_PREFIX = "sym";
     private static final String[] ROUTER_COLUMN_NAMES = { "router_id", "router_type", "source_node_group_id" };
     private static final String CURRENT_NODE_GROUP_ID = "store";
     private ConfigurationChangedHelper helper;
     private ISymmetricEngine engine;
     private IParameterService parameterService;
-=======
-    private static final String TABLE_PREFIX = "sym";
-    private ConfigurationChangedHelper helper;
-    private ISymmetricEngine engine;
     private ICacheManager cacheManager;
     private IRouterService routerService;
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
 
     @BeforeEach
     void setUp() {
         engine = mock(ISymmetricEngine.class);
-<<<<<<< HEAD
         parameterService = mock(IParameterService.class);
-        when(engine.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
-        when(parameterService.getNodeGroupId()).thenReturn(CURRENT_NODE_GROUP_ID);
-=======
         cacheManager = mock(ICacheManager.class);
         routerService = mock(IRouterService.class);
         when(engine.getTablePrefix()).thenReturn(TABLE_PREFIX);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.getNodeGroupId()).thenReturn(CURRENT_NODE_GROUP_ID);
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getRouterService()).thenReturn(routerService);
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
         helper = new ConfigurationChangedHelper(engine);
     }
 
     private Table buildRouterTable() {
-        Table table = new Table(TableConstants.getTableName("sym", TableConstants.SYM_ROUTER));
+        Table table = new Table(TableConstants.getTableName(TABLE_PREFIX, TableConstants.SYM_ROUTER));
         for (String columnName : ROUTER_COLUMN_NAMES) {
             table.addColumn(new Column(columnName));
         }
