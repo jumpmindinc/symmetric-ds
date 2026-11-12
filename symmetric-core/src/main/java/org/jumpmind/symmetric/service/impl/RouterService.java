@@ -54,6 +54,7 @@ import org.jumpmind.symmetric.SyntaxParsingException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.ProtocolException;
@@ -90,11 +91,11 @@ import org.jumpmind.symmetric.route.CommonBatchCollisionException;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.ConvertToReloadRouter;
 import org.jumpmind.symmetric.route.DBFRouter;
-import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
 import org.jumpmind.symmetric.route.DefaultBatchAlgorithm;
+import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DefaultDataRouter;
 import org.jumpmind.symmetric.route.DelayRoutingException;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
@@ -138,8 +139,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected long triggerRouterCacheTime = 0;
     protected Map<String, Boolean> commonBatchesLastKnownState = new ConcurrentHashMap<String, Boolean>();
     protected long commonBatchesCacheTime;
-    protected Map<String, Boolean> defaultRouterOnlyLastKnownState = new ConcurrentHashMap<String, Boolean>();
-    protected long defaultRoutersCacheTime;
+    private final DefaultRoutersOnlyDetector defaultRoutersOnlyDetector = new DefaultRoutersOnlyDetector();
     protected Map<String, Boolean> isAllDataReadByChannel = new ConcurrentHashMap<String, Boolean>();
     protected Map<String, Boolean> hasMaxDataRoutedByChannel = new ConcurrentHashMap<String, Boolean>();
     protected transient ExecutorService readThread = null;
@@ -162,7 +162,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(RegistrationServerRouter.ROUTER_TYPE, new RegistrationServerRouter(engine));
         extensionService.addExtensionPoint("java", new JavaDataRouter(engine));
         extensionService.addExtensionPoint("bsh", new BshDataRouter(engine));
-        extensionService.addExtensionPoint("default", new DefaultDataRouter());
+        extensionService.addExtensionPoint(DefaultDataRouter.ROUTER_TYPE, new DefaultDataRouter());
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
         extensionService.addExtensionPoint("dbf", new DBFRouter(engine));
@@ -204,7 +204,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     public void flushCache() {
-        defaultRoutersCacheTime = 0;
+        defaultRoutersOnlyDetector.clear();
     }
 
     /**
@@ -517,7 +517,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     }
                 }
                 for (TriggerRouter triggerRouter : testableTriggerRouters) {
-                    boolean isDefaultRouter = "default".equals(triggerRouter.getRouter().getRouterType());
+                    boolean isDefaultRouter = DefaultDataRouter.ROUTER_TYPE.equals(triggerRouter.getRouter().getRouterType());
                     /*
                      * If the data router is not a default data router or there will be incoming data on the channel where sync_on_incoming_batch is on, then we
                      * can not do 'optimal' routing. When sync_on_incoming_batch is on, then we might not be sending data to all nodes in a node_group. We can
@@ -563,34 +563,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     protected boolean onlyDefaultRoutersAssigned(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
-        String channelId = channel.getChannelId();
-        Boolean onlyDefaultRoutersAssigned = defaultRouterOnlyLastKnownState.get(channelId);
         long cacheTime = parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS);
-        if (onlyDefaultRoutersAssigned == null || System.currentTimeMillis() - defaultRoutersCacheTime > cacheTime) {
-            onlyDefaultRoutersAssigned = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
-                    && !channel.isFileSyncFlag()
-                    && !channel.isReloadFlag()
-                    && !Constants.CHANNEL_HEARTBEAT.equals(channelId)
-                    && !Constants.CHANNEL_MONITOR.equals(channelId);
-            if (onlyDefaultRoutersAssigned && triggerRouters != null) {
-                for (TriggerRouter triggerRouter : triggerRouters) {
-                    if (triggerRouter.getTrigger().getChannelId().equals(channel.getChannelId()) &&
-                            triggerRouter.getRouter().getNodeGroupLink().getSourceNodeGroupId()
-                                    .equals(nodeGroupId) && !"default".equals(triggerRouter.getRouter().getRouterType())) {
-                        onlyDefaultRoutersAssigned = false;
-                    }
-                }
-            }
-            if (!onlyDefaultRoutersAssigned.equals(defaultRouterOnlyLastKnownState.get(channelId))) {
-                if (onlyDefaultRoutersAssigned) {
-                    log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
-                            channelId, nodeGroupId);
-                }
-                defaultRouterOnlyLastKnownState.put(channelId, onlyDefaultRoutersAssigned);
-            }
-            defaultRoutersCacheTime = System.currentTimeMillis();
-        }
-        return onlyDefaultRoutersAssigned;
+        return defaultRoutersOnlyDetector.hasOnlyDefaultRouters(channel, nodeGroupId, triggerRouters, cacheTime);
     }
 
     @Override
@@ -1022,6 +996,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
+        reloadRoutingColumnsIfSkipped(data, triggerRouters, context);
         Relation relation = null;
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
             relation = platform.getRelationFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
@@ -1294,7 +1269,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
             }
         }
         if (dataRouter == null) {
-            return getRouters().get("default");
+            return getRouters().get(DefaultDataRouter.ROUTER_TYPE);
         }
         return dataRouter;
     }
@@ -1331,6 +1306,41 @@ public class RouterService extends AbstractService implements IRouterService, IN
         }
         context.incrementStat(System.currentTimeMillis() - ts, ChannelRouterContext.STAT_LOOKUP_TRIGGER_ROUTERS_MS);
         return triggerRouters;
+    }
+
+    // Start of data skipping
+    protected void reloadRoutingColumnsIfSkipped(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
+        if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
+                && hasNonDefaultRouter(triggerRouters)) {
+            Data selectedData = engine.getDataService().findData(data.getDataId());
+            if (selectedData != null) {
+                copyDataUsedToRoute(selectedData, data, context);
+            }
+        }
+    }
+
+    private boolean hasNonDefaultRouter(List<TriggerRouter> triggerRouters) {
+        if (triggerRouters != null) {
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                Router router = triggerRouter.getRouter();
+                if (router != null && !DefaultDataRouter.ROUTER_TYPE.equals(router.getRouterType())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void copyDataUsedToRoute(Data source, Data target, ChannelRouterContext context) {
+        if (context.isRowDataUsedToRoute()) {
+            target.setRowData(source.getRowData());
+        }
+        if (context.isOldDataUsedToRoute()) {
+            target.setOldData(source.getOldData());
+        }
+        if (context.isPkDataUsedToRoute()) {
+            target.setPkData(source.getPkData());
+        }
     }
 
     public long getMaxDataIdAlreadyRouted() {
