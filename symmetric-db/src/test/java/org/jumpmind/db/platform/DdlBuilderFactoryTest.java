@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.platform;
 
+<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.jumpmind.db.platform.clickhouse.ClickHouseDdlBuilder;
@@ -29,5 +30,35 @@ class DdlBuilderFactoryTest {
     @Test
     void testCreate_createsClickHouseBuilder() {
         assertTrue(DdlBuilderFactory.getInstance().create(DatabaseNamesConstants.CLICKHOUSE) instanceof ClickHouseDdlBuilder);
+=======
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import org.jumpmind.db.platform.hana.HanaDdlBuilder;
+import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
+import org.junit.jupiter.api.Test;
+
+class DdlBuilderFactoryTest {
+    private final DdlBuilderFactory factory = new DdlBuilderFactory();
+
+    @Test
+    void testCreateReturnsHanaDdlBuilderForHdb() {
+        assertEquals(HanaDdlBuilder.class, factory.create(DatabaseNamesConstants.HANA).getClass());
+    }
+
+    @Test
+    void testCreateMatchesHanaNameIgnoringCase() {
+        assertEquals(HanaDdlBuilder.class, factory.create("HDB").getClass());
+    }
+
+    @Test
+    void testCreateReturnsMySqlDdlBuilderForMySql() {
+        assertEquals(MySqlDdlBuilder.class, factory.create(DatabaseNamesConstants.MYSQL).getClass());
+    }
+
+    @Test
+    void testCreateReturnsNullForUnmappedDatabase() {
+        assertNull(factory.create("unmapped"));
+>>>>>>> 3aae0c1e62 (SYM-8268: Map hdb to HanaDdlBuilder in DdlBuilderFactory (#1289))
     }
 }
