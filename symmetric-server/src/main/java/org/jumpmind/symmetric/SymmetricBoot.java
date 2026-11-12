@@ -22,6 +22,7 @@ package org.jumpmind.symmetric;
 
 import java.net.CookieHandler;
 import java.net.CookieManager;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,13 +31,17 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
+import org.jumpmind.symmetric.util.StartupParameterExporter;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.symmetric.web.HealthServlet;
 import org.jumpmind.symmetric.web.HttpMethodFilter;
 import org.jumpmind.symmetric.web.SymmetricContextListener;
 import org.jumpmind.symmetric.web.SymmetricServlet;
 import org.jumpmind.symmetric.web.WebConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -54,14 +59,11 @@ import jakarta.servlet.ServletException;
 
 @SpringBootApplication(scanBasePackages = { "org.jumpmind.symmetric", "com.jumpmind.symmetric" })
 public class SymmetricBoot extends SpringBootServletInitializer {
-    private final Environment env;
-
-    public SymmetricBoot(Environment env) {
-        this.env = env;
-    }
+    private static final Logger log = LoggerFactory.getLogger(SymmetricBoot.class);
+    static final String SERVER_PROPERTIES_RESOURCE = "/symmetric-server.properties";
 
     @Bean
-    ServletContextInitializer servletContextInitializer() {
+    ServletContextInitializer servletContextInitializer(Environment env) {
         return new ServletContextInitializer() {
             @Override
             public void onStartup(ServletContext servletContext) throws ServletException {
@@ -137,12 +139,22 @@ public class SymmetricBoot extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
-        TypedProperties sysProps = ServiceRegistry.getInstance().getStartupParameterService().getGlobalTypedProperties();
-        if (sysProps.is(ServerConstants.SERVER_HTTP_COOKIES_ENABLED)) {
-            if (CookieHandler.getDefault() == null) {
-                CookieHandler.setDefault(new CookieManager());
-            }
+        IStartupParameterService startupParameterService = ServiceRegistry.getInstance().getStartupParameterService();
+        registerServerProperties(SymmetricBoot.class.getResource(SERVER_PROPERTIES_RESOURCE), startupParameterService);
+        if (startupParameterService.isGlobal(ServerConstants.SERVER_HTTP_COOKIES_ENABLED, false) && CookieHandler.getDefault() == null) {
+            CookieHandler.setDefault(new CookieManager());
         }
         return builder.sources(SymmetricBoot.class);
+    }
+
+    static void registerServerProperties(URL serverPropertiesUrl, IStartupParameterService startupParameterService) {
+        if (serverPropertiesUrl == null) {
+            log.debug("Resource path {} not found", SERVER_PROPERTIES_RESOURCE);
+            startupParameterService.registerServerProperties(new TypedProperties());
+        } else {
+            TypedProperties mergedProperties = startupParameterService.registerServerProperties(new TypedProperties(serverPropertiesUrl));
+            System.getProperties().putAll(mergedProperties);
+        }
+        new StartupParameterExporter(System.getProperties()).exportMissing(startupParameterService, ServerConstants.SYSTEM_PROPERTY_STARTUP_PARAMETERS);
     }
 }
