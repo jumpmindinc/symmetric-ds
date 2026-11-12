@@ -78,12 +78,24 @@ def ignoreDerivedResources(projectDescription, directories = ["build", "test-out
   }
 }  
 
+// Build-Time drives license checks (AbstractVersion.getBuildTime against a license's maximum build time). A
+// release passes -PbuildTime so every Gradle run of the release builds the same jar bytes.
+def requestedBuildTime = findProperty('buildTime')
+if (requestedBuildTime != null && !(requestedBuildTime ==~ /\d{8}-\d{4}/)) {
+    throw new GradleException("buildTime must be yyyyMMdd-HHmm; it is ${requestedBuildTime}")
+}
+ext.buildTimeStamp = requestedBuildTime ?: new SimpleDateFormat("yyyyMMdd-HHmm").format(new Date())
+
+// The modules symmetric-pro's release publishes to Saturn's Maven repository; nothing else is public.
+ext.saturnModules = ['symmetric-util', 'symmetric-db', 'symmetric-csv', 'symmetric-jdbc', 'symmetric-io',
+                     'symmetric-core', 'symmetric-stats', 'symmetric-client', 'symmetric-server',
+                     'symmetric-wrapper', 'symmetric-sqlexplorer']
+
 subprojects { subproject ->
 
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
     apply plugin: 'jacoco'
-    apply plugin: 'signing'    
 
     jacoco {
 		toolVersion = "0.8.12"
@@ -188,6 +200,17 @@ subprojects { subproject ->
     
     javadoc {
         failOnError = false
+        options.addBooleanOption('notimestamp', true)
+    }
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    tasks.withType(AbstractArchiveTask).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
     }
     
     afterEvaluate {
@@ -205,56 +228,38 @@ subprojects { subproject ->
     publish.enabled = !project.properties.containsKey('pro')
     
     
-    task sourcesJar(type: Jar, dependsOn:classes) {
-        archiveClassifier = 'sources'
-        from sourceSets.main.allSource
-    }
-    
-    artifacts { archives sourcesJar }    
-    
     if (!project.name.contains("log-miner") && !project.name.contains("izpack")) {
         publishing {
-	    	publications {
-	        	symmetricLibrary(MavenPublication) {
-	            	from components.java
-	        	}
-	    	}
-		}
-		
-		signing {
-			useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
-			sign publishing.publications.symmetricLibrary
-		}
-
-        apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
-
-        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
-        sonatypeCentralPublishExtension {
-            groupId.set("${project.group}")
-            artifactId.set("${project.name}")
-            version.set("${project.version}")
-            componentType.set("java")
-            publishingType.set("AUTOMATIC")
-            username.set(getProperty("sonatypeUser"))
-            password.set(getProperty("sonatypePassword"))
-            pom {
-                name.set("${project.name}")
-                description.set("Data replication")
-                url.set("https://symmetricds.org/")
-                licenses {
-                    license {
-                        name.set(licenseName)
+            publications {
+                symmetricLibrary(MavenPublication) {
+                    from components.java
+                    pom {
+                        name = project.name
+                        description = 'Data replication'
+                        url = 'https://symmetricds.org/'
+                        licenses {
+                            license {
+                                name = 'GNU GPL version 3.0'
+                                url = 'https://www.gnu.org/licenses/gpl-3.0.html'
+                            }
+                        }
+                        developers {
+                            developer {
+                                name = 'Jumpmind'
+                            }
+                        }
+                        scm {
+                            url = 'https://github.com/JumpMind/symmetric-ds'
+                            connection = 'scm:git:https://github.com/JumpMind/symmetric-ds.git'
+                        }
                     }
-                }
-                developers {
-                    developer {
-                        name.set("Jumpmind")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/jumpmindinc/symmetric-ds/")
                 }
             }
+        }
+
+        // Only the pro build carries the Saturn plugin on its classpath, and only these modules are public.
+        if (rootProject.hasProperty('pro') && project.name in rootProject.saturnModules) {
+            apply plugin: 'com.jumpmind.saturn.publish'
         }
     }
 
@@ -292,7 +297,7 @@ subprojects { subproject ->
                        "Implementation-Version": archiveVersion,
                        "Project-Artifact": project.name,                       
                        "Build-Version": archiveVersion,
-                       "Build-Time": new SimpleDateFormat("yyyyMMdd-HHmm").format(new Date()),
+                       "Build-Time": rootProject.buildTimeStamp,
                        "Build-Scm-Version": scmVersion)
         }    
     }
