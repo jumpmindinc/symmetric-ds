@@ -27,6 +27,7 @@ import org.jumpmind.db.platform.firebird.FirebirdDdlBuilder;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DdlBuilder;
 import org.jumpmind.db.platform.greenplum.GreenplumDdlBuilder;
 import org.jumpmind.db.platform.h2.H2DdlBuilder;
+import org.jumpmind.db.platform.hana.HanaDdlBuilder;
 import org.jumpmind.db.platform.hbase.HbaseDdlBuilder;
 import org.jumpmind.db.platform.hsqldb.HsqlDbDdlBuilder;
 import org.jumpmind.db.platform.hsqldb2.HsqlDb2DdlBuilder;
@@ -100,6 +101,8 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new NuoDbDdlBuilder();
         } else if (DatabaseNamesConstants.HBASE.equalsIgnoreCase(databaseName)) {
             return new HbaseDdlBuilder();
+        } else if (DatabaseNamesConstants.HANA.equalsIgnoreCase(databaseName)) {
+            return new HanaDdlBuilder();
         } else {
             return null;
         }
