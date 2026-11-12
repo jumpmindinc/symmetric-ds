@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+<<<<<<< HEAD
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -35,24 +36,48 @@ import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.RouterService;
+=======
+import org.jumpmind.db.model.Table;
+import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.io.data.CsvData;
+import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.service.IRouterService;
+>>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
 import org.jumpmind.util.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ConfigurationChangedHelperTest {
+<<<<<<< HEAD
     private static final String[] ROUTER_COLUMN_NAMES = { "router_id", "router_type", "source_node_group_id" };
     private static final String CURRENT_NODE_GROUP_ID = "store";
     private ConfigurationChangedHelper helper;
     private ISymmetricEngine engine;
     private IParameterService parameterService;
+=======
+    private static final String TABLE_PREFIX = "sym";
+    private ConfigurationChangedHelper helper;
+    private ISymmetricEngine engine;
+    private ICacheManager cacheManager;
+    private IRouterService routerService;
+>>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
 
     @BeforeEach
     void setUp() {
         engine = mock(ISymmetricEngine.class);
+<<<<<<< HEAD
         parameterService = mock(IParameterService.class);
         when(engine.getTablePrefix()).thenReturn("sym");
         when(engine.getParameterService()).thenReturn(parameterService);
         when(parameterService.getNodeGroupId()).thenReturn(CURRENT_NODE_GROUP_ID);
+=======
+        cacheManager = mock(ICacheManager.class);
+        routerService = mock(IRouterService.class);
+        when(engine.getTablePrefix()).thenReturn(TABLE_PREFIX);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        when(engine.getRouterService()).thenReturn(routerService);
+>>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
         helper = new ConfigurationChangedHelper(engine);
     }
 
@@ -143,6 +168,49 @@ class ConfigurationChangedHelperTest {
         assertEquals(2, result.size());
         assertEquals(removeTrailingDelimiter(statement0), result.get(0));
         assertEquals(removeTrailingDelimiter(statement1), result.get(1));
+    }
+
+    @Test
+    void testHandleChange_flushesRoutersOnTriggerRouterInsert() {
+        handleChangeAndCommit(TableConstants.SYM_TRIGGER_ROUTER, DataEventType.INSERT);
+        verifyRoutersFlushed();
+    }
+
+    @Test
+    void testHandleChange_flushesRoutersOnTriggerRouterUpdate() {
+        handleChangeAndCommit(TableConstants.SYM_TRIGGER_ROUTER, DataEventType.UPDATE);
+        verifyRoutersFlushed();
+    }
+
+    @Test
+    void testHandleChange_flushesRoutersOnTriggerRouterDelete() {
+        handleChangeAndCommit(TableConstants.SYM_TRIGGER_ROUTER, DataEventType.DELETE);
+        verifyRoutersFlushed();
+    }
+
+    @Test
+    void testHandleChange_flushesRoutersOnTriggerUpdate() {
+        handleChangeAndCommit(TableConstants.SYM_TRIGGER, DataEventType.UPDATE);
+        verifyRoutersFlushed();
+    }
+
+    @Test
+    void testHandleChange_doesNotFlushRoutersOnUnrelatedTable() {
+        handleChangeAndCommit(TableConstants.SYM_TRANSFORM_TABLE, DataEventType.UPDATE);
+        verify(cacheManager, never()).flushAllWithRouters();
+        verify(routerService, never()).flushCache();
+    }
+
+    private void handleChangeAndCommit(String tableSuffix, DataEventType eventType) {
+        Context context = new Context();
+        Table table = new Table(TableConstants.getTableName(TABLE_PREFIX, tableSuffix));
+        helper.handleChange(context, table, new CsvData(eventType));
+        helper.contextCommitted(context);
+    }
+
+    private void verifyRoutersFlushed() {
+        verify(cacheManager).flushAllWithRouters();
+        verify(routerService).flushCache();
     }
 
     private static String removeTrailingDelimiter(String input) {
