@@ -95,8 +95,8 @@ import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
 import org.jumpmind.symmetric.route.DefaultBatchAlgorithm;
-import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DefaultDataRouter;
+import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DelayRoutingException;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
 import org.jumpmind.symmetric.route.IBatchAlgorithm;
@@ -1308,7 +1308,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
-    // Start of data skipping
     protected void reloadRoutingColumnsIfSkipped(Data data, List<TriggerRouter> triggerRouters, ChannelRouterContext context) {
         if (context.isOnlyDefaultRoutersAssigned() && context.isAnyDataUsedToRoute() && StringUtils.isBlank(data.getNodeList())
                 && hasNonDefaultRouter(triggerRouters)) {
