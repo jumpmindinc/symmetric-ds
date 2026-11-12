@@ -36,7 +36,13 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
+<<<<<<< HEAD
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+=======
+import org.jumpmind.db.util.DataSourceProperties;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.SequenceIdentifier;
+>>>>>>> 6f58903f22 (SYM-8109: MySQL findMaxDataId() returns 0 when lower_case_table_names=0 because the auto_increment lookup uses mixed-CASE table name sym_DATA (#1294))
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
@@ -89,6 +95,71 @@ class MySqlSymmetricDialectTest {
         assertFalse(sqlCaptor.getValue().contains("lower(event_object_table)"));
     }
 
+<<<<<<< HEAD
+=======
+    @Test
+    void getSyncTriggersExpression_capturesOnlyWhenVariableIsNull() {
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
+        assertEquals("@sync_triggers_disabled is null", dialect.getSyncTriggersExpression());
+        assertEquals("coalesce(@sync_triggers_disabled, 0) != 2", dialect.getSyncTriggersOnIncomingExpression());
+    }
+
+    @Test
+    void isConvertZeroDateToNull_isFalse_whenUrlOmitsZeroDateTimeBehavior() {
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.30"));
+        assertFalse(dialect.isConvertZeroDateToNull());
+    }
+
+    @Test
+    void isConvertZeroDateToNull_isTrue_whenUrlConvertsZeroDatesAndSqlModeAllowsZeroDates() {
+        IParameterService parameterService = createParameterService();
+        when(parameterService.getString(DataSourceProperties.DB_POOL_URL)).thenReturn("jdbc:mysql://localhost/test?zeroDateTimeBehavior=convertToNull");
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        when(platform.getSqlTemplate().queryForString("select @@sql_mode")).thenReturn("");
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, platform);
+        assertTrue(dialect.isConvertZeroDateToNull());
+    }
+
+    @Test
+    void getCharacterSet_returnsConfiguredMasterCollation() {
+        IParameterService parameterService = createParameterService();
+        when(parameterService.getString(eq(ParameterConstants.DB_MASTER_COLLATION), anyString())).thenReturn("latin1");
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, createPlatform("8.0.30"));
+        assertEquals("latin1", dialect.getCharacterSet());
+    }
+
+    @Test
+    void getCurrentSequenceValue_queriesLowerCaseDataTableName_notEnumCasing() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(platform.getDefaultCatalog()).thenReturn("testdb");
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1000L);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        dialect.getCurrentSequenceValue(SequenceIdentifier.DATA);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(sqlTemplate, times(1)).queryForObject(anyString(), eq(Long.class), argsCaptor.capture());
+        assertArrayEquals(new Object[] { "testdb", "sym_data" }, argsCaptor.getValue());
+    }
+
+    @Test
+    void getCurrentSequenceValue_returnsAutoIncrementValue_whenRowFound() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(5001L);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        assertEquals(5001L, dialect.getCurrentSequenceValue(SequenceIdentifier.DATA));
+    }
+
+    @Test
+    void getCurrentSequenceValue_returnsNegativeOne_whenNoRowFoundForTableName() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(null);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        assertEquals(-1L, dialect.getCurrentSequenceValue(SequenceIdentifier.DATA));
+    }
+
+>>>>>>> 6f58903f22 (SYM-8109: MySQL findMaxDataId() returns 0 when lower_case_table_names=0 because the auto_increment lookup uses mixed-CASE table name sym_DATA (#1294))
     private IParameterService createParameterService() {
         IParameterService parameterService = mock(ParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
