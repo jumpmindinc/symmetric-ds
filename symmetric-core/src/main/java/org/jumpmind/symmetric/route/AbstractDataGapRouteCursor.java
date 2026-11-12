@@ -112,13 +112,13 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
     protected String getSql(String sqlName) {
         String select = engine.getRouterService().getSql(sqlName);
         Channel channel = context.getChannel().getChannel();
-        if (!channel.isUseOldDataToRoute() || context.isOnlyDefaultRoutersAssigned()) {
+        if (!context.isOldDataSelected()) {
             select = select.replace("d.old_data", "''");
         }
-        if (!channel.isUseRowDataToRoute() || (context.isOnlyDefaultRoutersAssigned() && !channel.isFileSyncFlag())) {
+        if (!context.isRowDataSelected()) {
             select = select.replace("d.row_data", "''");
         }
-        if (!channel.isUsePkDataToRoute() || context.isOnlyDefaultRoutersAssigned()) {
+        if (!context.isPkDataSelected()) {
             select = select.replace("d.pk_data", "''");
         }
         return engine.getSymmetricDialect().massageDataExtractionSql(select, context.isOverrideContainsBigLob() || channel.isContainsBigLob());

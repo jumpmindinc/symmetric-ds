@@ -45,6 +45,7 @@ import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
@@ -58,6 +59,7 @@ import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ChannelRouterContext;
 import org.jumpmind.symmetric.route.IDataRouter;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IGroupletService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -65,22 +67,31 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class RouterServiceTest {
+class RouterServiceTest {
     final static Channel CHANNEL_2_TEST = new Channel("test", 1);
     final static String SOURCE_NODE_GROUP = "source";
     final static String TARGET_NODE_GROUP = "target";
     final static String OTHER_NODE_GROUP = "other";
     final static String TARGET_NODE_ID = "node1";
+    private static final Channel OTHER_CHANNEL = new Channel("other", 2);
+    private static final long DEFAULT_ROUTER_CACHE_TIME_MS = 600000;
+    private static final long DATA_ID = 7;
+    private static final String PK_DATA = "\"7\"";
+    private static final String ROW_DATA = "\"7\",\"SHIV\"";
+    private static final String OLD_DATA = "\"7\",\"OLD\"";
     RouterService routerService;
     IConfigurationService configurationService;
     IExtensionService extensionService;
     INodeService nodeService;
     IGroupletService groupletService;
+    private IParameterService parameterService;
+    private IDataService dataService;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
-        IParameterService parameterService = mock(IParameterService.class);
+        parameterService = mock(IParameterService.class);
+        dataService = mock(IDataService.class);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
         extensionService = mock(IExtensionService.class);
@@ -89,6 +100,7 @@ public class RouterServiceTest {
         groupletService = mock(IGroupletService.class);
         when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS)).thenReturn(DEFAULT_ROUTER_CACHE_TIME_MS);
         when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
         when(engine.getDatabasePlatform()).thenReturn(databasePlatform);
         when(engine.getParameterService()).thenReturn(parameterService);
@@ -97,6 +109,7 @@ public class RouterServiceTest {
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getNodeService()).thenReturn(nodeService);
         when(engine.getGroupletService()).thenReturn(groupletService);
+        when(engine.getDataService()).thenReturn(dataService);
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false))
                 .thenReturn(new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP));
         when(groupletService.getTargetEnabled(any(TriggerRouter.class), any())).thenAnswer(invocation -> invocation.getArgument(1));
@@ -106,7 +119,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testProducesCommonBatchesOneTableOneChannelDefaultRouter() {
+    void testProducesCommonBatchesOneTableOneChannelDefaultRouter() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         triggerRouters.add(new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP,
                 "default")));
@@ -115,7 +128,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testNotProducesCommonBatchesOneTableOneChannelNonDefaultRouter() {
+    void testNotProducesCommonBatchesOneTableOneChannelNonDefaultRouter() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         triggerRouters.add(new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP,
                 "column")));
@@ -124,7 +137,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testProducesCommonBatchesMultipleTablesTwoChannelsMultipleRouters() {
+    void testProducesCommonBatchesMultipleTablesTwoChannelsMultipleRouters() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         triggerRouters.add(new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), new Router("test1", SOURCE_NODE_GROUP, TARGET_NODE_GROUP,
                 "default")));
@@ -134,7 +147,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testProducesCommonBatchesMultipleTablesTwoChannelsMultipleRoutersBidirectional() {
+    void testProducesCommonBatchesMultipleTablesTwoChannelsMultipleRoutersBidirectional() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         triggerRouters.add(new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP,
                 "default")));
@@ -145,7 +158,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testNotProducesCommonBatchesMultipleTablesTwoChannelsMultipleRoutersSyncOnIncoming() {
+    void testNotProducesCommonBatchesMultipleTablesTwoChannelsMultipleRoutersSyncOnIncoming() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         Trigger tableTrigger = new Trigger("a", CHANNEL_2_TEST.getChannelId(), true);
         triggerRouters.add(new TriggerRouter(tableTrigger, new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default")));
@@ -155,7 +168,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testNotProducesCommonBatchesSameTablesTwoChannelsMultipleRoutersSameTableIncomingOnAnotherChannel() {
+    void testNotProducesCommonBatchesSameTablesTwoChannelsMultipleRoutersSameTableIncomingOnAnotherChannel() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         Trigger tableTrigger1 = new Trigger("a", CHANNEL_2_TEST.getChannelId(), true);
         Trigger tableTrigger2 = new Trigger("a", "anotherchannel");
@@ -166,7 +179,7 @@ public class RouterServiceTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testProducesCommonBatchesSameTablesTwoChannelsMultipleRoutersDifferentTableIncomingOnAnotherChannel() {
+    void testProducesCommonBatchesSameTablesTwoChannelsMultipleRoutersDifferentTableIncomingOnAnotherChannel() {
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         Trigger tableTrigger1 = new Trigger("a", CHANNEL_2_TEST.getChannelId(), true);
         Trigger tableTrigger2 = new Trigger("b", "anotherchannel");
@@ -178,7 +191,100 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testShouldSkipSqlEventWhenSyncSqlDisabled() {
+    void testOnlyDefaultRoutersAssigned_whenCacheTimeExpired() {
+        when(parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS)).thenReturn(-1L);
+        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"));
+        routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters);
+        triggerRouters.add(newTriggerRouter(CHANNEL_2_TEST, "column"));
+        assertFalse(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
+    }
+
+    @Test
+    void testFlushCache_recalculatesEveryChannel() {
+        List<TriggerRouter> triggerRouters = newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default"), newTriggerRouter(OTHER_CHANNEL, "default"));
+        routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters);
+        routerService.onlyDefaultRoutersAssigned(OTHER_CHANNEL, SOURCE_NODE_GROUP, triggerRouters);
+        triggerRouters.add(newTriggerRouter(CHANNEL_2_TEST, "column"));
+        routerService.flushCache();
+        routerService.onlyDefaultRoutersAssigned(OTHER_CHANNEL, SOURCE_NODE_GROUP, triggerRouters);
+        assertFalse(routerService.onlyDefaultRoutersAssigned(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_withColumnRouter() {
+        Data data = newDataWithoutValues();
+        when(dataService.findData(DATA_ID)).thenReturn(newData(PK_DATA, ROW_DATA, OLD_DATA));
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
+        assertEquals(ROW_DATA, data.getRowData());
+        assertEquals(OLD_DATA, data.getOldData());
+        assertEquals(PK_DATA, data.getPkData());
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_keepsDataTheChannelDoesNotRouteOn() {
+        Data data = newDataWithoutValues();
+        when(dataService.findData(DATA_ID)).thenReturn(newData(PK_DATA, ROW_DATA, OLD_DATA));
+        NodeChannel channel = new NodeChannel(new Channel(CHANNEL_2_TEST.getChannelId(), 1));
+        channel.getChannel().setUseOldDataToRoute(false);
+        ChannelRouterContext context = newContext(channel);
+        context.setOnlyDefaultRoutersAssigned(true);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
+        assertEquals(ROW_DATA, data.getRowData());
+        assertEquals("", data.getOldData());
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_whenChannelRoutesOnNoData() {
+        Data data = newDataWithoutValues();
+        NodeChannel channel = new NodeChannel(new Channel(CHANNEL_2_TEST.getChannelId(), 1));
+        channel.getChannel().setUseRowDataToRoute(false);
+        channel.getChannel().setUseOldDataToRoute(false);
+        channel.getChannel().setUsePkDataToRoute(false);
+        ChannelRouterContext context = newContext(channel);
+        context.setOnlyDefaultRoutersAssigned(true);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), context);
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_withNodeList() {
+        Data data = newDataWithoutValues();
+        data.setNodeList(TARGET_NODE_ID);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newDefaultRoutersOnlyContext());
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_withMissingRouter() {
+        Data data = newDataWithoutValues();
+        TriggerRouter triggerRouterWithoutRouter = new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()), null);
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(triggerRouterWithoutRouter), newDefaultRoutersOnlyContext());
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_withDefaultRouter() {
+        Data data = newDataWithoutValues();
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "default")), newDefaultRoutersOnlyContext());
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_whenDataWasSelected() {
+        Data data = newDataWithoutValues();
+        routerService.reloadRoutingColumnsIfSkipped(data, newTriggerRouters(newTriggerRouter(CHANNEL_2_TEST, "column")), newContext());
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testReloadRoutingColumnsIfSkipped_withNoTriggerRouters() {
+        Data data = newDataWithoutValues();
+        routerService.reloadRoutingColumnsIfSkipped(data, null, newDefaultRoutersOnlyContext());
+        verify(dataService, never()).findData(DATA_ID);
+    }
+
+    @Test
+    void testShouldSkipSqlEventWhenSyncSqlDisabled() {
         NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
         link.setSyncSqlEnabled(false);
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
@@ -189,7 +295,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testShouldNotSkipSqlEventWhenSyncSqlEnabled() {
+    void testShouldNotSkipSqlEventWhenSyncSqlEnabled() {
         NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
         link.setSyncSqlEnabled(true);
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
@@ -200,7 +306,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testShouldNotSkipNonSqlEventWhenSyncSqlDisabled() {
+    void testShouldNotSkipNonSqlEventWhenSyncSqlDisabled() {
         NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
         link.setSyncSqlEnabled(false);
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
@@ -211,7 +317,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testShouldNotSkipSqlEventWhenLinkNotFound() {
+    void testShouldNotSkipSqlEventWhenLinkNotFound() {
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(null);
         Data data = new Data();
         data.setDataEventType(DataEventType.SQL);
@@ -249,25 +355,25 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testIsNodeCacheRefreshNeededWhenMissingNodeIsEnabledMemberOfTargetGroup() {
+    void testIsNodeCacheRefreshNeededWhenMissingNodeIsEnabledMemberOfTargetGroup() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
         assertTrue(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeBelongsToAnotherGroup() {
+    void testIsNodeCacheRefreshNotNeededWhenMissingNodeBelongsToAnotherGroup() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, OTHER_NODE_GROUP));
         assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeDoesNotExist() {
+    void testIsNodeCacheRefreshNotNeededWhenMissingNodeDoesNotExist() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(null);
         assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsSyncDisabled() {
+    void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsSyncDisabled() {
         Node disabledNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
         disabledNode.setSyncEnabled(false);
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(disabledNode);
@@ -275,7 +381,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsIgnoredOnChannel() {
+    void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsIgnoredOnChannel() {
         NodeChannel channel = newChannel();
         channel.setIgnoreEnabled(TARGET_NODE_ID, true);
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
@@ -284,7 +390,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenRouterHasNoNodeGroupLink() {
+    void testIsNodeCacheRefreshNotNeededWhenRouterHasNoNodeGroupLink() {
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(null);
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
         assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
@@ -292,14 +398,14 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsExcludedByGrouplet() {
+    void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsExcludedByGrouplet() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
         when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(false);
         assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeBelongsToAnotherGroup() {
+    void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeBelongsToAnotherGroup() {
         when(nodeService.findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP)).thenReturn(Collections.emptyList());
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, OTHER_NODE_GROUP));
         Collection<String> nodeIds = routerService.findNodeIdsFromNodeList(newDataForNodeList(), newTriggerRouter(), newContext());
@@ -309,7 +415,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListRefreshesCacheWhenTargetNodeIsMissingFromStaleCache() {
+    void testFindNodeIdsFromNodeListRefreshesCacheWhenTargetNodeIsMissingFromStaleCache() {
         Node targetNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
         when(nodeService.findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP)).thenReturn(Collections.emptyList())
                 .thenReturn(Collections.singletonList(targetNode));
@@ -321,7 +427,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenAllTargetNodesResolve() {
+    void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenAllTargetNodesResolve() {
         when(nodeService.findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP))
                 .thenReturn(Collections.singletonList(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP)));
         Collection<String> nodeIds = routerService.findNodeIdsFromNodeList(newDataForNodeList(), newTriggerRouter(), newContext());
@@ -331,7 +437,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsIgnoredOnChannel() {
+    void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsIgnoredOnChannel() {
         Node targetNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
         NodeChannel channel = newChannel();
         channel.setIgnoreEnabled(TARGET_NODE_ID, true);
@@ -344,7 +450,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenRouterHasNoNodeGroupLink() {
+    void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenRouterHasNoNodeGroupLink() {
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(null);
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
         Collection<String> nodeIds = routerService.findNodeIdsFromNodeList(newDataForNodeList(), newTriggerRouter(), newContext());
@@ -354,7 +460,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsExcludedByGrouplet() {
+    void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsExcludedByGrouplet() {
         Node targetNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
         when(groupletService.getTargetEnabled(any(TriggerRouter.class), any())).thenReturn(Collections.emptySet());
         when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(false);
@@ -370,6 +476,33 @@ public class RouterServiceTest {
     private TriggerRouter newTriggerRouter() {
         return new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()),
                 new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default"));
+    }
+
+    private TriggerRouter newTriggerRouter(Channel channel, String routerType) {
+        return new TriggerRouter(new Trigger("a", channel.getChannelId()), new Router(routerType, SOURCE_NODE_GROUP, TARGET_NODE_GROUP, routerType));
+    }
+
+    private List<TriggerRouter> newTriggerRouters(TriggerRouter... triggerRouters) {
+        return new ArrayList<TriggerRouter>(Arrays.asList(triggerRouters));
+    }
+
+    private Data newDataWithoutValues() {
+        return newData("", "", "");
+    }
+
+    private Data newData(String pkData, String rowData, String oldData) {
+        Data data = new Data();
+        data.setDataId(DATA_ID);
+        data.setPkData(pkData);
+        data.setRowData(rowData);
+        data.setOldData(oldData);
+        return data;
+    }
+
+    private ChannelRouterContext newDefaultRoutersOnlyContext() {
+        ChannelRouterContext context = newContext();
+        context.setOnlyDefaultRoutersAssigned(true);
+        return context;
     }
 
     private Data newDataForNodeList() {
@@ -405,17 +538,17 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testWarnIfGapCountExcessiveWarnsAtThreshold() {
+    void testWarnIfGapCountExcessiveWarnsAtThreshold() {
         assertTrue(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE, RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS));
     }
 
     @Test
-    public void testWarnIfGapCountExcessiveStaysQuietBelowThreshold() {
+    void testWarnIfGapCountExcessiveStaysQuietBelowThreshold() {
         assertFalse(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE - 1, RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS));
     }
 
     @Test
-    public void testWarnIfGapCountExcessiveRepeatsOnlyAfterInterval() {
+    void testWarnIfGapCountExcessiveRepeatsOnlyAfterInterval() {
         long startTime = RouterService.EXCESSIVE_GAP_WARN_INTERVAL_MS;
         assertTrue(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE, startTime));
         assertFalse(routerService.warnIfGapCountExcessive(RouterService.GAP_COUNT_WARN_EXCESSIVE,
