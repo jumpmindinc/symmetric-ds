@@ -39,29 +39,20 @@ public class DefaultRoutersOnlyDetector {
         DefaultRoutersCheck lastCheck = defaultRoutersCheckByChannel.get(channelId);
         if (lastCheck != null && lastCheck.isCurrentlyValid(triggerRouters, cacheTime)) {
             return lastCheck.hasOnlyDefaultRouters();
+        } else {
+            boolean hasOnlyDefaultRouters = computeHasOnlyDefaultRouters(channel, nodeGroupId, triggerRouters);
+            if (hasOnlyDefaultRouters && (lastCheck == null || !lastCheck.hasOnlyDefaultRouters())) {
+                log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
+                        channelId, nodeGroupId);
+            }
+            defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(hasOnlyDefaultRouters, triggerRouters, System.currentTimeMillis()));
+            return hasOnlyDefaultRouters;
         }
-        // First Time calculation
-        boolean hasOnlyDefaultRouters = computeHasOnlyDefaultRouters(channel, nodeGroupId, triggerRouters);
-        if (hasOnlyDefaultRouters && (lastCheck == null || !lastCheck.hasOnlyDefaultRouters())) {
-            log.debug("The '{}' channel for the '{}' node group has only default routers assigned to it.  Change data won't be selected during routing",
-                    channelId, nodeGroupId);
-        }
-        defaultRoutersCheckByChannel.put(channelId, new DefaultRoutersCheck(hasOnlyDefaultRouters, triggerRouters, System.currentTimeMillis()));
-        return hasOnlyDefaultRouters;
-    }
-
-    public void clear() {
-        defaultRoutersCheckByChannel.clear();
     }
 
     private boolean computeHasOnlyDefaultRouters(Channel channel, String nodeGroupId, List<TriggerRouter> triggerRouters) {
         String channelId = channel.getChannelId();
-        // maybe make the boolean pre-checks a different method? ....
-        boolean hasOnlyDefaultRouters = !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
-                && !channel.isFileSyncFlag()
-                && !channel.isReloadFlag()
-                && !Constants.CHANNEL_HEARTBEAT.equals(channelId) // rewrite this ordering to be better (move it up top geez)
-                && !Constants.CHANNEL_MONITOR.equals(channelId);
+        boolean hasOnlyDefaultRouters = initialScanHasOnlyDefaultRouters(channel);
         if (hasOnlyDefaultRouters && triggerRouters != null) {
             for (TriggerRouter triggerRouter : triggerRouters) {
                 if (triggerRouter.getTrigger().getChannelId().equals(channelId) &&
@@ -72,6 +63,19 @@ public class DefaultRoutersOnlyDetector {
             }
         }
         return hasOnlyDefaultRouters;
+    }
+
+    private boolean initialScanHasOnlyDefaultRouters(Channel channel) {
+        String channelId = channel.getChannelId();
+        return !Constants.CHANNEL_CONFIG.equals(channelId) && !Constants.CHANNEL_SYSTEM.equals(channelId)
+                && !Constants.CHANNEL_HEARTBEAT.equals(channelId)
+                && !Constants.CHANNEL_MONITOR.equals(channelId)
+                && !channel.isFileSyncFlag()
+                && !channel.isReloadFlag();
+    }
+
+    public void clear() {
+        defaultRoutersCheckByChannel.clear();
     }
 
     private record DefaultRoutersCheck(boolean hasOnlyDefaultRouters, List<TriggerRouter> triggerRouters, long checkTime) {
