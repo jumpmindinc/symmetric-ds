@@ -230,38 +230,6 @@ subprojects { subproject ->
     
     if (!project.name.contains("log-miner") && !project.name.contains("izpack")) {
         publishing {
-<<<<<<< HEAD
-	    	publications {
-	        	symmetricLibrary(MavenPublication) {
-	            	from components.java
-	        	}
-	    	}
-		}
-		
-		signing {
-			useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
-			sign publishing.publications.symmetricLibrary
-		}
-
-        apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
-
-        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
-        sonatypeCentralPublishExtension {
-            groupId.set("${project.group}")
-            artifactId.set("${project.name}")
-            version.set("${project.version}")
-            componentType.set("java")
-            publishingType.set("AUTOMATIC")
-            username.set(getProperty("sonatypeUser"))
-            password.set(getProperty("sonatypePassword"))
-            pom {
-                name.set("${project.name}")
-                description.set("Data replication")
-                url.set("https://symmetricds.org/")
-                licenses {
-                    license {
-                        name.set(licenseName)
-=======
             publications {
                 symmetricLibrary(MavenPublication) {
                     from components.java
@@ -271,8 +239,8 @@ subprojects { subproject ->
                         url = 'https://symmetricds.org/'
                         licenses {
                             license {
-                                name = 'GNU AGPL version 3.0'
-                                url = 'https://www.gnu.org/licenses/agpl-3.0.html'
+                                name = 'GNU GPL version 3.0'
+                                url = 'https://www.gnu.org/licenses/gpl-3.0.html'
                             }
                         }
                         developers {
@@ -284,7 +252,6 @@ subprojects { subproject ->
                             url = 'https://github.com/JumpMind/symmetric-ds'
                             connection = 'scm:git:https://github.com/JumpMind/symmetric-ds.git'
                         }
->>>>>>> 3bbc21ac9d (SYM-8294: Retire Maven Central; prepare the open-source modules for Saturn (#1278))
                     }
                 }
             }

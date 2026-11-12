@@ -135,21 +135,7 @@ task generateReleaseNotesActual(type: JavaExec) {
 task generateReleaseNotes {
 	dependsOn project(":symmetric-util").jar
 	dependsOn project(":symmetric-db").jar
-	doFirst{
-		javaexec {
-			mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
-			classpath = configurations.generateReleaseNotesDependencies
-			args = [
-				symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-default.properties",
-				symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-schema.xml",
-				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
-				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
-				symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
-				version.substring(0, version.lastIndexOf(".")),
-				"https://jumpmind.atlassian.net"
-			]
-		}
-	}
+	dependsOn generateReleaseNotesActual
 }
 
 task generateAppendixes {
