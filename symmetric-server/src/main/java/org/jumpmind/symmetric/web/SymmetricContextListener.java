@@ -20,16 +20,12 @@
  */
 package org.jumpmind.symmetric.web;
 
-import java.net.URL;
-
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.SystemConstants;
-import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +72,6 @@ public class SymmetricContextListener implements ServletContextListener {
         if ("true".equals(useWebApplicationContext)) {
             engineHolder.setSpringContext(WebApplicationContextUtils.getWebApplicationContext(sce.getServletContext()));
         }
-        if (!"true".equals(System.getProperty(SystemConstants.SYSPROP_LAUNCHER))) {
-            injectServerPropertiesIntoSystem("/symmetric-server.properties");
-        }
         engineHolder.start();
     }
 
@@ -103,16 +96,5 @@ public class SymmetricContextListener implements ServletContextListener {
             engineHolder.stop();
             ctx.removeAttribute(WebConstants.ATTR_ENGINE_HOLDER);
         }
-    }
-
-    private void injectServerPropertiesIntoSystem(String resourcePath) {
-        URL serverPropertiesURL = getClass().getClassLoader().getResource(resourcePath);
-        if (serverPropertiesURL == null) {
-            log.debug("Resource path {} not found", resourcePath);
-            return;
-        }
-        TypedProperties serverProperties = new TypedProperties(serverPropertiesURL);
-        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
-        System.getProperties().putAll(serverProperties);
     }
 }

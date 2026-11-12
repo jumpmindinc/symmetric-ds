@@ -1774,7 +1774,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected int refreshClusterPeers(String nodeId) {
-        if (clusteredCacheManager == null || nodeId == null) {
+        if (clusteredCacheManager == null || !clusteredCacheManager.isClusterLockingEnabled() || nodeId == null) {
             return 0;
         }
         long cutoff = System.currentTimeMillis() - ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS;
