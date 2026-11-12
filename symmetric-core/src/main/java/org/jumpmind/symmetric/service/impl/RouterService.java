@@ -94,8 +94,8 @@ import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
 import org.jumpmind.symmetric.route.DefaultBatchAlgorithm;
-import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DefaultDataRouter;
+import org.jumpmind.symmetric.route.DefaultRoutersOnlyDetector;
 import org.jumpmind.symmetric.route.DelayRoutingException;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
 import org.jumpmind.symmetric.route.IBatchAlgorithm;
@@ -164,13 +164,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(RegistrationServerRouter.ROUTER_TYPE, new RegistrationServerRouter(engine));
         extensionService.addExtensionPoint("java", new JavaDataRouter(engine));
         extensionService.addExtensionPoint("bsh", new BshDataRouter(engine));
-<<<<<<< HEAD
         extensionService.addExtensionPoint("subselect", new SubSelectDataRouter(symmetricDialect));
         extensionService.addExtensionPoint("lookuptable", new LookupTableDataRouter(symmetricDialect));
-        extensionService.addExtensionPoint("default", new DefaultDataRouter());
-=======
         extensionService.addExtensionPoint(DefaultDataRouter.ROUTER_TYPE, new DefaultDataRouter());
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
         extensionService.addExtensionPoint("column", new ColumnMatchDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
@@ -1006,12 +1002,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
-<<<<<<< HEAD
         Table table = null;
-=======
         reloadRoutingColumnsIfSkipped(data, triggerRouters, context);
-        Relation relation = null;
->>>>>>> a389fbcdc0 (SYM-8244: Changing table assignment to a non-default router stops routing its rows until cache expires (#1266))
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
             table = platform.getTableFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
                     data.getTriggerHistory().getSourceTableName(), false);
