@@ -40,11 +40,13 @@ import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -64,7 +66,11 @@ import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 
-public class TriggerRouterServiceTest {
+class TriggerRouterServiceTest {
+    private static final int RUNTIME_TEMPLATE_HASH = 111;
+    private static final int TARGET_TEMPLATE_HASH = 222;
+    private AbstractTriggerTemplate runtimeTemplate;
+    private AbstractTriggerTemplate targetTemplate;
     protected ICacheManager cacheManager;
     protected IClusterService clusterService;
     protected IConfigurationService configurationService;
@@ -925,5 +931,93 @@ public class TriggerRouterServiceTest {
         assertFalse(pkColumnNames.isEmpty());
         assertEquals(1, pkColumns.length);
         assertEquals("id", pkColumns[0].getName());
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_nonSymTableWithUnchangedTargetTemplate_returnsNull() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        Trigger trigger = newTrigger("customer_trigger", "customer");
+        Table relation = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_nonSymTableWithChangedTargetTemplate_returnsTemplateChanged() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        Trigger trigger = newTrigger("customer_trigger", "customer");
+        Table relation = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, targetTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        when(targetTemplate.toHashedValue()).thenReturn(TARGET_TEMPLATE_HASH + 1);
+        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_symTableWithUnchangedRuntimeTemplate_returnsNull() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
+        Trigger trigger = newTrigger("node_trigger", tableName);
+        Table relation = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_symTableWithChangedRuntimeTemplate_returnsTemplateChanged() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
+        Trigger trigger = newTrigger("node_trigger", tableName);
+        Table relation = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        when(runtimeTemplate.toHashedValue()).thenReturn(RUNTIME_TEMPLATE_HASH + 1);
+        assertEquals(TriggerReBuildReason.TRIGGER_TEMPLATE_CHANGED, invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_symTableIgnoresTargetTemplateChange() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        String tableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE);
+        Trigger trigger = newTrigger("node_trigger", tableName);
+        Table relation = buildKeyedTable(tableName);
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        when(targetTemplate.toHashedValue()).thenReturn(TARGET_TEMPLATE_HASH + 1);
+        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    @Test
+    void testDetermineForceRebuildReason_withoutSeparateTargetDialect_comparesRuntimeTemplate() throws Exception {
+        TriggerRouterService service = buildServiceWithSeparateTargetDialect();
+        when(symmetricDialect.getTargetDialect()).thenReturn(symmetricDialect);
+        Trigger trigger = newTrigger("customer_trigger", "customer");
+        Table relation = buildKeyedTable("customer");
+        TriggerHistory latestHistory = new TriggerHistory(relation, trigger, runtimeTemplate, TriggerReBuildReason.NEW_TRIGGERS);
+        assertNull(invokeDetermineForceRebuildReason(service, latestHistory, relation, trigger));
+    }
+
+    private TriggerRouterService buildServiceWithSeparateTargetDialect() {
+        runtimeTemplate = mock(AbstractTriggerTemplate.class);
+        targetTemplate = mock(AbstractTriggerTemplate.class);
+        ISymmetricDialect targetDialect = mock(ISymmetricDialect.class);
+        when(runtimeTemplate.toHashedValue()).thenReturn(RUNTIME_TEMPLATE_HASH);
+        when(targetTemplate.toHashedValue()).thenReturn(TARGET_TEMPLATE_HASH);
+        when(symmetricDialect.getTriggerTemplate()).thenReturn(runtimeTemplate);
+        when(symmetricDialect.getTablePrefix()).thenReturn(tablePrefix);
+        when(symmetricDialect.getTargetDialect()).thenReturn(targetDialect);
+        when(targetDialect.getTriggerTemplate()).thenReturn(targetTemplate);
+        return buildService();
+    }
+
+    private Table buildKeyedTable(String tableName) {
+        return new Table(tableName, new Column("id", true, Types.INTEGER, 10, 0), new Column("name", false, Types.VARCHAR, 50, 0));
+    }
+
+    private TriggerReBuildReason invokeDetermineForceRebuildReason(TriggerRouterService service, TriggerHistory latestHistory, Relation relation,
+            Trigger trigger) throws Exception {
+        trigger.setLastUpdateTime(new Date(0));
+        latestHistory.setCreateTime(new Date());
+        Method method = TriggerRouterService.class.getDeclaredMethod("determineForceRebuildReason", TriggerHistory.class, Relation.class, Trigger.class,
+                boolean.class);
+        method.setAccessible(true);
+        return (TriggerReBuildReason) method.invoke(service, latestHistory, relation, trigger, false);
     }
 }
