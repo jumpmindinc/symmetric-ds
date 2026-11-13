@@ -51,6 +51,7 @@ public enum ProcessType {
             ProcessTypeMessages.FILE_LOAD_EXTRACTING, ProcessTypeMessages.FILE_LOAD_EXTRACTED),
     PULL_CONFIG_JOB(ProcessTypeMessages.CONFIG_PULL, ProcessTypeMessages.CONFIG_PULL, ProcessTypeMessages.CONFIG_PULL),
     LOG_MINER_JOB(ProcessTypeMessages.LOG_MINER, ProcessTypeMessages.LOG_MINER, ProcessTypeMessages.LOG_MINER),
+    REST_MINER_JOB(ProcessTypeMessages.REST_MINER, ProcessTypeMessages.REST_MINER, ProcessTypeMessages.REST_MINER),
     COMPARE_PUT_HANDLE(null, null, null), COMPARE_GET_HANDLE(null, null, null), COMPARE_START_HANDLE(null, null, null),
     COMPARE_EXECUTE(null, null, null), UNINSTALL(null, null, null);
     //@formatter:on
