@@ -29,7 +29,7 @@ public class ClusteredExtractJobParameterAuditor implements IParameterAuditor {
         String violationMessage = "";
         boolean isModified = false;
         if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
-                && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
+                && !parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, false)
                 && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
             modifiedParameters = parameters.copy();
             modifiedParameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
