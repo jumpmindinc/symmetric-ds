@@ -55,12 +55,12 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.cassandra.CassandraPlatform;
 import org.jumpmind.db.platform.db2.Db2DatabasePlatform;
 import org.jumpmind.db.platform.derby.DerbyDatabasePlatform;
 import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbVariantDetector;
 import org.jumpmind.db.platform.firebird.FirebirdDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DatabasePlatform;
 import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
@@ -336,7 +336,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 .getName().equals("Adaptive Server Enterprise")) {
             nameVersion.setName(DatabaseNamesConstants.SQLANYWHERE12);
         }
-        if (nameVersion.getProtocol().equalsIgnoreCase(DuckDbDatabasePlatform.JDBC_SUBPROTOCOL) && isMotherDuck(metaData.getURL())) {
+        if (DuckDbDatabasePlatform.JDBC_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && DuckDbVariantDetector.isMotherDuck(metaData.getURL())) {
             nameVersion.setName(DatabaseNamesConstants.MOTHERDUCK);
         }
     }
@@ -429,10 +429,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             }
         }
         return isOracle122;
-    }
-
-    private boolean isMotherDuck(String url) {
-        return Strings.CI.startsWith(url, "jdbc:duckdb:md:");
     }
 
     protected synchronized void addPlatform(Map<String, Class<? extends IDatabasePlatform>> platformMap, String platformName,
