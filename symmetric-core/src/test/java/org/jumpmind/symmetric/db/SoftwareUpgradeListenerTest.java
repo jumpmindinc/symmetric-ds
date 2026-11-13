@@ -21,9 +21,12 @@
 package org.jumpmind.symmetric.db;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -97,6 +100,14 @@ class SoftwareUpgradeListenerTest {
         setClusterLockingEnabled(true);
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
         assertDoesNotThrow(() -> upgrade("3.17.0", "3.18.0"));
+    }
+
+    @Test
+    void testUpgrade_priorTo3_18_doesNotSaveClusterLockingEnabledToDatabase() throws Exception {
+        setClusterLockingEnabled(true);
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        upgrade("3.17.0", "3.18.0");
+        verify(parameterService, never()).saveParameter(eq(ParameterConstants.CLUSTER_LOCKING_ENABLED), any(), anyString());
     }
 
     @Test
