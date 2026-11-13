@@ -64,6 +64,16 @@ public class SoftwareUpgradeListener implements ISoftwareUpgradeListener, ISymme
                         databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, oldDbValue, false);
             }
         }
+        if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
+            boolean startupValue = engine.getClusteredCacheManager().isClusterLockingEnabled();
+            boolean oldDbValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+            if (oldDbValue != startupValue) {
+                log.warn("Upgrading from database version {}: You must manually populate now-startup parameter {} " +
+                        "in either conf/symmetric-server.properties file or environment variable to match " +
+                        "pre-upgrade value of {}. It is no longer database-overrideable.",
+                        databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, oldDbValue);
+            }
+        }
         try {
             ModuleManager.getInstance().upgradeAll();
         } catch (ModuleException e) {
