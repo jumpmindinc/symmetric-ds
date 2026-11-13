@@ -191,6 +191,29 @@ class ProOnlyDatabaseValidatorTest {
         assertDoesNotThrow(() -> new ProOnlyDatabaseValidator(platform).validate());
     }
 
+    @Test
+    void testMotherDuckFallenBackToGenericDuckDbPlatform() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.MOTHERDUCK);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.DUCKDB);
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
+        assertTrue(ex.getMessage().contains("MotherDuck"));
+    }
+
+    @Test
+    void testDedicatedMotherDuckPlatform() {
+        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
+        when(platform.isDedicatedPlatform()).thenReturn(true);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.MOTHERDUCK);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.MOTHERDUCK);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        assertDoesNotThrow(() -> new ProOnlyDatabaseValidator(platform).validate());
+    }
+
     private IDatabasePlatform createGenericPlatformMock(String dbName) {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         DatabaseVersion dbVersion = new DatabaseVersion();

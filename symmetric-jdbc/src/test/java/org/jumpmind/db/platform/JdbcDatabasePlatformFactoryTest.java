@@ -31,6 +31,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.jumpmind.db.platform.clickhouse.ClickHouseDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
 import org.jumpmind.db.platform.greenplum.GreenplumPlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
@@ -242,6 +243,33 @@ class JdbcDatabasePlatformFactoryTest {
     @Test
     void testFindPlatformClass_clickHouseByShortSubprotocol() {
         assertEquals(ClickHouseDatabasePlatform.class, factory.findPlatformClass(newClickHouseVersion("ch")));
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_motherDuckDetected_setsMotherDuckName() throws Exception {
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(metaData.getURL()).thenReturn("jdbc:duckdb:md:my_db");
+        DatabaseVersion nameVersion = newDuckDbVersion(DuckDbDatabasePlatform.JDBC_SUBPROTOCOL, "DuckDB");
+        factory.determineDatabaseNameVersionSubprotocol(null, mock(Connection.class), metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.MOTHERDUCK, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_localDuckDb_unaffected() throws Exception {
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        when(metaData.getURL()).thenReturn("jdbc:duckdb:/path/to/database.db");
+        DatabaseVersion nameVersion = newDuckDbVersion(DuckDbDatabasePlatform.JDBC_SUBPROTOCOL, "DuckDB");
+        factory.determineDatabaseNameVersionSubprotocol(null, mock(Connection.class), metaData, nameVersion);
+        assertEquals("DuckDB", nameVersion.getName());
+    }
+
+    private DatabaseVersion newDuckDbVersion(String protocol, String productName) {
+        DatabaseVersion nameVersion = new DatabaseVersion();
+        nameVersion.setProtocol(protocol);
+        nameVersion.setName(productName);
+        nameVersion.setVersion(1);
+        nameVersion.setMinorVersion(5);
+        return nameVersion;
     }
 
     private DatabaseVersion newClickHouseVersion(String protocol) {

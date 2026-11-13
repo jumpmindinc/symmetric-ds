@@ -346,6 +346,19 @@ by database.
 |✔
 |✔
 
+|MotherDuck *
+|Tested on 1.5.6
+|
+|
+|
+|
+|✔
+|
+|
+|
+|
+|
+
 |NuoDB
 |2.6 and above
 |✔
@@ -726,6 +739,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |
 |
 
+|MotherDuck
+|
+|✔
+|select current_catalog()
+|✔
+|select current_schema()  
+
 |NuoDB
 |
 |
@@ -860,6 +880,7 @@ include::{includedir}/appendix/kafka.ad[]
 include::{includedir}/appendix/mariadb.ad[]
 include::{includedir}/appendix/mssqlfabricwarehouse.ad[]
 include::{includedir}/appendix/mongodb.ad[]
+include::{includedir}/appendix/motherduck.ad[]
 include::{includedir}/appendix/mysql.ad[]
 include::{includedir}/appendix/openedge.ad[]
 include::{includedir}/appendix/opensearch.ad[]
