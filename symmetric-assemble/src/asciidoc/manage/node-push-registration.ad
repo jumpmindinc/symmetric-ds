@@ -27,4 +27,6 @@ Each node has one queue per distinct channel queue (`default`, `system`, and `re
 ifdef::pro[]
 SymmetricDS Pro by default also adds 20 additional reload queues. So for example, one push node with default settings has 23 queues and a value of `push.thread.per.server.count=30` will correctly push registration.
 endif::pro[]
+
+Raising `push.thread.per.server.count` can increase the number of concurrent database connections, so consider increasing the connection pool size as well. See <<Sizing the Database Connection Pool>>.
 ====
