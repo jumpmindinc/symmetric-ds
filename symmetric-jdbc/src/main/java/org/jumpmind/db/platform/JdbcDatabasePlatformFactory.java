@@ -60,6 +60,7 @@ import org.jumpmind.db.platform.cassandra.CassandraPlatform;
 import org.jumpmind.db.platform.db2.Db2DatabasePlatform;
 import org.jumpmind.db.platform.derby.DerbyDatabasePlatform;
 import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbVariantDetector;
 import org.jumpmind.db.platform.firebird.FirebirdDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DatabasePlatform;
 import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
@@ -334,6 +335,9 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         if (nameVersion.getProtocol().equalsIgnoreCase(SqlAnywhereDatabasePlatform.JDBC_SUBPROTOCOL_SHORT) && nameVersion.getVersion() >= 12 && !nameVersion
                 .getName().equals("Adaptive Server Enterprise")) {
             nameVersion.setName(DatabaseNamesConstants.SQLANYWHERE12);
+        }
+        if (DuckDbDatabasePlatform.JDBC_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && DuckDbVariantDetector.isMotherDuck(metaData.getURL())) {
+            nameVersion.setName(DatabaseNamesConstants.MOTHERDUCK);
         }
     }
 

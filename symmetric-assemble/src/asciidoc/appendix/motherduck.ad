@@ -1,0 +1,57 @@
+
+=== MotherDuck
+
+ifndef::pro[]
+
+MotherDuck is only supported in the professional version of SymmetricDS.
+
+endif::pro[]
+
+ifdef::pro[]
+
+Use `symadmin module install duckdb` to install driver files, or copy your own files into the `lib` sub-directory.
+
+MotherDuck is a cloud service for DuckDB. SymmetricDS supports MotherDuck as a target platform where data can be loaded.
+It connects with the DuckDB JDBC driver and loads data the same way as a <<DuckDB>> target.
+
+==== Setup
+
+MotherDuck is only supported as a write-only node in SymmetricDS. See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
+
+Set up the node by using the <<Add Node,Connect Database>> wizard and selecting MotherDuck as the type. The JDBC URL names the MotherDuck database and
+includes the access token:
+
+----
+jdbc:duckdb:md:<database>?motherduck_token=<token>
+----
+
+The database must already exist in MotherDuck. Unlike a local DuckDB file, a MotherDuck database is not created when SymmetricDS connects to it,
+and the connection fails with the error "no database/share named ... found". Create the database in the MotherDuck UI or with a `CREATE DATABASE` statement.
+
+Tables are created in the `main` schema of the database by default.
+
+==== Access Token
+
+SymmetricDS authenticates to MotherDuck with an access token. To create a token:
+
+. Sign in to the MotherDuck UI.
+. Open the organization menu, select *Settings*, and then *Access Tokens*.
+. Create a token of type *Read/Write*.
+. Copy the token.
+
+The token is part of the JDBC URL and is saved in the engine properties file as entered, so restrict access to that file.
+
+WARNING: If the URL has no token, the DuckDB driver opens a browser to sign in to MotherDuck. This is not compatible with SymmetricDS running as a
+service, so always include the token in the URL.
+
+==== Driver Version
+
+MotherDuck accepts connections only from certain DuckDB versions. The DuckDB JDBC driver installed by the `duckdb` module must be a version that
+MotherDuck supports. See the MotherDuck documentation for the supported versions.
+
+==== Known Limitations
+* MotherDuck is supported as a load-only (write-only) target. Triggers, change capture, initial load extraction, and log mining are not supported.
+* Bulk loading is not supported. Data is loaded using JDBC statements.
+* Tables, keys, and data types are created the same way as for a <<DuckDB>> target.
+
+endif::pro[]

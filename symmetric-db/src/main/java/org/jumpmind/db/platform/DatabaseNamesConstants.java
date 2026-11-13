@@ -85,6 +85,7 @@ final public class DatabaseNamesConstants {
     public final static String SINGLE_STORE = "singlestore";
     public final static String OPENEDGE = "openedge";
     public final static String DUCKDB = "duckdb";
+    public final static String MOTHERDUCK = "motherduck";
     public final static String EXASOL = "exasol";
     public final static String SPARKSQL = "sparksql";
     public final static String DATABRICKS = "databricks";

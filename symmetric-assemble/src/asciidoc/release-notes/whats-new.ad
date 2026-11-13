@@ -18,6 +18,13 @@ See also: <<System Requirements>>.
 
 ifdef::pro[]
 
+=== MotherDuck Support
+--
+SymmetricDS Pro can now replicate data into https://motherduck.com[MotherDuck], the cloud service for DuckDB, as a write-only target. Add MotherDuck with the Connect Database Wizard by selecting *MotherDuck* as the type. SymmetricDS connects with the DuckDB JDBC driver using a `jdbc:duckdb:md:<database>` URL and a MotherDuck access token.
+
+Tables are created and altered in MotherDuck automatically, and data is loaded the same way as for a DuckDB target. Changes cannot be captured from MotherDuck.
+--
+
 === Microsoft Fabric Warehouse Support
 --
 SymmetricDS Pro can now replicate data into a https://learn.microsoft.com/en-us/fabric/data-warehouse/data-warehousing[Microsoft Fabric Warehouse] as a write-only target. Add the warehouse with the Configure Diagram or Connect Database Wizard by selecting *Microsoft Fabric Warehouse* as the type. The warehouse accepts only Microsoft Entra ID authentication, so SymmetricDS connects with the service principal of an Entra app registration.

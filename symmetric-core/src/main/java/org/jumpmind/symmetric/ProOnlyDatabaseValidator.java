@@ -37,7 +37,8 @@ public class ProOnlyDatabaseValidator {
             new CloudDatabase(DatabaseNamesConstants.AZURE_POSTGRESQL, "Azure Database for PostgreSQL"),
             new CloudDatabase(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL, "Google Cloud SQL for PostgreSQL"),
             new CloudDatabase(DatabaseNamesConstants.AURORA_MYSQL, "AWS Aurora MySQL"),
-            new CloudDatabase(DatabaseNamesConstants.CLOUDSQL_MYSQL, "Google Cloud SQL for MySQL"));
+            new CloudDatabase(DatabaseNamesConstants.CLOUDSQL_MYSQL, "Google Cloud SQL for MySQL"),
+            new CloudDatabase(DatabaseNamesConstants.MOTHERDUCK, "MotherDuck"));
     private final IDatabasePlatform platform;
 
     public ProOnlyDatabaseValidator(IDatabasePlatform platform) {
