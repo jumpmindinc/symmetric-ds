@@ -50,6 +50,7 @@ public class ProcessTypeMessages {
     public static final String MANUAL_LOAD = "Manual Load";
     public static final String OFFLINE_PULL = "Offline Pull";
     public static final String OFFLINE_PUSH = "Offline Push";
+    public static final String REST_MINER = "REST Miner";
     public static final String REST_PULL = "REST Pull";
     public static final String ROUTED = "Routed";
     public static final String ROUTING = "Routing";

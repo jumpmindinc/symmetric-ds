@@ -59,6 +59,7 @@ public class ClusterConstants {
     public static final String DATA_REFRESH_WEEKLY_SUN_11AM = "Data Refresh - Weekly, Sunday at 11 AM";
     public static final String DATA_REFRESH_MONTHLY_1ST_10AM = "Data Refresh - Monthly, on 1st day at 10 AM";
     public static final String LOG_MINER = "Log Miner";
+    public static final String REST_MINER = "REST Miner";
     public static final String REFRESH_ANALYTICS = "Refresh Analytics";
     public static final String REFRESH_BACKLOG_REPORT = "Refresh Backlog Report";
     public static final String REFRESH_UNROUTED_DATA_METRICS = "Refresh Unrouted Data Metrics";
