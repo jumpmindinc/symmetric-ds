@@ -206,7 +206,7 @@ Recommended parameters: the base parameters, plus `SYM_CLUSTER_PEER_DISCOVERY=db
 |`cluster.lock.enabled` is set in an engine properties file. Move it to `conf/symmetric-server.properties` or `SYM_CLUSTER_LOCK_ENABLED`, and restart.
 
 |`Ignoring parameter cluster.lock.enabled found in the database because it is not database-overridable`
-|The value in `sym_parameter` is ignored, for example the row the 3.18 upgrade saved. Set the parameter in `conf/symmetric-server.properties` or its environment variable, and delete the row.
+|The value in `sym_parameter` is ignored, for example a row set before or during the 3.18 upgrade. Set the parameter in `conf/symmetric-server.properties` or its environment variable, and delete the row.
 
 |`Rejecting cluster peer due to partition ID mismatch`
 |Members generated different partition ids. Set the same `cluster.partition.id` on every member.
