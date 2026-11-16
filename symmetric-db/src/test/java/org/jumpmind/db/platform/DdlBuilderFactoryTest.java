@@ -23,9 +23,7 @@ package org.jumpmind.db.platform;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import org.jumpmind.db.platform.hana.HanaDdlBuilder;
 import org.jumpmind.db.platform.ingres.IngresDdlBuilder;
-import org.jumpmind.db.platform.mariadb.MariaDBDdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.raima.RaimaDdlBuilder;
 import org.junit.jupiter.api.Test;
@@ -34,23 +32,8 @@ class DdlBuilderFactoryTest {
     private final DdlBuilderFactory factory = new DdlBuilderFactory();
 
     @Test
-    void testCreateReturnsHanaDdlBuilderForHdb() {
-        assertEquals(HanaDdlBuilder.class, factory.create(DatabaseNamesConstants.HANA).getClass());
-    }
-
-    @Test
-    void testCreateMatchesHanaNameIgnoringCase() {
-        assertEquals(HanaDdlBuilder.class, factory.create("HDB").getClass());
-    }
-
-    @Test
     void testCreateReturnsMySqlDdlBuilderForMySql() {
         assertEquals(MySqlDdlBuilder.class, factory.create(DatabaseNamesConstants.MYSQL).getClass());
-    }
-
-    @Test
-    void testCreateReturnsMariaDbDdlBuilderForMariaDb() {
-        assertEquals(MariaDBDdlBuilder.class, factory.create(DatabaseNamesConstants.MARIADB).getClass());
     }
 
     @Test

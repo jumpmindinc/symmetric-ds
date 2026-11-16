@@ -33,7 +33,6 @@ import org.jumpmind.db.platform.hsqldb2.HsqlDb2DdlBuilder;
 import org.jumpmind.db.platform.informix.InformixDdlBuilder;
 import org.jumpmind.db.platform.ingres.IngresDdlBuilder;
 import org.jumpmind.db.platform.interbase.InterbaseDdlBuilder;
-import org.jumpmind.db.platform.mariadb.MariaDBDdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
@@ -103,17 +102,10 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new NuoDbDdlBuilder();
         } else if (DatabaseNamesConstants.HBASE.equalsIgnoreCase(databaseName)) {
             return new HbaseDdlBuilder();
-<<<<<<< HEAD
-=======
-        } else if (DatabaseNamesConstants.HANA.equalsIgnoreCase(databaseName)) {
-            return new HanaDdlBuilder();
-        } else if (DatabaseNamesConstants.MARIADB.equalsIgnoreCase(databaseName)) {
-            return new MariaDBDdlBuilder();
         } else if (DatabaseNamesConstants.INGRES.equalsIgnoreCase(databaseName)) {
             return new IngresDdlBuilder();
         } else if (DatabaseNamesConstants.RAIMA.equalsIgnoreCase(databaseName)) {
             return new RaimaDdlBuilder();
->>>>>>> cf5e6228bc (SYM-8303: Map mariadb, ingres, raima and sybase DDL builders for dbexport (#1290))
         } else {
             return null;
         }

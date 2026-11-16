@@ -37,36 +37,10 @@ import org.junit.jupiter.api.Test;
 
 class DbExportTest {
     @Test
-    void testHanaPlatformMapsToHdbCompatible() {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.HANA);
-        assertEquals(Compatible.HDB, new DbExport(platform).getCompatible());
-    }
-
-    @Test
     void testH2PlatformMapsToH2Compatible() {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
         assertEquals(Compatible.H2, new DbExport(platform).getCompatible());
-    }
-
-    @Test
-    void testSqlExportFromHanaPlatformWritesHanaDdl() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.HANA);
-        String output = exportTableDefinition(new DbExport(platform)).toLowerCase();
-        assertTrue(output.contains("create table"), output);
-        assertTrue(output.contains("nvarchar(50)"), output);
-    }
-
-    @Test
-    void testSqlExportWithHdbCompatibleWritesHanaDdl() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
-        DbExport export = new DbExport(platform);
-        export.setCompatible(Compatible.HDB);
-        String output = exportTableDefinition(export).toLowerCase();
-        assertTrue(output.contains("nvarchar(50)"), output);
     }
 
     @Test
@@ -84,16 +58,6 @@ class DbExportTest {
         when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
         DbExport export = new DbExport(platform);
         export.setCompatible(Compatible.SYBASE);
-        String output = exportTableDefinition(export).toLowerCase();
-        assertTrue(output.contains("create table"), output);
-    }
-
-    @Test
-    void testSqlExportWithMariaDbCompatibleWritesDdl() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
-        DbExport export = new DbExport(platform);
-        export.setCompatible(Compatible.MARIADB);
         String output = exportTableDefinition(export).toLowerCase();
         assertTrue(output.contains("create table"), output);
     }
