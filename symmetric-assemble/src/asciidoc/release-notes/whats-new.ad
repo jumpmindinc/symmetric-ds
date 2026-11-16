@@ -45,7 +45,7 @@ A bulk channel that loads a SQL database in Microsoft Fabric loads inserts with 
 
 === ClickHouse Support
 --
-SymmetricDS Pro can now load data into a https://clickhouse.com/[ClickHouse] database as a write-only target. Data from any other supported database can be inserted, updated, and deleted in ClickHouse tables. SymmetricDS creates missing tables as `MergeTree` tables, with the primary key as the sorting key, and applies added, modified, and dropped columns. Add ClickHouse with the Connect Database Wizard by selecting *ClickHouse* as the type, and the data loader is selected automatically.
+SymmetricDS Pro can now load data into a https://clickhouse.com/[ClickHouse] database as a write-only target. Data from any other supported database can be inserted, updated, and deleted in ClickHouse tables. SymmetricDS creates missing tables as `MergeTree` tables, with the primary key as the sorting key, and applies added, modified, and dropped columns.
 
 ClickHouse always reports zero rows changed for an update or delete, so the loader treats them as successful and conflict detection does not work on this target. Capture, use as a source, a bulk loader, and ClickHouse Cloud are not supported. See <<ClickHouse>> for details.
 --
