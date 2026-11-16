@@ -69,6 +69,35 @@ class DbExportTest {
         assertTrue(output.contains("nvarchar(50)"), output);
     }
 
+    @Test
+    void testSybaseCompatibleUsesAseDatabaseName() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
+        DbExport export = new DbExport(platform);
+        export.setCompatible(Compatible.SYBASE);
+        assertEquals(DatabaseNamesConstants.ASE, export.getDatabaseName());
+    }
+
+    @Test
+    void testSqlExportWithSybaseCompatibleWritesDdl() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
+        DbExport export = new DbExport(platform);
+        export.setCompatible(Compatible.SYBASE);
+        String output = exportTableDefinition(export).toLowerCase();
+        assertTrue(output.contains("create table"), output);
+    }
+
+    @Test
+    void testSqlExportWithMariaDbCompatibleWritesDdl() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.H2);
+        DbExport export = new DbExport(platform);
+        export.setCompatible(Compatible.MARIADB);
+        String output = exportTableDefinition(export).toLowerCase();
+        assertTrue(output.contains("create table"), output);
+    }
+
     private String exportTableDefinition(DbExport export) throws Exception {
         export.setFormat(Format.SQL);
         export.setNoCreateInfo(false);
