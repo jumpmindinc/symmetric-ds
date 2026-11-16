@@ -40,11 +40,8 @@ import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder95;
-<<<<<<< HEAD
 import org.jumpmind.db.platform.clickhouse.ClickHouseDdlBuilder;
-=======
 import org.jumpmind.db.platform.raima.RaimaDdlBuilder;
->>>>>>> cf5e6228bc (SYM-8303: Map mariadb, ingres, raima and sybase DDL builders for dbexport (#1290))
 import org.jumpmind.db.platform.redshift.RedshiftDdlBuilder;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDdlBuilder;
 import org.jumpmind.db.platform.sqlite.SqliteDdlBuilder;
