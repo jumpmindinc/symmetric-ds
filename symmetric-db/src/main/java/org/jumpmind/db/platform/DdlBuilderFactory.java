@@ -32,11 +32,14 @@ import org.jumpmind.db.platform.hbase.HbaseDdlBuilder;
 import org.jumpmind.db.platform.hsqldb.HsqlDbDdlBuilder;
 import org.jumpmind.db.platform.hsqldb2.HsqlDb2DdlBuilder;
 import org.jumpmind.db.platform.informix.InformixDdlBuilder;
+import org.jumpmind.db.platform.ingres.IngresDdlBuilder;
 import org.jumpmind.db.platform.interbase.InterbaseDdlBuilder;
+import org.jumpmind.db.platform.mariadb.MariaDBDdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder95;
+import org.jumpmind.db.platform.raima.RaimaDdlBuilder;
 import org.jumpmind.db.platform.redshift.RedshiftDdlBuilder;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDdlBuilder;
 import org.jumpmind.db.platform.sqlite.SqliteDdlBuilder;
@@ -103,6 +106,12 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new HbaseDdlBuilder();
         } else if (DatabaseNamesConstants.HANA.equalsIgnoreCase(databaseName)) {
             return new HanaDdlBuilder();
+        } else if (DatabaseNamesConstants.MARIADB.equalsIgnoreCase(databaseName)) {
+            return new MariaDBDdlBuilder();
+        } else if (DatabaseNamesConstants.INGRES.equalsIgnoreCase(databaseName)) {
+            return new IngresDdlBuilder();
+        } else if (DatabaseNamesConstants.RAIMA.equalsIgnoreCase(databaseName)) {
+            return new RaimaDdlBuilder();
         } else {
             return null;
         }
