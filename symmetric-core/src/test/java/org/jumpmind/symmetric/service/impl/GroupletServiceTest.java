@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,10 +31,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -61,6 +65,7 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class GroupletServiceTest {
     private static final String TRIGGER_ID = "item_trigger";
@@ -308,6 +313,90 @@ class GroupletServiceTest {
         row.put("last_update_by", "system");
         row.put("last_update_time", Timestamp.valueOf("2024-01-02 03:04:05"));
         assertEquals(GroupletLinkPolicy.E, new GroupletService.GroupletMapper(null).mapRow(row).getGroupletLinkPolicy());
+    }
+
+    @Test
+    void testSaveGroupletInsertsNewGroupletAfterUpdateWithoutCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B);
+        stubUpdateRowCounts(0, 1);
+        groupletService.saveGrouplet(grouplet);
+        assertSavedAsNewRow("insertGroupletSql", "updateGroupletSql", grouplet.getCreateTime());
+    }
+
+    @Test
+    void testSaveGroupletUpdatesExistingGroupletWithoutTouchingCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B);
+        stubUpdateRowCounts(1);
+        groupletService.saveGrouplet(grouplet);
+        assertSavedAsExistingRow("insertGroupletSql", "updateGroupletSql");
+        assertNull(grouplet.getCreateTime());
+    }
+
+    @Test
+    void testSaveGroupletLinkInsertsNewLinkAfterUpdateWithoutCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B, "store-001");
+        GroupletLink link = grouplet.getGroupletLinks().get(0);
+        stubUpdateRowCounts(0, 1);
+        groupletService.saveGroupletLink(grouplet, link);
+        assertSavedAsNewRow("insertGroupletLinkSql", "updateGroupletLinkSql", link.getCreateTime());
+    }
+
+    @Test
+    void testSaveGroupletLinkUpdatesExistingLinkWithoutTouchingCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B, "store-001");
+        GroupletLink link = grouplet.getGroupletLinks().get(0);
+        stubUpdateRowCounts(1);
+        groupletService.saveGroupletLink(grouplet, link);
+        assertSavedAsExistingRow("insertGroupletLinkSql", "updateGroupletLinkSql");
+        assertNull(link.getCreateTime());
+    }
+
+    @Test
+    void testSaveTriggerRouterGroupletInsertsNewRowAfterUpdateWithoutCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B);
+        TriggerRouterGrouplet triggerRouterGrouplet = grouplet.getTriggerRouterGrouplets().get(0);
+        stubUpdateRowCounts(0, 1);
+        groupletService.saveTriggerRouterGrouplet(grouplet, triggerRouterGrouplet);
+        assertSavedAsNewRow("insertTriggerRouterGroupletSql", "updateTriggerRouterGroupletSql", triggerRouterGrouplet.getCreateTime());
+    }
+
+    @Test
+    void testSaveTriggerRouterGroupletUpdatesExistingRowWithoutTouchingCreateTime() {
+        Grouplet grouplet = newGrouplet(GroupletLinkPolicy.I, AppliesWhen.B);
+        TriggerRouterGrouplet triggerRouterGrouplet = grouplet.getTriggerRouterGrouplets().get(0);
+        stubUpdateRowCounts(1);
+        groupletService.saveTriggerRouterGrouplet(grouplet, triggerRouterGrouplet);
+        assertSavedAsExistingRow("insertTriggerRouterGroupletSql", "updateTriggerRouterGroupletSql");
+        assertNull(triggerRouterGrouplet.getCreateTime());
+    }
+
+    private void stubUpdateRowCounts(Integer firstRowCount, Integer... nextRowCounts) {
+        when(sqlTemplate.update(anyString(), any(Object[].class), any(int[].class))).thenReturn(firstRowCount, nextRowCounts);
+    }
+
+    private void assertSavedAsNewRow(String insertSqlKey, String updateSqlKey, Date createTime) {
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
+        verify(sqlTemplate, times(2)).update(sql.capture(), values.capture(), types.capture());
+        String insertSql = groupletService.getSql(insertSqlKey);
+        assertEquals(groupletService.getSql(updateSqlKey), sql.getAllValues().get(0));
+        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(insertSql, sql.getAllValues().get(0),
+                values.getAllValues().get(0), types.getAllValues().get(0));
+        assertEquals(insertSql, sql.getAllValues().get(1));
+        assertNotNull(createTime);
+        assertEquals(createTime, values.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+        assertEquals(Types.TIMESTAMP, types.getAllValues().get(1)[UpsertSqlAssertions.getCreateTimeIndex(insertSql)]);
+    }
+
+    private void assertSavedAsExistingRow(String insertSqlKey, String updateSqlKey) {
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
+        ArgumentCaptor<int[]> types = ArgumentCaptor.forClass(int[].class);
+        verify(sqlTemplate, times(1)).update(sql.capture(), values.capture(), types.capture());
+        assertEquals(groupletService.getSql(updateSqlKey), sql.getValue());
+        UpsertSqlAssertions.assertUpdateMatchesInsertWithoutCreateTime(groupletService.getSql(insertSqlKey), sql.getValue(),
+                values.getValue(), types.getValue());
     }
 
     private ISymmetricEngine newMockedEngine() {

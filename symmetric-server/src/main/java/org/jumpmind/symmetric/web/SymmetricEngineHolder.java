@@ -108,7 +108,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
-    private TypedProperties coreServerProperties;
     private ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
     private IClusteredCacheManager clusteredCacheManager;
     static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
@@ -120,9 +119,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     static final String THREAD_ID_ENGINES_SHUTDOWN = "symmetric-engines-shutdown";
 
     SymmetricEngineHolder() {
-        if (coreServerProperties == null) {
-            coreServerProperties = fetchStaticServerProperties();
-        }
         if (securityService == null) {
             securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
         }
@@ -175,11 +171,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         try {
             ccManager = serviceRegistry.getClusteredCacheManager();
             String clusterPartitionId = ClusterPartitionGenerator.resolve(startupParameterService);
-            String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
-            isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
-            log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={} (raw property value='{}')", clusterPartitionId, serverId,
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled,
-                    coreServerProperties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
+            String serverId = ClusterPartitionGenerator.resolveServerId(startupParameterService);
+            isClusterLockingEnabled = startupParameterService.isGlobal(ParameterConstants.CLUSTER_LOCKING_ENABLED, false);
+            log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={}", clusterPartitionId, serverId,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled);
             ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this,
                     startupParameterService);
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);

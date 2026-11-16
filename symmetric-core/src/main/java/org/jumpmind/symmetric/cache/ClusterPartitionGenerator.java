@@ -26,12 +26,10 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.service.IStartupParameterService;
@@ -60,15 +58,6 @@ public class ClusterPartitionGenerator {
         return clusterPartitionId;
     }
 
-    /** Resolves server ID from properties or hostname. First checks properties for cluster.server.id, falls back to hostname. */
-    public static String resolveServerId(Properties properties) {
-        String id = properties != null ? properties.getProperty(ServerConstants.CLUSTER_SERVER_ID) : null;
-        if (StringUtils.isBlank(id)) {
-            id = AppUtils.getHostName();
-        }
-        return StringUtils.left(id, 255);
-    }
-
     public static String resolveServerId(IStartupParameterService startupParameterService) {
         String id = startupParameterService.getGlobalString(ServerConstants.CLUSTER_SERVER_ID);
         if (StringUtils.isBlank(id)) {
@@ -87,11 +76,6 @@ public class ClusterPartitionGenerator {
             }
         }
         return StringUtils.left(id, 255);
-    }
-
-    public static boolean isClusterLockingEnabled(Properties properties) {
-        String value = properties != null ? properties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED) : null;
-        return Boolean.parseBoolean(value);
     }
 
     private static String loadOrCreateClusterPartitionId(IStartupParameterService startupParameterService) {

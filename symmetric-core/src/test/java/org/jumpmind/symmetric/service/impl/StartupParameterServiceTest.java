@@ -105,6 +105,7 @@ class StartupParameterServiceTest {
             assertEquals(Source.JVM_SYSTEM_PROPERTY, service.getParameter(first, key).source());
         } finally {
             System.clearProperty(key);
+            service.refreshSystemProperty(key);
         }
     }
 
@@ -160,6 +161,7 @@ class StartupParameterServiceTest {
             assertEquals(Source.EXTERNAL, service.getParameter(name, key).source());
         } finally {
             System.clearProperty(key);
+            service.refreshSystemProperty(key);
         }
     }
 
@@ -529,6 +531,56 @@ class StartupParameterServiceTest {
     void testRefreshSources_withEngineWithoutSource_returnsFalse() {
         String name = registerEngine(new TypedProperties(), Map.of());
         assertFalse(service.refreshExternalSource(name));
+    }
+
+    @Test
+    void refreshSystemProperty_clearedProperty_isNoLongerResolvedFromJvm() {
+        String key = "test.jvm.cleared." + UUID.randomUUID();
+        service.registerGlobal(new TypedProperties(), Map.of());
+        System.setProperty(key, "from-jvm");
+        service.refreshSystemProperty(key);
+        assertEquals("from-jvm", service.getGlobalString(key));
+        System.clearProperty(key);
+        service.refreshSystemProperty(key);
+        assertNull(service.getGlobalString(key));
+    }
+
+    @Test
+    void registerServerProperties_fileValues_areTaggedAsServerProperties() {
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-a");
+        service.registerServerProperties(serverProperties);
+        assertEquals("pod-a", service.getGlobalString(ServerConstants.CLUSTER_SERVER_ID));
+        assertEquals(Source.SYMMETRIC_SERVER_PROPERTIES, service.getGlobalParameter(ServerConstants.CLUSTER_SERVER_ID).source());
+    }
+
+    @Test
+    void registerServerProperties_leavesSystemPropertiesUnchanged() {
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-a");
+        service.registerServerProperties(serverProperties);
+        assertNull(System.getProperty(ServerConstants.CLUSTER_SERVER_ID));
+    }
+
+    @Test
+    void registerServerProperties_emptyProperties_resolvesFromJvmSystemProperty() {
+        try {
+            System.setProperty(ServerConstants.CLUSTER_SERVER_ID, "pod-b");
+            service.refreshSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
+            service.registerServerProperties(new TypedProperties());
+            assertEquals("pod-b", service.getGlobalString(ServerConstants.CLUSTER_SERVER_ID));
+        } finally {
+            System.clearProperty(ServerConstants.CLUSTER_SERVER_ID);
+            service.refreshSystemProperty(ServerConstants.CLUSTER_SERVER_ID);
+        }
+    }
+
+    @Test
+    void registerServerProperties_doesNotModifyCallerProperties() {
+        TypedProperties serverProperties = new TypedProperties();
+        serverProperties.setProperty("test.server.only.key", "value");
+        service.registerServerProperties(serverProperties);
+        assertEquals(1, serverProperties.size());
     }
 
     @Test

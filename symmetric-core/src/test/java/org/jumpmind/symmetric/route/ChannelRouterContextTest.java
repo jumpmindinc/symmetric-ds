@@ -204,6 +204,68 @@ class ChannelRouterContextTest {
     }
 
     @Test
+    void testIsAnyDataUsedToRoute() {
+        assertTrue(context.isAnyDataUsedToRoute());
+    }
+
+    @Test
+    void testIsAnyDataUsedToRoute_withOnlyPkData() {
+        context.getChannel().setUseRowDataToRoute(false);
+        context.getChannel().setUseOldDataToRoute(false);
+        assertTrue(context.isAnyDataUsedToRoute());
+    }
+
+    @Test
+    void testIsAnyDataUsedToRoute_withNoData() {
+        context.getChannel().setUseRowDataToRoute(false);
+        context.getChannel().setUseOldDataToRoute(false);
+        context.getChannel().setUsePkDataToRoute(false);
+        assertFalse(context.isAnyDataUsedToRoute());
+    }
+
+    @Test
+    void testIsDataSelected() {
+        assertTrue(context.isRowDataSelected());
+        assertTrue(context.isOldDataSelected());
+        assertTrue(context.isPkDataSelected());
+    }
+
+    @Test
+    void testIsDataSelected_whenNotUsedToRoute() {
+        context.getChannel().setUseRowDataToRoute(false);
+        context.getChannel().setUseOldDataToRoute(false);
+        context.getChannel().setUsePkDataToRoute(false);
+        assertFalse(context.isRowDataSelected());
+        assertFalse(context.isOldDataSelected());
+        assertFalse(context.isPkDataSelected());
+    }
+
+    @Test
+    void testIsDataSelected_withOnlyDefaultRoutersAssigned() {
+        context.setOnlyDefaultRoutersAssigned(true);
+        assertFalse(context.isRowDataSelected());
+        assertFalse(context.isOldDataSelected());
+        assertFalse(context.isPkDataSelected());
+        assertTrue(context.isAnyDataUsedToRoute());
+    }
+
+    @Test
+    void testIsRowDataSelected_forFileSyncWithOnlyDefaultRoutersAssigned() {
+        context.getChannel().setFileSyncFlag(true);
+        context.setOnlyDefaultRoutersAssigned(true);
+        assertTrue(context.isRowDataSelected());
+        assertFalse(context.isOldDataSelected());
+        assertFalse(context.isPkDataSelected());
+    }
+
+    @Test
+    void testIsRowDataSelected_forFileSyncWhenNotUsedToRoute() {
+        context.getChannel().setFileSyncFlag(true);
+        context.getChannel().setUseRowDataToRoute(false);
+        assertFalse(context.isRowDataSelected());
+    }
+
+    @Test
     void testIsBatchComplete_delegatesToBatchAlgorithm() {
         OutgoingBatch batch = new OutgoingBatch();
         DataMetaData dataMetaData = mock(DataMetaData.class);

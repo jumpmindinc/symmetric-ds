@@ -33,7 +33,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Map;
-import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
@@ -211,30 +210,6 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
-    public void resolveServerIdWithProperties_configuredValue_usesConfiguredValue() {
-        Properties properties = new Properties();
-        properties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
-        assertEquals("configured-server-id", ClusterPartitionGenerator.resolveServerId(properties));
-    }
-
-    @Test
-    public void resolveServerIdWithProperties_configuredValueLongerThanMax_isTruncated() {
-        Properties properties = new Properties();
-        properties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "a".repeat(300));
-        assertEquals(MAX_SERVER_ID_LENGTH, ClusterPartitionGenerator.resolveServerId(properties).length());
-    }
-
-    @Test
-    public void resolveServerIdWithProperties_blankConfiguredValue_fallsBackToHostname() throws Exception {
-        assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(new Properties()));
-    }
-
-    @Test
-    public void resolveServerIdWithProperties_nullProperties_fallsBackToHostname() {
-        assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId((Properties) null));
-    }
-
-    @Test
     public void resolveServerIdWithStartupParameterService_configuredValue_usesConfiguredValue() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
@@ -310,37 +285,6 @@ public class ClusterPartitionGeneratorTest {
             mocked.when(AppUtils::getHostName).thenThrow(new RuntimeException("no hostname available"));
             assertEquals("unknown", ClusterPartitionGenerator.resolveServerId(startupParameterService));
         }
-    }
-
-    @Test
-    public void isClusterLockingEnabled_propertiesValueTrue_returnsTrue() {
-        Properties properties = new Properties();
-        properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
-        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
-    }
-
-    @Test
-    public void isClusterLockingEnabled_propertiesBlank_returnsFalse() {
-        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(new Properties()));
-    }
-
-    @Test
-    public void isClusterLockingEnabled_propertiesValueFalse_returnsFalse() {
-        Properties properties = new Properties();
-        properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "false");
-        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
-    }
-
-    @Test
-    public void isClusterLockingEnabled_systemPropertyIgnored_returnsFalse() {
-        Properties properties = new Properties();
-        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
-        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
-    }
-
-    @Test
-    public void isClusterLockingEnabled_noConfiguration_returnsFalse() {
-        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(null));
     }
 
     @Test

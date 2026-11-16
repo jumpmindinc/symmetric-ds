@@ -69,6 +69,13 @@ public interface IStartupParameterService {
     void registerGlobal(TypedProperties mergedProperties, Map<String, Source> knownFileSources);
 
     /**
+     * Registers the contents of {@code symmetric-server.properties} (empty when the file is absent) as the global parameters, merged with environment variables
+     * and JVM system properties. Shared by the command-line launcher and the servlet container deployment. Returns the merged properties without modifying the
+     * JVM system properties.
+     */
+    TypedProperties registerServerProperties(TypedProperties serverProperties);
+
+    /**
      * Removes a previously registered engine's parameters, so a long-running process that stops/restarts an engine doesn't leak entries.
      */
     void unregisterEngine(String engineName);

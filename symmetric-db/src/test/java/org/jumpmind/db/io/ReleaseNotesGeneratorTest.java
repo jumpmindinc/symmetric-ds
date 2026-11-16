@@ -20,10 +20,12 @@
  */
 package org.jumpmind.db.io;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
@@ -441,5 +443,14 @@ public class ReleaseNotesGeneratorTest {
         issue.setProject(project);
         issue.setTag(tag);
         return issue;
+    }
+
+    @Test
+    public void testWriteParametersSectionWithoutPreviousProProperties() {
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output);
+        String missingProProperties = new File("build/does-not-exist/symmetric-console-default.properties").getPath();
+        assertDoesNotThrow(() -> ReleaseNotesGenerator.writeParametersSection(writer,
+                ReleaseNotesConstants.PROPERTIES_DIR, missingProProperties));
     }
 }

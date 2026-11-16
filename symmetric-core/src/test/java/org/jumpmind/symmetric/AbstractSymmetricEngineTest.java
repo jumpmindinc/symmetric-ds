@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,11 +41,13 @@ import java.util.Properties;
 
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
@@ -71,6 +75,18 @@ class AbstractSymmetricEngineTest {
         Method method = AbstractSymmetricEngine.class.getDeclaredMethod("findKnownEnginePropertiesFileSources");
         method.setAccessible(true);
         return (Map<String, Source>) method.invoke(engine);
+    }
+
+    @Test
+    void testRefreshClusterPeers_clusterLockingDisabledAtStartup_skipsPeerRefresh() throws Exception {
+        IClusteredCacheManager clusteredCacheManager = mock(IClusteredCacheManager.class);
+        INodeService nodeService = mock(INodeService.class);
+        when(clusteredCacheManager.isClusterLockingEnabled()).thenReturn(false);
+        setField("clusteredCacheManager", clusteredCacheManager);
+        setField("nodeService", nodeService);
+        assertEquals(0, engine.refreshClusterPeers("00000"));
+        verify(nodeService, never()).findNodeHosts(anyString());
+        verify(clusteredCacheManager, never()).addPeer(anyString(), any(), any());
     }
 
     @Test

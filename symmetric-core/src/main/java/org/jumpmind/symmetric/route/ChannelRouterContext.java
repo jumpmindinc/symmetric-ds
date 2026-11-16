@@ -372,6 +372,34 @@ public class ChannelRouterContext extends SimpleRouterContext {
         return onlyDefaultRoutersAssigned;
     }
 
+    public boolean isRowDataUsedToRoute() {
+        return channel.isUseRowDataToRoute();
+    }
+
+    public boolean isOldDataUsedToRoute() {
+        return channel.isUseOldDataToRoute();
+    }
+
+    public boolean isPkDataUsedToRoute() {
+        return channel.isUsePkDataToRoute();
+    }
+
+    public boolean isAnyDataUsedToRoute() {
+        return isRowDataUsedToRoute() || isOldDataUsedToRoute() || isPkDataUsedToRoute();
+    }
+
+    public boolean isRowDataSelected() {
+        return isRowDataUsedToRoute() && (!onlyDefaultRoutersAssigned || channel.isFileSyncFlag());
+    }
+
+    public boolean isOldDataSelected() {
+        return isOldDataUsedToRoute() && !onlyDefaultRoutersAssigned;
+    }
+
+    public boolean isPkDataSelected() {
+        return isPkDataUsedToRoute() && !onlyDefaultRoutersAssigned;
+    }
+
     public List<Long> getDataIds() {
         return dataIds;
     }

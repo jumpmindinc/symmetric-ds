@@ -27,10 +27,6 @@ import java.io.PrintWriter;
 import java.security.Provider;
 import java.security.Security;
 import java.sql.Connection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -50,11 +46,11 @@ import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
-import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.StartupParameterExporter;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
@@ -111,28 +107,21 @@ public abstract class AbstractCommandLauncher {
 
     protected static void initFromServerProperties() {
         if (!serverPropertiesInitialized) {
-            IStartupParameterService startupParameterService = ServiceRegistry.getInstance().getStartupParameterService();
-            File serverPropertiesFile = new File(DEFAULT_SERVER_PROPERTIES);
-            if (!serverPropertiesFile.exists()) {
-                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". File does not exist.");
-                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
-                return;
-            }
-            if (!serverPropertiesFile.isFile()) {
-                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
-                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
-                return;
-            }
-            TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
-            Set<String> keysFromServerPropertiesFile = new HashSet<String>(serverProperties.stringPropertyNames());
-            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
-            Map<String, Source> knownFileSources = new HashMap<String, Source>();
-            for (String key : keysFromServerPropertiesFile) {
-                knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
-            }
-            startupParameterService.registerGlobal(serverProperties, knownFileSources);
-            serverPropertiesInitialized = true;
+            serverPropertiesInitialized = registerServerProperties(new File(DEFAULT_SERVER_PROPERTIES),
+                    ServiceRegistry.getInstance().getStartupParameterService());
         }
+    }
+
+    static boolean registerServerProperties(File serverPropertiesFile, IStartupParameterService startupParameterService) {
+        boolean isServerPropertiesFileFound = serverPropertiesFile.isFile();
+        if (isServerPropertiesFileFound) {
+            startupParameterService.registerServerProperties(new TypedProperties(serverPropertiesFile));
+        } else {
+            log.debug("Failed to load {}. {}", serverPropertiesFile, serverPropertiesFile.exists() ? "Object is not a file." : "File does not exist.");
+            startupParameterService.registerServerProperties(new TypedProperties());
+        }
+        new StartupParameterExporter(System.getProperties()).exportMissing(startupParameterService, ServerConstants.SYSTEM_PROPERTY_STARTUP_PARAMETERS);
+        return isServerPropertiesFileFound;
     }
 
     abstract protected boolean printHelpIfNoOptionsAreProvided();

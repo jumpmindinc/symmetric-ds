@@ -232,10 +232,8 @@ public class GroupletService extends AbstractService implements IGroupletService
         if (sqlTemplate.update(
                 getSql("updateGroupletSql"),
                 new Object[] { grouplet.getGroupletLinkPolicy().name(), grouplet.getDescription(),
-                        grouplet.getCreateTime(), grouplet.getLastUpdateBy(),
-                        grouplet.getLastUpdateTime(), grouplet.getGroupletId() }, new int[] {
-                                Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR,
-                                Types.TIMESTAMP, Types.VARCHAR }) <= 0) {
+                        grouplet.getLastUpdateBy(), grouplet.getLastUpdateTime(), grouplet.getGroupletId() },
+                new int[] { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR }) <= 0) {
             grouplet.setCreateTime(new Date());
             sqlTemplate.update(
                     getSql("insertGroupletSql"),
@@ -290,10 +288,9 @@ public class GroupletService extends AbstractService implements IGroupletService
         link.setLastUpdateTime(new Date());
         if (sqlTemplate.update(
                 getSql("updateGroupletLinkSql"),
-                new Object[] { link.getCreateTime(), link.getLastUpdateBy(),
-                        link.getLastUpdateTime(), grouplet.getGroupletId(), link.getExternalId() },
-                new int[] { Types.TIMESTAMP, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR,
-                        Types.VARCHAR }) <= 0) {
+                new Object[] { link.getLastUpdateBy(), link.getLastUpdateTime(), grouplet.getGroupletId(),
+                        link.getExternalId() },
+                new int[] { Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR }) <= 0) {
             link.setCreateTime(new Date());
             sqlTemplate.update(getSql("insertGroupletLinkSql"), new Object[] {
                     link.getCreateTime(), link.getLastUpdateBy(), link.getLastUpdateTime(),
@@ -314,12 +311,11 @@ public class GroupletService extends AbstractService implements IGroupletService
         ISqlTemplate sqlTemplate = platform.getSqlTemplate();
         triggerRouterGrouplet.setLastUpdateTime(new Date());
         if (sqlTemplate.update(getSql("updateTriggerRouterGroupletSql"), new Object[] {
-                triggerRouterGrouplet.getCreateTime(), triggerRouterGrouplet.getLastUpdateBy(),
-                triggerRouterGrouplet.getLastUpdateTime(), grouplet.getGroupletId(),
-                triggerRouterGrouplet.getAppliesWhen().name(),
+                triggerRouterGrouplet.getLastUpdateBy(), triggerRouterGrouplet.getLastUpdateTime(),
+                grouplet.getGroupletId(), triggerRouterGrouplet.getAppliesWhen().name(),
                 triggerRouterGrouplet.getTriggerId(), triggerRouterGrouplet.getRouterId() },
-                new int[] { Types.TIMESTAMP, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR,
-                        Types.VARCHAR, Types.VARCHAR, Types.VARCHAR }) <= 0) {
+                new int[] { Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                        Types.VARCHAR }) <= 0) {
             triggerRouterGrouplet.setCreateTime(new Date());
             sqlTemplate.update(
                     getSql("insertTriggerRouterGroupletSql"),

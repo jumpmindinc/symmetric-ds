@@ -32,19 +32,19 @@ public class GroupletServiceSqlMap extends AbstractSqlMap {
         putSql("selectTriggerRouterGroupletSql",
                 "select grouplet_id, trigger_id, router_id, applies_when, create_time, last_update_by, last_update_time from $(trigger_router_grouplet)");
         putSql("updateGroupletSql",
-                "update $(grouplet) set grouplet_link_policy=?, description=?, create_time=?, last_update_by=?, last_update_time=? where grouplet_id=?");
+                "update $(grouplet) set grouplet_link_policy=?, description=?, last_update_by=?, last_update_time=? where grouplet_id=?");
         putSql("insertGroupletSql",
                 "insert into $(grouplet) (grouplet_link_policy, description, create_time, last_update_by, last_update_time, grouplet_id) values(?,?,?,?,?,?)");
         putSql("deleteGroupletSql", "delete from $(grouplet) where grouplet_id=?");
         putSql("deleteAllGroupletsSql", "delete from $(grouplet)");
         putSql("updateGroupletLinkSql",
-                "update $(grouplet_link) set create_time=?, last_update_by=?, last_update_time=? where grouplet_id=? and external_id=?");
+                "update $(grouplet_link) set last_update_by=?, last_update_time=? where grouplet_id=? and external_id=?");
         putSql("insertGroupletLinkSql",
                 "insert into $(grouplet_link) (create_time, last_update_by, last_update_time, grouplet_id, external_id) values(?,?,?,?,?)");
         putSql("deleteGroupletLinkSql", "delete from $(grouplet_link) where grouplet_id=? and external_id=?");
         putSql("deleteAllGroupletLinksSql", "delete from $(grouplet_link)");
         putSql("updateTriggerRouterGroupletSql",
-                "update $(trigger_router_grouplet) set create_time=?, last_update_by=?, last_update_time=? where grouplet_id=? and applies_when=? and trigger_id=? and router_id=?");
+                "update $(trigger_router_grouplet) set last_update_by=?, last_update_time=? where grouplet_id=? and applies_when=? and trigger_id=? and router_id=?");
         putSql("insertTriggerRouterGroupletSql",
                 "insert into $(trigger_router_grouplet) (create_time, last_update_by, last_update_time, grouplet_id, applies_when, trigger_id, router_id) values(?,?,?,?,?,?,?)");
         putSql("deleteTriggerRouterGroupletSql",

@@ -64,22 +64,18 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric publishToSonatype publishDocker \
+                ./gradlew clean jar releaseSymmetric publishDocker \
                     -Platest="$LATEST" \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PdockerPassword=${{ secrets.DOCKERHUB_PASSWORD }} \
                     -PdockerUser=${{ secrets.DOCKERHUB_USER }} \
                     -PsourceforgeApiKey=${{ secrets.SOURCEFORGE_API_KEY }} \
                     -PsourceforgePassword=${{ secrets.SOURCEFORGE_PASSWORD }} \
-                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }} \
-                    -PsonatypeUser=${{ secrets.SONATYPE_USER }} \
-                    -PsonatypePassword=${{ secrets.SONATYPE_PASSWORD }}
+                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }}
 
               working-directory: symmetric-assemble
               env:
                   LATEST: ${{ github.event.inputs.latest }}
-                  ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_KEY }}
-                  ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSWORD }}
 
             - name: Does Tag Exist?
               id: check_tag_exists

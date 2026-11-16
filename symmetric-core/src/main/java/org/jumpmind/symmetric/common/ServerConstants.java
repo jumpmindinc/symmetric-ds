@@ -21,6 +21,9 @@
 package org.jumpmind.symmetric.common;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jumpmind.security.SecurityConstants;
 
@@ -89,4 +92,21 @@ public class ServerConstants {
             entry("SYM_CLUSTER_JCS_PORT", CLUSTER_JCS_PORT),
             entry("SYM_CLUSTER_PEER_DISCOVERY", CLUSTER_PEER_DISCOVERY),
             entry("SYM_CLUSTER_PEER_DISCOVERY_STATIC_SERVERS", CLUSTER_PEER_DISCOVERY_SERVERS));
+    public static final Set<String> SYSTEM_PROPERTY_STARTUP_PARAMETERS = Stream.concat(JVM_IMPORT_ENV_VARS.values().stream(), Stream.of(
+            SecurityConstants.ALIAS_SYM_SECRET_KEY,
+            SecurityConstants.SYSPROP_KEYSTORE,
+            SecurityConstants.SYSPROP_KEYSTORE_TYPE,
+            SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS,
+            SecurityConstants.SYSPROP_KEYSTORE_PASSWORD,
+            SecurityConstants.SYSPROP_TRUSTSTORE,
+            SecurityConstants.SYSPROP_TRUSTSTORE_TYPE,
+            SecurityConstants.SYSPROP_TRUSTSTORE_PASSWORD,
+            SecurityConstants.SYSPROP_SSL_IGNORE_PROTOCOLS,
+            SecurityConstants.SYSPROP_SSL_IGNORE_CIPHERS,
+            SecurityConstants.SYSPROP_KEY_MANAGER_FACTORY_ALGORITHM,
+            HTTPS_ALLOW_SELF_SIGNED_CERTS,
+            HTTPS_VERIFIED_SERVERS,
+            HTTPS_ENABLE,
+            HTTPS2_ENABLE,
+            SERVER_DISALLOW_HTTP_METHODS)).collect(Collectors.toUnmodifiableSet());
 }

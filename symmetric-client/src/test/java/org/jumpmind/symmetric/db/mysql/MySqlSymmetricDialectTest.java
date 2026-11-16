@@ -40,6 +40,7 @@ import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.SequenceIdentifier;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
@@ -151,6 +152,37 @@ class MySqlSymmetricDialectTest {
         when(parameterService.getString(eq(ParameterConstants.DB_MASTER_COLLATION), anyString())).thenReturn("latin1");
         MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(parameterService, createPlatform("8.0.30"));
         assertEquals("latin1", dialect.getCharacterSet());
+    }
+
+    @Test
+    void getCurrentSequenceValue_queriesLowerCaseDataTableName_notEnumCasing() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(platform.getDefaultCatalog()).thenReturn("testdb");
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1000L);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        dialect.getCurrentSequenceValue(SequenceIdentifier.DATA);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(sqlTemplate, times(1)).queryForObject(anyString(), eq(Long.class), argsCaptor.capture());
+        assertArrayEquals(new Object[] { "testdb", "sym_data" }, argsCaptor.getValue());
+    }
+
+    @Test
+    void getCurrentSequenceValue_returnsAutoIncrementValue_whenRowFound() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(5001L);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        assertEquals(5001L, dialect.getCurrentSequenceValue(SequenceIdentifier.DATA));
+    }
+
+    @Test
+    void getCurrentSequenceValue_returnsNegativeOne_whenNoRowFoundForTableName() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(sqlTemplate.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(null);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+        assertEquals(-1L, dialect.getCurrentSequenceValue(SequenceIdentifier.DATA));
     }
 
     private IParameterService createParameterService() {
