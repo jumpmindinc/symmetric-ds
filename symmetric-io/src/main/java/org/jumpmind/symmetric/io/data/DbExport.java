@@ -477,6 +477,9 @@ public class DbExport {
         if (mappedCompatible == Compatible.MSSQL) {
             mappedCompatible = Compatible.MSSQL2000;
         }
+        if (mappedCompatible == Compatible.SYBASE) {
+            mappedCompatible = Compatible.ASE;
+        }
         return mappedCompatible.toString().toLowerCase();
     }
 
