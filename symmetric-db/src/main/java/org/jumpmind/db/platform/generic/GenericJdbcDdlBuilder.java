@@ -39,7 +39,6 @@ import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.AbstractDdlBuilder;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlException;
 
 public class GenericJdbcDdlBuilder extends AbstractDdlBuilder {
@@ -53,9 +52,7 @@ public class GenericJdbcDdlBuilder extends AbstractDdlBuilder {
         databaseInfo.setHasNullDefault(Types.TIME, true);
         databaseInfo.setRequiresAutoCommitForDdl(true);
         DataSource ds = platform.getDataSource();
-        Connection c = null;
-        try {
-            c = ds.getConnection();
+        try (Connection c = ds.getConnection()) {
             DatabaseMetaData meta = c.getMetaData();
             String quoteString = null;
             try {
@@ -76,8 +73,6 @@ public class GenericJdbcDdlBuilder extends AbstractDdlBuilder {
             }
         } catch (SQLException ex) {
             throw new SqlException(ex);
-        } finally {
-            JdbcSqlTemplate.close(c);
         }
     }
 
@@ -89,9 +84,7 @@ public class GenericJdbcDdlBuilder extends AbstractDdlBuilder {
     }
 
     protected final boolean setNativeMapping(int targetJdbcType, DatabaseMetaData meta, int acceptableType) throws SQLException {
-        ResultSet rs = null;
-        try {
-            rs = meta.getTypeInfo();
+        try (ResultSet rs = meta.getTypeInfo()) {
             while (rs.next()) {
                 String name = rs.getString("TYPE_NAME");
                 int type = rs.getInt("DATA_TYPE");
@@ -102,8 +95,6 @@ public class GenericJdbcDdlBuilder extends AbstractDdlBuilder {
             }
         } catch (Exception e) {
             // Do nothing if meta data not supported
-        } finally {
-            JdbcSqlTemplate.close(rs);
         }
         return false;
     }
