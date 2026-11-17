@@ -51,11 +51,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
-<<<<<<< HEAD
-=======
 import org.jumpmind.symmetric.io.data.transform.TransformColumn;
-import org.jumpmind.symmetric.io.stage.IStagingManager;
->>>>>>> 6a9f4c87b5 (SYM-8345: Configuration export decrypts the SMTP password and writes it in plain text (#1332))
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.Node;
@@ -72,15 +68,7 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
-<<<<<<< HEAD
-=======
-import org.jumpmind.symmetric.service.ISequenceService;
-import org.jumpmind.symmetric.service.ITransformService;
-import org.jumpmind.symmetric.service.ITriggerRouterService;
-import org.jumpmind.symmetric.service.impl.DataExtractorService.ExtractMode;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
-import org.jumpmind.symmetric.statistic.IStatisticManager;
->>>>>>> 6a9f4c87b5 (SYM-8345: Configuration export decrypts the SMTP password and writes it in plain text (#1332))
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
