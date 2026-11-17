@@ -67,18 +67,14 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ext.ISyncEventListener;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.CsvConstants;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
-<<<<<<< HEAD
+import org.jumpmind.symmetric.io.data.transform.TransformColumn;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
-=======
-import org.jumpmind.symmetric.io.data.transform.TransformColumn;
->>>>>>> 6a9f4c87b5 (SYM-8345: Configuration export decrypts the SMTP password and writes it in plain text (#1332))
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.io.stage.StagedResourceETag;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
