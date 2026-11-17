@@ -294,9 +294,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             ExtractDataReader dataReader = new ExtractDataReader(symmetricDialect.getPlatform(), source, symmetricDialect.getTargetPlatform());
             ProtocolDataWriter dataWriter = new ProtocolDataWriter(nodeService.findIdentityNodeId(), writer, targetNode.requires13Compatiblity(), false, false);
             List<TransformTableNodeGroupLink> transformsList = transformService.getConfigExtractTransforms(nodeGroupLink);
-            if (targetNode.getNodeId().equals(sourceNode.getNodeId())) {
-                removeSmtpPasswordDecryptTransform(transformsList);
-            }
+            removeSmtpPasswordDecryptTransformIfExportingToSelf(transformsList, sourceNode, targetNode);
             TransformTable[] transforms = transformsList.toArray(new TransformTable[transformsList.size()]);
             TransformWriter transformWriter = new TransformWriter(symmetricDialect.getTargetPlatform(), TransformPoint.EXTRACT, dataWriter, transformService
                     .getColumnTransforms(), transforms);
@@ -312,10 +310,12 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
     }
 
-    protected void removeSmtpPasswordDecryptTransform(List<TransformTableNodeGroupLink> transforms) {
-        log.debug("Removing the smtp decryption transform from the transform list to ensure smtp.password parameter is encrypted in config export.");
-        transforms.removeIf(rule -> rule.getTransformColumns().stream()
-                .anyMatch(column -> Strings.CS.contains(column.getTransformExpression(), "onSmtpPasswordRender")));
+    protected void removeSmtpPasswordDecryptTransformIfExportingToSelf(List<TransformTableNodeGroupLink> transforms, Node sourceNode, Node targetNode) {
+        if (targetNode.getNodeId().equals(sourceNode.getNodeId())) {
+            log.debug("Removing the smtp decryption transform so smtp.password stays encrypted in the config export for node {}", sourceNode.getNodeId());
+            transforms.removeIf(rule -> rule.getTransformColumns().stream()
+                    .anyMatch(column -> Strings.CS.contains(column.getTransformExpression(), "onSmtpPasswordRender")));
+        }
     }
 
     private void addPurgeCriteriaToConfigurationTables(Node targetNode, String sourceTableName, StringBuilder sql) {
