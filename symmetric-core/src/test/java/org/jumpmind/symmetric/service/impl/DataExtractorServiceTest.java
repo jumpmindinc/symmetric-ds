@@ -73,8 +73,12 @@ import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.CsvConstants;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
+<<<<<<< HEAD
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
+=======
+import org.jumpmind.symmetric.io.data.transform.TransformColumn;
+>>>>>>> 6a9f4c87b5 (SYM-8345: Configuration export decrypts the SMTP password and writes it in plain text (#1332))
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.io.stage.StagedResourceETag;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -104,6 +108,7 @@ import org.jumpmind.symmetric.service.ISequenceService;
 import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.DataExtractorService.ExtractMode;
+import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.junit.jupiter.api.BeforeEach;
@@ -880,6 +885,40 @@ class DataExtractorServiceTest {
         assertTrue(service.filterSuspendedAndIgnoredBatches(batches, ignoring(EXTRACT_CHANNEL)).isEmpty(), "an empty batch list should remove nothing");
     }
 
+    @Test
+    void testRemoveSmtpPasswordDecryptTransform_withSmtpRule_removesOnlySmtpRule() {
+        TransformTableNodeGroupLink heartbeatRule = transformRule("sym_node_host", "system_timestamp");
+        TransformTableNodeGroupLink nodePasswordRule = transformRule("sym_node_security", "filter.onNodeSecurityRender(currentValue)");
+        TransformTableNodeGroupLink smtpPasswordRule = transformRule("sym_parameter", "filter.onSmtpPasswordRender(currentValue)");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(heartbeatRule, nodePasswordRule, smtpPasswordRule));
+        service.removeSmtpPasswordDecryptTransform(transforms);
+        assertEquals(List.of(heartbeatRule, nodePasswordRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransform_withoutSmtpRule_keepsAllRules() {
+        TransformTableNodeGroupLink heartbeatRule = transformRule("sym_node_host", "system_timestamp");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(heartbeatRule));
+        service.removeSmtpPasswordDecryptTransform(transforms);
+        assertEquals(List.of(heartbeatRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransform_withOtherParameterRule_keepsIt() {
+        TransformTableNodeGroupLink otherParameterRule = transformRule("sym_parameter", "currentValue");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(otherParameterRule));
+        service.removeSmtpPasswordDecryptTransform(transforms);
+        assertEquals(List.of(otherParameterRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransform_withColumnWithoutExpression_keepsRule() {
+        TransformTableNodeGroupLink copyRule = transformRule("sym_parameter", null);
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(copyRule));
+        service.removeSmtpPasswordDecryptTransform(transforms);
+        assertEquals(List.of(copyRule), transforms);
+    }
+
     private IOutgoingTransport reservingTransport() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         when(transport.isReservationRequired()).thenReturn(true);
@@ -919,5 +958,15 @@ class DataExtractorServiceTest {
         NodeChannels nodeChannels = new NodeChannels();
         nodeChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, channelId);
         return nodeChannels;
+    }
+
+    private TransformTableNodeGroupLink transformRule(String tableName, String expression) {
+        TransformColumn column = new TransformColumn("value", "value", false);
+        column.setTransformExpression(expression);
+        TransformTableNodeGroupLink rule = new TransformTableNodeGroupLink();
+        rule.setSourceTableName(tableName);
+        rule.setTargetTableName(tableName);
+        rule.addTransformColumn(column);
+        return rule;
     }
 }
