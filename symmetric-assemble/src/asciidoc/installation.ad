@@ -739,6 +739,20 @@ that bundles an older H2 library. If your installation includes an H2 database, 
 to a SymmetricDS release with an older H2 library (for example, going from 3.17.10 to 3.18.1
 instead of 3.18.2 or later).
 
+NOTE: Starting in SymmetricDS 3.18.5, every SymmetricDS JVM starts with the flag `-XX:-UseBASE64Intrinsics` to mitigate
+the Java4Shell vulnerability (CVE-2026-114938) in the JVM's built-in Base64 decoder.
+The flag is set in `bin/setenv`, `bin/setenv.bat`, `conf/sym_service.conf`, `bin/sym_service`, `bin/sym_service.bat`
+and `bin/sym_service.l4j.ini` (used by `bin\sym_service.exe` on Windows).
+ifdef::pro[]
+The setup program adds the flag to `conf/sym_service.conf`, `bin/setenv` and `bin/setenv.bat` of an existing installation
+during upgrade, and leaves a file unchanged when it already mentions `UseBASE64Intrinsics`.
+endif::pro[]
+A Windows service registered with `java.exe` or `javaw.exe` as `wrapper.java.command` keeps its old command line
+until it is re-registered with `bin\sym_service.bat uninstall` followed by `bin\sym_service.bat install`.
+To verify, run `jcmd <pid> VM.flags` for the SymmetricDS processes and check for `-XX:-UseBASE64Intrinsics`.
+For a WAR or embedded deployment, add the flag to the JVM options of the host application.
+The flag can be removed after upgrading Java to a release that fixes CVE-2026-114938.
+
 ifdef::pro[]
 
 ==== Upgrade SymmetricDS Cluster

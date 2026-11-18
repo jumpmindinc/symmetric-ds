@@ -21,4 +21,4 @@
 #
  
 . "`dirname "$0"`/setenv"
-exec "$SYM_JAVA" -cp "$CLASSPATH" -Djava.io.tmpdir="$SYM_HOME/tmp" org.jumpmind.symmetric.wrapper.Wrapper "$1" "$SYM_HOME/conf/sym_service.conf"
+exec "$SYM_JAVA" -XX:-UseBASE64Intrinsics -cp "$CLASSPATH" -Djava.io.tmpdir="$SYM_HOME/tmp" org.jumpmind.symmetric.wrapper.Wrapper "$1" "$SYM_HOME/conf/sym_service.conf"

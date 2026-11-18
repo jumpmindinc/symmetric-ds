@@ -60,6 +60,12 @@ class WindowsServiceTest {
     }
 
     @Test
+    void testGetServiceCommand_withJavaCommand_disablesBase64Intrinsics() throws Exception {
+        List<String> cmd = newService("wrapper.java.command=javaw.exe").getServiceCommand();
+        assertEquals("-XX:-UseBASE64Intrinsics", cmd.get(cmd.size() - 6));
+    }
+
+    @Test
     void testGetServiceCommand_ignoresCaseOfServiceExecutable() throws Exception {
         assertEquals("init", newService("wrapper.java.command=..\\bin\\SYM_SERVICE.EXE").getServiceCommand().get(1));
     }
