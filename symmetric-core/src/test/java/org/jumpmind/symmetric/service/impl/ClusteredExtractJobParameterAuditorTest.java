@@ -49,7 +49,7 @@ class ClusteredExtractJobParameterAuditorTest {
 
     @Test
     void testAudit_withClusterLockingDisabledLeavesParametersAlone() {
-        TypedProperties parameters = newParameters("false", "true", "true");
+        TypedProperties parameters = newParameters("false", "false", "true");
         AuditedProperties audited = auditor.audit(parameters);
         assertFalse(audited.isModified());
         assertSame(parameters, audited.parameters());
@@ -57,17 +57,24 @@ class ClusteredExtractJobParameterAuditorTest {
 
     @Test
     void testAudit_withExtractJobDisabledLeavesParametersAlone() {
-        AuditedProperties audited = auditor.audit(newParameters("true", "true", "false"));
+        AuditedProperties audited = auditor.audit(newParameters("true", "false", "false"));
         assertFalse(audited.isModified());
         assertEquals("", audited.violationMessage());
     }
 
-    // Defect pinned, not endorsed: the guard fires when cluster.staging.enabled is true, yet the
-    // message it reports says staging is not clustered. Because the shipped default is false, the
-    // audit never trips for the combination it is meant to catch.
     @Test
-    void testAudit_withClusteredStagingEnabledDisablesTheExtractJob() {
+    void testAudit_withClusteredStagingLeavesParametersAlone() {
         TypedProperties parameters = newParameters("true", "true", "true");
+        AuditedProperties audited = auditor.audit(parameters);
+        assertFalse(audited.isModified());
+        assertSame(parameters, audited.parameters());
+        assertEquals("", audited.violationMessage());
+        assertTrue(audited.parameters().is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB));
+    }
+
+    @Test
+    void testAudit_withLocalStagingDisablesTheExtractJob() {
+        TypedProperties parameters = newParameters("true", "false", "true");
         AuditedProperties audited = auditor.audit(parameters);
         assertTrue(audited.isModified());
         assertNotSame(parameters, audited.parameters());
@@ -76,22 +83,22 @@ class ClusteredExtractJobParameterAuditorTest {
     }
 
     @Test
-    void testAudit_withClusteredStagingEnabledLeavesTheInputPropertiesUntouched() {
-        TypedProperties parameters = newParameters("true", "true", "true");
+    void testAudit_withLocalStagingLeavesTheInputPropertiesUntouched() {
+        TypedProperties parameters = newParameters("true", "false", "true");
         auditor.audit(parameters);
         assertTrue(parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB));
     }
 
     @Test
-    void testAudit_withClusteredStagingEnabledNamesAllThreeParametersInTheMessage() {
-        String message = auditor.audit(newParameters("true", "true", "true")).violationMessage();
+    void testAudit_withLocalStagingNamesAllThreeParametersInTheMessage() {
+        String message = auditor.audit(newParameters("true", "false", "true")).violationMessage();
         assertTrue(message.contains(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB + "=true"));
         assertTrue(message.contains(ParameterConstants.CLUSTER_LOCKING_ENABLED + "=true"));
         assertTrue(message.contains(ParameterConstants.CLUSTER_STAGING_ENABLED + "=false"));
     }
 
     @Test
-    void testAudit_withStagingUnsetUsesTheDefaultOfTrue() {
+    void testAudit_withStagingUnsetTreatsStagingAsLocal() {
         TypedProperties parameters = new TypedProperties();
         parameters.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
         parameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "true");

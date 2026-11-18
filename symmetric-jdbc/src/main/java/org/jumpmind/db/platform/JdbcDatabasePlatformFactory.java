@@ -60,6 +60,7 @@ import org.jumpmind.db.platform.cassandra.CassandraPlatform;
 import org.jumpmind.db.platform.db2.Db2DatabasePlatform;
 import org.jumpmind.db.platform.derby.DerbyDatabasePlatform;
 import org.jumpmind.db.platform.duckdb.DuckDbDatabasePlatform;
+import org.jumpmind.db.platform.duckdb.DuckDbVariantDetector;
 import org.jumpmind.db.platform.firebird.FirebirdDatabasePlatform;
 import org.jumpmind.db.platform.firebird.FirebirdDialect1DatabasePlatform;
 import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
@@ -81,7 +82,6 @@ import org.jumpmind.db.platform.postgresql.PostgreSql95DatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlVariantDetector;
 import org.jumpmind.db.platform.raima.RaimaDatabasePlatform;
-import org.jumpmind.db.platform.clickhouse.ClickHouseDatabasePlatform;
 import org.jumpmind.db.platform.redshift.RedshiftDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhere12DatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
@@ -141,7 +141,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         addPlatform(platforms, DatabaseNamesConstants.SQLANYWHERE12, SqlAnywhere12DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.RAIMA, RaimaDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.REDSHIFT, RedshiftDatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.CLICKHOUSE, ClickHouseDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.VOLTDB, VoltDbDatabasePlatform.class);
         /**
          * Match on name + version to get a specific version
@@ -176,8 +175,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         jdbcSubProtocolToPlatform.put(SqlAnywhereDatabasePlatform.JDBC_SUBPROTOCOL, SqlAnywhereDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(RaimaDatabasePlatform.JDBC_SUBPROTOCOL, RaimaDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(RedshiftDatabasePlatform.JDBC_SUBPROTOCOL, RedshiftDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(ClickHouseDatabasePlatform.JDBC_SUBPROTOCOL, ClickHouseDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(ClickHouseDatabasePlatform.JDBC_SUBPROTOCOL_SHORT, ClickHouseDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(VoltDbDatabasePlatform.JDBC_SUBPROTOCOL, VoltDbDatabasePlatform.class);
     }
 
@@ -334,6 +331,9 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         if (nameVersion.getProtocol().equalsIgnoreCase(SqlAnywhereDatabasePlatform.JDBC_SUBPROTOCOL_SHORT) && nameVersion.getVersion() >= 12 && !nameVersion
                 .getName().equals("Adaptive Server Enterprise")) {
             nameVersion.setName(DatabaseNamesConstants.SQLANYWHERE12);
+        }
+        if (DuckDbDatabasePlatform.JDBC_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && DuckDbVariantDetector.isMotherDuck(metaData.getURL())) {
+            nameVersion.setName(DatabaseNamesConstants.MOTHERDUCK);
         }
     }
 
