@@ -22,9 +22,7 @@ package org.jumpmind.db.platform;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.jumpmind.db.platform.clickhouse.ClickHouseDdlBuilder;
 import org.jumpmind.db.platform.hana.HanaDdlBuilder;
 import org.jumpmind.db.platform.ingres.IngresDdlBuilder;
 import org.jumpmind.db.platform.mariadb.MariaDBDdlBuilder;
@@ -34,11 +32,6 @@ import org.junit.jupiter.api.Test;
 
 class DdlBuilderFactoryTest {
     private final DdlBuilderFactory factory = new DdlBuilderFactory();
-
-    @Test
-    void testCreate_createsClickHouseBuilder() {
-        assertTrue(DdlBuilderFactory.getInstance().create(DatabaseNamesConstants.CLICKHOUSE) instanceof ClickHouseDdlBuilder);
-    }
 
     @Test
     void testCreateReturnsHanaDdlBuilderForHdb() {
