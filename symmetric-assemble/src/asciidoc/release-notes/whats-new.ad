@@ -18,6 +18,13 @@ See also: <<System Requirements>>.
 
 ifdef::pro[]
 
+=== MotherDuck Support
+--
+SymmetricDS Pro can now replicate data into https://motherduck.com[MotherDuck], the cloud service for DuckDB, as a write-only target. Add MotherDuck with the Connect Database Wizard by selecting *MotherDuck* as the type. SymmetricDS connects with the DuckDB JDBC driver using a `jdbc:duckdb:md:<database>` URL and a MotherDuck access token.
+
+Tables are created and altered in MotherDuck automatically, and data is loaded the same way as for a DuckDB target. Changes cannot be captured from MotherDuck.
+--
+
 === Microsoft Fabric Warehouse Support
 --
 SymmetricDS Pro can now replicate data into a https://learn.microsoft.com/en-us/fabric/data-warehouse/data-warehousing[Microsoft Fabric Warehouse] as a write-only target. Add the warehouse with the Configure Diagram or Connect Database Wizard by selecting *Microsoft Fabric Warehouse* as the type. The warehouse accepts only Microsoft Entra ID authentication, so SymmetricDS connects with the service principal of an Entra app registration.
@@ -36,14 +43,14 @@ Changes are captured with database triggers, which is the default capture type i
 A bulk channel that loads a SQL database in Microsoft Fabric loads inserts with the bulk copy API of the Microsoft JDBC driver instead of JDBC batch statements. No additional configuration is needed.
 --
 
-endif::pro[]
-
 === ClickHouse Support
 --
-SymmetricDS can now load data into a https://clickhouse.com/[ClickHouse] database as a write-only target. Data from any other supported database can be inserted, updated, and deleted in ClickHouse tables. SymmetricDS creates missing tables as `MergeTree` tables, with the primary key as the sorting key, and applies added, modified, and dropped columns. Use `symadmin module install clickhouse` to install the JDBC driver.
+SymmetricDS Pro can now load data into a https://clickhouse.com/[ClickHouse] database as a write-only target. Data from any other supported database can be inserted, updated, and deleted in ClickHouse tables. SymmetricDS creates missing tables as `MergeTree` tables, with the primary key as the sorting key, and applies added, modified, and dropped columns.
 
 ClickHouse always reports zero rows changed for an update or delete, so the loader treats them as successful and conflict detection does not work on this target. Capture, use as a source, a bulk loader, and ClickHouse Cloud are not supported. See <<ClickHouse>> for details.
 --
+
+endif::pro[]
 
 === Post-Quantum Key Exchange
 --

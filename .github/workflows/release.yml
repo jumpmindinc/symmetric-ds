@@ -41,6 +41,19 @@ jobs:
                     echo "ERROR: This workflow only supports a release/* branch."
                     exit 1
                 fi
+
+            - name: Validate release version matches release branch
+              env:
+                VERSION: ${{ inputs.version }}
+              run: |
+                BRANCH_SERIES="${GITHUB_REF_NAME#release/}"
+                VERSION_SERIES="$(cut -d. -f1,2 <<< "$VERSION")"
+                echo "Branch series $BRANCH_SERIES, version series $VERSION_SERIES"
+                if [[ "$VERSION_SERIES" != "$BRANCH_SERIES" ]]; then
+                    echo "ERROR: Version $VERSION cannot be released from branch $GITHUB_REF_NAME."
+                    echo "Branch $GITHUB_REF_NAME only releases $BRANCH_SERIES.* versions."
+                    exit 1
+                fi
                 
             - name: Checkout Source
               uses: actions/checkout@v6.0.2

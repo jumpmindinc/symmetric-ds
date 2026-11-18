@@ -22,20 +22,16 @@ package org.jumpmind.db.platform;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.jumpmind.db.platform.clickhouse.ClickHouseDdlBuilder;
 import org.jumpmind.db.platform.hana.HanaDdlBuilder;
+import org.jumpmind.db.platform.ingres.IngresDdlBuilder;
+import org.jumpmind.db.platform.mariadb.MariaDBDdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
+import org.jumpmind.db.platform.raima.RaimaDdlBuilder;
 import org.junit.jupiter.api.Test;
 
 class DdlBuilderFactoryTest {
     private final DdlBuilderFactory factory = new DdlBuilderFactory();
-
-    @Test
-    void testCreate_createsClickHouseBuilder() {
-        assertTrue(DdlBuilderFactory.getInstance().create(DatabaseNamesConstants.CLICKHOUSE) instanceof ClickHouseDdlBuilder);
-    }
 
     @Test
     void testCreateReturnsHanaDdlBuilderForHdb() {
@@ -50,6 +46,21 @@ class DdlBuilderFactoryTest {
     @Test
     void testCreateReturnsMySqlDdlBuilderForMySql() {
         assertEquals(MySqlDdlBuilder.class, factory.create(DatabaseNamesConstants.MYSQL).getClass());
+    }
+
+    @Test
+    void testCreateReturnsMariaDbDdlBuilderForMariaDb() {
+        assertEquals(MariaDBDdlBuilder.class, factory.create(DatabaseNamesConstants.MARIADB).getClass());
+    }
+
+    @Test
+    void testCreateReturnsIngresDdlBuilderForIngres() {
+        assertEquals(IngresDdlBuilder.class, factory.create(DatabaseNamesConstants.INGRES).getClass());
+    }
+
+    @Test
+    void testCreateReturnsRaimaDdlBuilderForRaima() {
+        assertEquals(RaimaDdlBuilder.class, factory.create(DatabaseNamesConstants.RAIMA).getClass());
     }
 
     @Test

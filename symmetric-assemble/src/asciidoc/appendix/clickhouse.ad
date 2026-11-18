@@ -1,6 +1,14 @@
 [id="ClickHouse",reftext="ClickHouse"]
 === ClickHouse
 
+ifndef::pro[]
+
+NOTE: Support for ClickHouse is available in https://www.jumpmind.com/products/symmetricds/symmetricds-overview[SymmetricDS Pro].
+
+endif::pro[]
+
+ifdef::pro[]
+
 Use `symadmin module install clickhouse` to install driver files, or copy your own files into the `lib` sub-directory.
 
 ClickHouse is a column-oriented database for analytics. SymmetricDS supports ClickHouse as a write-only target, where
@@ -11,23 +19,9 @@ source are not supported, and neither is a bulk loader.
 
 ClickHouse runs as a write-only node in SymmetricDS.  See <<Write-Only>> for details on setting up a write-only node in SymmetricDS.
 
-ifndef::pro[]
-
-.Example properties to setup a ClickHouse write-only node
-----
-load.only=true
-target.db.driver=com.clickhouse.jdbc.ClickHouseDriver
-target.db.url=jdbc:clickhouse://<host>:8123/<database_name>
-target.db.user=<clickhouse_user>
-target.db.password=<clickhouse_password>
-----
-
-endif::pro[]
-
-Next, set the `data_loader_type` of each <<Channels, channel>> that carries data for ClickHouse tables to *clickhouse*, which includes
-the `reload` channel because it is set to *bulk* by default. The ClickHouse data loader is what makes updates and deletes work and
-what clears a table before a reload. A channel left on another data loader type does not use it, so updates and deletes are
-reported as conflicts and a reload fails when it clears the table.
+Add ClickHouse with the Connect Database Wizard by selecting *ClickHouse* as the type. SymmetricDS Pro selects the ClickHouse data
+loader for every channel that uses the `default` or `bulk` data loader type, which includes the `reload` channel. The ClickHouse data loader
+is what makes updates and deletes work and what clears a table before a reload, so the data loader type of a channel does not need to be changed.
 
 The `clickhouse` and `ch` JDBC sub-protocols are both recognized. The driver connects over HTTP, which is port 8123
 on a server that is not using TLS. The database named in the URL is the default schema for the target tables.
@@ -137,3 +131,5 @@ clause, so SymmetricDS runs `truncate table` instead. A custom statement that ha
 * ClickHouse Cloud, including TLS connections on port 8443, has not been validated.
 * The primary key of an existing table cannot be changed.
 * Table names that contain the source node ID, which are used when the target external ID is in use, are not supported.
+
+endif::pro[]
