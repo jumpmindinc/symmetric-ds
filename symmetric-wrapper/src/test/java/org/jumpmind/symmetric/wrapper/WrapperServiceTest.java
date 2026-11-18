@@ -142,6 +142,18 @@ class WrapperServiceTest {
     }
 
     @Test
+    void testGetWrapperCommand_disablesBase64IntrinsicsBeforeJar() {
+        List<String> cmd = service.getWrapperCommand("exec", false);
+        assertEquals("-XX:-UseBASE64Intrinsics", cmd.get(cmd.size() - 6));
+    }
+
+    @Test
+    void testGetWrapperCommand_disablesBase64IntrinsicsOnce() {
+        List<String> cmd = service.getWrapperCommand("init", true);
+        assertEquals(1, cmd.stream().filter("-XX:-UseBASE64Intrinsics"::equals).count());
+    }
+
+    @Test
     void testGetWrapperCommand_includesHeapLimitsOnlyOnWindows() {
         List<String> cmd = service.getWrapperCommand("exec", false);
         assertEquals(Platform.isWindows(), cmd.contains("-Xms16m") && cmd.contains("-Xmx64m"));

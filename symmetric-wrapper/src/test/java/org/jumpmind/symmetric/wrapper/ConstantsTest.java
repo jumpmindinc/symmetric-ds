@@ -72,4 +72,9 @@ class ConstantsTest {
         assertEquals(4, Constants.RC_FAIL_READ_CONFIG_FILE);
         assertEquals(24, Constants.RC_ALREADY_RUNNING);
     }
+
+    @Test
+    void testJvmOptionDisableBase64Intrinsics() {
+        assertEquals("-XX:-UseBASE64Intrinsics", Constants.JVM_OPTION_DISABLE_BASE64_INTRINSICS);
+    }
 }

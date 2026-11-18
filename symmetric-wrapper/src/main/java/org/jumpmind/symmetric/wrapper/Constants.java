@@ -48,4 +48,5 @@ public class Constants {
     public static final int RC_MISSING_SERVER_PROPERTIES = 21;
     public static final int RC_FAIL_CHECK_STATUS = 23;
     public static final int RC_ALREADY_RUNNING = 24;
+    public static final String JVM_OPTION_DISABLE_BASE64_INTRINSICS = "-XX:-UseBASE64Intrinsics";
 }

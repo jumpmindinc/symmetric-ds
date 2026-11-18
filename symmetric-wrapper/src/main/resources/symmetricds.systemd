@@ -7,9 +7,9 @@ Type=forking
 
 Environment="SYM_HOME=${wrapper.home}"
 
-ExecStart=${wrapper.java.command} -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} start
-ExecStop=${wrapper.java.command} -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} stop
-ExecReload=${wrapper.java.command} -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} restart
+ExecStart=${wrapper.java.command} -XX:-UseBASE64Intrinsics -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} start
+ExecStop=${wrapper.java.command} -XX:-UseBASE64Intrinsics -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} stop
+ExecReload=${wrapper.java.command} -XX:-UseBASE64Intrinsics -Djava.io.tmpdir=${wrapper.home}/tmp -jar ${wrapper.jarfile} restart
 Restart=no
 PIDFile=${wrapper.pidfile}
 User=${wrapper.run.as.user}

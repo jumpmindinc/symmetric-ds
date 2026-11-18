@@ -17,6 +17,7 @@
     <minVersion>21</minVersion>
     <opt>-Xms16m</opt>
     <opt>-Xmx64m</opt>
+    <opt>-XX:-UseBASE64Intrinsics</opt>
   </jre>
   <versionInfo>
     <fileVersion>1.0.0.0</fileVersion>
