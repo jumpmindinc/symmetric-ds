@@ -25,3 +25,15 @@ created with a sequence and a default value that calls nextval() on that sequenc
 
 Character types (char, varchar, nchar, nvarchar, and clob) are created as varchar without a size. Binary types are
 created as blob. Float is created as double, and the maximum precision for decimal and numeric is 38.
+
+ifdef::pro[]
+
+==== Bulk Loading
+
+SymmetricDS has bulk loading capability available for DuckDB and <<MotherDuck>>, which is faster than JDBC batch
+statements for large loads such as initial loads. SymmetricDS specifies data loader types on a channel by channel basis.
+To use bulk loading, specify "bulk" in the data_loader_type column of sym_channel.
+
+To use JDBC batch statements instead of bulk loading, set the *db.jdbc.bulk.execute.batch.override* parameter to true.
+
+endif::pro[]
