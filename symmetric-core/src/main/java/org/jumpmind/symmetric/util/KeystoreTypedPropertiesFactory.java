@@ -42,8 +42,16 @@ public class KeystoreTypedPropertiesFactory extends TypedPropertiesFactory {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     private List<String> keystoreParametersList;
     private Map<String, ParameterMetaData> parameterMetaData = ParameterConstants.getParameterMetaData();
-    private ISecurityService securityService = SecurityServiceFactory.create();
+    private final ISecurityService securityService;
     private String engineName;
+
+    public KeystoreTypedPropertiesFactory() {
+        this(SecurityServiceFactory.create());
+    }
+
+    KeystoreTypedPropertiesFactory(ISecurityService securityService) {
+        this.securityService = securityService;
+    }
 
     public void init(File propertiesFile, Properties properties) {
         super.init(propertiesFile, properties);
@@ -136,6 +144,10 @@ public class KeystoreTypedPropertiesFactory extends TypedPropertiesFactory {
                     String keystoreKey = getKeystoreParameterKey(keyString);
                     try {
                         valueString = securityService.getKeystoreEntry(keystoreKey);
+                        if (valueString == null) {
+                            throw new IllegalStateException(String.format("Parameter %s is set to %s, but there is no keystore entry named %s", keyString,
+                                    typedProperties.get(key), keystoreKey));
+                        }
                         typedProperties.put(key, valueString);
                     } catch (Exception e) {
                         if (e instanceof RuntimeException) {
