@@ -223,12 +223,17 @@ public class WrapperConfig {
         return sb.toString();
     }
 
+    public int getPreshutdownTimeout() {
+        return Integer.parseInt(getProperty(prop, "wrapper.ntservice.preshutdown.timeout", "180000"));
+    }
+
     private String expandWildcard(String classPath) {
         int index = classPath.indexOf("*");
         if (index != -1) {
             String dirName = classPath.substring(0, index);
             File dir = new File(dirName);
             File[] files = dir.listFiles(new FilenameFilter() {
+                @Override
                 public boolean accept(File dir, String name) {
                     return name.endsWith(".jar") || name.endsWith(".JAR");
                 }
