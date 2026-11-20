@@ -13,6 +13,7 @@ Use `symadmin module install duckdb` to install driver files, or copy your own f
 
 MotherDuck is a cloud service for DuckDB. SymmetricDS supports MotherDuck as a target platform where data can be loaded.
 It connects with the DuckDB JDBC driver and loads data the same way as a <<DuckDB>> target.
+Bulk loading is also supported, the same way as for DuckDB.
 
 ==== Setup
 
