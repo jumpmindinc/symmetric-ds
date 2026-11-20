@@ -11,7 +11,7 @@ ifdef::pro[]
 
 Use `symadmin module install clickhouse` to install driver files, or copy your own files into the `lib` sub-directory.
 
-ClickHouse is a column-oriented database for analytics. SymmetricDS supports ClickHouse as a write-only target, where
+ClickHouse is a column-oriented database for analytics. SymmetricDS supports ClickHouse, including ClickHouse Cloud, as a write-only target, where
 changes from another database are loaded into ClickHouse tables. Capturing changes from ClickHouse and using it as a
 source are not supported, and neither is a bulk loader.
 
@@ -22,6 +22,12 @@ ClickHouse runs as a write-only node in SymmetricDS.  See <<Write-Only>> for det
 Add ClickHouse with the Connect Database Wizard by selecting *ClickHouse* as the type. SymmetricDS Pro selects the ClickHouse data
 loader for every channel that uses the `default` or `bulk` data loader type, which includes the `reload` channel. The ClickHouse data loader
 is what makes updates and deletes work and what clears a table before a reload, so the data loader type of a channel does not need to be changed.
+
+Add ClickHouse Cloud by selecting *ClickHouse Cloud* as the type. Enter the host name of the service, the database name, and the user and
+password of the service. The connection uses TLS on port 8443, so the URL ends with `ssl=true`, for example
+`jdbc:clickhouse://<host name>:8443/<database>?ssl=true`. Database names are case-sensitive. A ClickHouse Cloud service that is added
+as the *ClickHouse* type is also recognized, because SymmetricDS asks the server whether it is running in the cloud. ClickHouse Cloud
+runs a `MergeTree` table as a `SharedMergeTree` table, so tables are created the same way as for any other ClickHouse server.
 
 The `clickhouse` and `ch` JDBC sub-protocols are both recognized. The driver connects over HTTP, which is port 8123
 on a server that is not using TLS. The database named in the URL is the default schema for the target tables.
@@ -66,21 +72,27 @@ The following table shows how types are mapped.
 |BIGINT |Int64
 |REAL |Float32
 |FLOAT, DOUBLE |Float64
-|DECIMAL, NUMERIC |Decimal(precision, scale). ClickHouse allows a precision of at most 76. When the source has no precision, or more than 76, the precision is 38 and the scale is at most 10.
+|DECIMAL, NUMERIC |Decimal(precision, scale). ClickHouse allows a precision of at most 76. When the source has no precision, such as a PostgreSQL `numeric` without a size, or has more than 76, the column is a `String`, so that no digits are lost.
 |CHAR, VARCHAR, LONGVARCHAR, CLOB |String
 |BINARY, VARBINARY, BLOB |String, with the column comment `symds:binary`
 |DATE |Date32
 |TIMESTAMP |DateTime64(6)
-|TIME |String
+|TIMESTAMP WITH TIME ZONE |DateTime64(6)
+|TIME, TIME WITH TIME ZONE |String
+|Any other type, such as JSON, XML, UUID, interval, network address, range, array, or enumeration |String, with the value as text
 |===
 
 Binary data is stored as bytes in a `String` column. The column comment `symds:binary` records that the column holds binary
 data, so the loader decodes the hex or base64 from the data stream into bytes. Do not remove the comment, or the encoded text is
 stored instead. Use `hex()` or `base64Encode()` to display such a column. A time of day is stored as text, because ClickHouse
-has no type for it.
+has no type for it. A time zone offset on a time of day is kept in the text, and a timestamp with a time zone keeps its microseconds.
 
 A table that already exists in ClickHouse can use any of its types as the target. A `UUID` column accepts the text form of a
 UUID, so a source column of 36 characters loads into it directly.
+
+ClickHouse does not always reject a value that does not fit the type of an existing column. Loading 99999 into an `Int16` column stores
+-31073, 300 into an `Int8` stores 44, a date that does not exist stores 1900-01-01, and a null in a column that is not nullable stores an empty
+string. When a table is created by SymmetricDS its columns match the source, but check the column types of a table that you create yourself.
 
 ==== Schema Changes
 
@@ -127,8 +139,6 @@ clause, so SymmetricDS runs `truncate table` instead. A custom statement that ha
 ==== Limitations
 
 * Capturing changes and using ClickHouse as a source are not supported.
-* There is no bulk loader. Batches are loaded with JDBC batch inserts.
-* ClickHouse Cloud, including TLS connections on port 8443, has not been validated.
 * The primary key of an existing table cannot be changed.
 * Table names that contain the source node ID, which are used when the target external ID is in use, are not supported.
 

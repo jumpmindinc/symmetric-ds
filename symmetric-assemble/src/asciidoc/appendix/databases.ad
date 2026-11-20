@@ -86,6 +86,19 @@ by database.
 |
 |
 
+|ClickHouse Cloud *
+|Tested on 26.6.1
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+
 |DB2
 |9.5
 |
@@ -613,6 +626,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |(dataset name)
 
 |ClickHouse
+|
+|
+|
+|✔
+|select currentDatabase()
+
+|ClickHouse Cloud
 |
 |
 |
