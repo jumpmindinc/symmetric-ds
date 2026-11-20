@@ -41,6 +41,7 @@ public interface Advapi32Ex extends Advapi32 {
 
     boolean ChangeServiceConfig2(SC_HANDLE service, int infoLevel, SERVICE_INFO info);
 
+    @Override
     boolean DeleteService(SC_HANDLE serviceHandle);
 
     boolean StartServiceCtrlDispatcher(Structure[] serviceTable);
@@ -76,6 +77,20 @@ public interface Advapi32Ex extends Advapi32 {
 
         public SERVICE_STATUS_HANDLE(Pointer p) {
             super(p);
+        }
+    }
+
+    public static class SERVICE_PRESHUTDOWN_TIMEOUT extends SERVICE_INFO {
+        // In milliseconds
+        public int dwPreshutdownTimeout;
+
+        public SERVICE_PRESHUTDOWN_TIMEOUT(int dwPreshutdownTimeout) {
+            this.dwPreshutdownTimeout = dwPreshutdownTimeout;
+        }
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList(new String[] { "dwPreshutdownTimeout" });
         }
     }
 

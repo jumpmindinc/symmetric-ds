@@ -383,6 +383,8 @@ public class WindowsService extends WrapperService {
                         WinsvcEx.SERVICE_DELAYED_AUTO_START_INFO delayedInfo = new WinsvcEx.SERVICE_DELAYED_AUTO_START_INFO(true);
                         advapi.ChangeServiceConfig2(service, WinsvcEx.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, delayedInfo);
                     }
+                    Advapi32Ex.SERVICE_PRESHUTDOWN_TIMEOUT preshutdownTimeout = new Advapi32Ex.SERVICE_PRESHUTDOWN_TIMEOUT(config.getPreshutdownTimeout());
+                    advapi.ChangeServiceConfig2(service, WinsvcEx.SERVICE_CONFIG_PRESHUTDOWN_INFO, preshutdownTimeout);
                 } else {
                     throwException("CreateService");
                 }
@@ -465,7 +467,7 @@ public class WindowsService extends WrapperService {
                 updateStatus(Winsvc.SERVICE_START_PENDING, 0);
                 break;
             case RUNNING:
-                updateStatus(Winsvc.SERVICE_RUNNING, Winsvc.SERVICE_ACCEPT_STOP);
+                updateStatus(Winsvc.SERVICE_RUNNING, Winsvc.SERVICE_ACCEPT_STOP | Winsvc.SERVICE_ACCEPT_PRESHUTDOWN);
                 logEvent(WinNT.EVENTLOG_INFORMATION_TYPE, "The " + config.getName() + " service has started.");
                 break;
             case STOP_PENDING:
@@ -557,6 +559,7 @@ public class WindowsService extends WrapperService {
                 + Kernel32Util.formatMessageFromLastErrorCode(rc));
     }
 
+    @Override
     protected String getWrapperCommandQuote() {
         return "\"";
     }
@@ -606,12 +609,17 @@ public class WindowsService extends WrapperService {
     }
 
     class ServiceControlHandler implements HANDLER_FUNCTION {
+        @Override
         public void serviceControlHandler(int controlCode) {
             if (controlCode != Winsvc.SERVICE_CONTROL_INTERROGATE) {
                 logger.log(Level.INFO, "Service manager requesting control code " + controlCode);
             }
             if (controlCode == Winsvc.SERVICE_CONTROL_STOP) {
                 logger.log(Level.INFO, "Service manager requesting to stop service");
+                shutdown();
+            }
+            if (controlCode == Winsvc.SERVICE_CONTROL_PRESHUTDOWN) {
+                logger.log(Level.INFO, "Service manager requesting to preshutdown service");
                 shutdown();
             }
         }
