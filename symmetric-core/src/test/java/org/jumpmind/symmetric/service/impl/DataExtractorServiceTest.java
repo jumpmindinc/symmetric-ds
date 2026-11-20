@@ -51,6 +51,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
+import org.jumpmind.symmetric.io.data.transform.TransformColumn;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.Node;
@@ -67,6 +68,7 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
+import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,6 +80,7 @@ public class DataExtractorServiceTest {
     private static final String EXTRACT_CHANNEL = "testchannel";
     private static final String EXTRACT_SECOND_CHANNEL = "othertestchannel";
     private static final String EXTRACT_QUEUE = "default";
+    private static final Node SELF = new Node("server", "server");
     protected ISymmetricEngine engine;
     private IParameterService parameterService;
     private IConfigurationService configurationService;
@@ -416,6 +419,48 @@ public class DataExtractorServiceTest {
         assertTrue(service.filterSuspendedAndIgnoredBatches(batches, ignoring(EXTRACT_CHANNEL)).isEmpty(), "an empty batch list should remove nothing");
     }
 
+    @Test
+    void testRemoveSmtpPasswordDecryptTransformIfExportingToSelf_withSmtpRule_removesOnlySmtpRule() {
+        TransformTableNodeGroupLink heartbeatRule = transformRule("sym_node_host", "system_timestamp");
+        TransformTableNodeGroupLink nodePasswordRule = transformRule("sym_node_security", "filter.onNodeSecurityRender(currentValue)");
+        TransformTableNodeGroupLink smtpPasswordRule = transformRule("sym_parameter", "filter.onSmtpPasswordRender(currentValue)");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(heartbeatRule, nodePasswordRule, smtpPasswordRule));
+        service.removeSmtpPasswordDecryptTransformIfExportingToSelf(transforms, SELF, SELF);
+        assertEquals(List.of(heartbeatRule, nodePasswordRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransformIfExportingToSelf_withoutSmtpRule_keepsAllRules() {
+        TransformTableNodeGroupLink heartbeatRule = transformRule("sym_node_host", "system_timestamp");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(heartbeatRule));
+        service.removeSmtpPasswordDecryptTransformIfExportingToSelf(transforms, SELF, SELF);
+        assertEquals(List.of(heartbeatRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransformIfExportingToSelf_withOtherParameterRule_keepsIt() {
+        TransformTableNodeGroupLink otherParameterRule = transformRule("sym_parameter", "currentValue");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(otherParameterRule));
+        service.removeSmtpPasswordDecryptTransformIfExportingToSelf(transforms, SELF, SELF);
+        assertEquals(List.of(otherParameterRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransformIfExportingToSelf_withColumnWithoutExpression_keepsRule() {
+        TransformTableNodeGroupLink copyRule = transformRule("sym_parameter", null);
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(copyRule));
+        service.removeSmtpPasswordDecryptTransformIfExportingToSelf(transforms, SELF, SELF);
+        assertEquals(List.of(copyRule), transforms);
+    }
+
+    @Test
+    void testRemoveSmtpPasswordDecryptTransformIfExportingToSelf_withOtherTargetNode_keepsSmtpRule() {
+        TransformTableNodeGroupLink smtpPasswordRule = transformRule("sym_parameter", "filter.onSmtpPasswordRender(currentValue)");
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<>(List.of(smtpPasswordRule));
+        service.removeSmtpPasswordDecryptTransformIfExportingToSelf(transforms, SELF, new Node("client", "client"));
+        assertEquals(List.of(smtpPasswordRule), transforms);
+    }
+
     private IOutgoingTransport reservingTransport() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         when(transport.isReservationRequired()).thenReturn(true);
@@ -455,5 +500,15 @@ public class DataExtractorServiceTest {
         NodeChannels nodeChannels = new NodeChannels();
         nodeChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, channelId);
         return nodeChannels;
+    }
+
+    private TransformTableNodeGroupLink transformRule(String tableName, String expression) {
+        TransformColumn column = new TransformColumn("value", "value", false);
+        column.setTransformExpression(expression);
+        TransformTableNodeGroupLink rule = new TransformTableNodeGroupLink();
+        rule.setSourceTableName(tableName);
+        rule.setTargetTableName(tableName);
+        rule.addTransformColumn(column);
+        return rule;
     }
 }
