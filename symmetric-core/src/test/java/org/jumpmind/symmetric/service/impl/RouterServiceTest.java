@@ -43,8 +43,11 @@ import java.util.Set;
 
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Channel;
@@ -52,17 +55,22 @@ import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeGroupLink;
+import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ChannelRouterContext;
 import org.jumpmind.symmetric.route.IDataRouter;
+import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IGroupletService;
 import org.jumpmind.symmetric.service.INodeService;
+import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -78,6 +86,7 @@ public class RouterServiceTest {
     private static final String PK_DATA = "\"7\"";
     private static final String ROW_DATA = "\"7\",\"SHIV\"";
     private static final String OLD_DATA = "\"7\",\"OLD\"";
+    private static final String SOURCE_NODE_ID = "source1";
     RouterService routerService;
     IConfigurationService configurationService;
     IExtensionService extensionService;
@@ -85,12 +94,20 @@ public class RouterServiceTest {
     IGroupletService groupletService;
     private IParameterService parameterService;
     private IDataService dataService;
+    private IContextService contextService;
+    private IClusterService clusterService;
+    private IStatisticManager statisticManager;
+    private IOutgoingBatchService outgoingBatchService;
 
     @BeforeEach
     public void setup() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         dataService = mock(IDataService.class);
+        contextService = mock(IContextService.class);
+        clusterService = mock(IClusterService.class);
+        statisticManager = mock(IStatisticManager.class);
+        outgoingBatchService = mock(IOutgoingBatchService.class);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
         extensionService = mock(IExtensionService.class);
@@ -98,6 +115,9 @@ public class RouterServiceTest {
         nodeService = mock(INodeService.class);
         groupletService = mock(IGroupletService.class);
         when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(sqlTemplate.startSqlTransaction()).thenReturn(mock(ISqlTransaction.class));
+        when(databasePlatform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(parameterService.getLong(ParameterConstants.CACHE_CHANNEL_DEFAULT_ROUTER_IN_MS)).thenReturn(DEFAULT_ROUTER_CACHE_TIME_MS);
         when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
@@ -109,11 +129,45 @@ public class RouterServiceTest {
         when(engine.getNodeService()).thenReturn(nodeService);
         when(engine.getGroupletService()).thenReturn(groupletService);
         when(engine.getDataService()).thenReturn(dataService);
+        when(engine.getContextService()).thenReturn(contextService);
+        when(engine.getClusterService()).thenReturn(clusterService);
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
+        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false))
                 .thenReturn(new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP));
         when(groupletService.getTargetEnabled(any(TriggerRouter.class), any())).thenAnswer(invocation -> invocation.getArgument(1));
         when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(true);
+        when(statisticManager.newProcessInfo(any())).thenAnswer(invocation -> new ProcessInfo());
+        when(configurationService.getNodeChannels(false)).thenReturn(Collections.emptyList());
+        when(nodeService.findIdentity()).thenReturn(new Node(SOURCE_NODE_ID, SOURCE_NODE_GROUP));
+        ICacheManager cacheManager = mock(ICacheManager.class);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        when(dataService.findDataGaps()).thenReturn(Collections.emptyList());
         routerService = new RouterService(engine);
+    }
+
+    @Test
+    public void testRouteDataSeedsFullGapAnalysisWhenContextRowIsMissing() {
+        when(contextService.getString(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(null);
+        when(dataService.fixLastDataGap()).thenReturn(false);
+        routerService.routeData(true);
+        verify(contextService).save(ContextConstants.ROUTING_FULL_GAP_ANALYSIS, Boolean.TRUE.toString());
+    }
+
+    @Test
+    public void testRouteDataLeavesFullGapAnalysisUnchangedWhenContextRowExists() {
+        when(contextService.getString(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(Boolean.FALSE.toString());
+        when(dataService.fixLastDataGap()).thenReturn(false);
+        routerService.routeData(true);
+        verify(contextService, never()).save(ContextConstants.ROUTING_FULL_GAP_ANALYSIS, Boolean.TRUE.toString());
+    }
+
+    @Test
+    public void testRouteDataStillHonorsFixLastDataGapWhenContextRowExists() {
+        when(contextService.getString(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(Boolean.FALSE.toString());
+        when(dataService.fixLastDataGap()).thenReturn(true);
+        routerService.routeData(true);
+        verify(contextService).save(ContextConstants.ROUTING_FULL_GAP_ANALYSIS, Boolean.TRUE.toString());
     }
 
     @Test
