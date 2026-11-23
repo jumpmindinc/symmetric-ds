@@ -28,4 +28,6 @@ abstract public class SqlConstants {
     public static final int DEFAULT_STREAMING_FETCH_SIZE = 1000;
     public static final StringMapper STRING_MAPPER = new StringMapper();
     public static final String POSTGRES_CONVERT_INFINITY_DATE_TO_NULL = "postgres.convert.infinity.date.to.null";
+    /** See the parameter of the same name: continue past a DDL statement that failed only because the object already exists. */
+    public static final String TOLERATE_OBJECT_ALREADY_EXISTS_ON_DDL = "db.tolerate.object.already.exists.on.ddl";
 }
