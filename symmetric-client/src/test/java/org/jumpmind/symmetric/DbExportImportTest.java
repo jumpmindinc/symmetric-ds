@@ -72,8 +72,9 @@ public class DbExportImportTest extends AbstractServiceTest {
 
     @Test
     public void testInsertBigIntIntoOracleIntField() {
-        Assumptions.assumeTrue(getPlatform().getName().equals(DatabaseNamesConstants.ORACLE) || getPlatform().getName().equals(DatabaseNamesConstants.ORACLE122) || getPlatform()
-                .getName().equals(DatabaseNamesConstants.ORACLE23));
+        Assumptions.assumeTrue(getPlatform().getName().equals(DatabaseNamesConstants.ORACLE) || getPlatform().getName().equals(DatabaseNamesConstants.ORACLE122)
+                || getPlatform()
+                        .getName().equals(DatabaseNamesConstants.ORACLE23));
         ISymmetricEngine engine = getSymmetricEngine();
         IDatabasePlatform platform = engine.getDatabasePlatform();
         Table table = new Table("TEST_ORACLE_INTEGER");
