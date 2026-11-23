@@ -43,7 +43,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation("com.clickhouse:clickhouse-jdbc:0.11.0:all") { transitive = false }
         testImplementation "org.duckdb:duckdb_jdbc:2.0.0.0"
         testImplementation "com.exasol:exasol-jdbc:25.2.2"
-        testImplementation "org.apache.hive:hive-jdbc:4.0.1"
+        testRuntimeOnly "org.apache.hive:hive-jdbc:4.0.1"
         testImplementation "com.databricks:databricks-jdbc:2.7.3"
         testImplementation "com.sap.cloud.db.jdbc:ngdbc:2.24.8"
         testImplementation "software.amazon.jdbc:aws-advanced-jdbc-wrapper:4.1.0"
