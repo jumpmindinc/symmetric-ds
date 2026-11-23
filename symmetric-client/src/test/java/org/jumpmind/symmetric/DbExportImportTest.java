@@ -48,6 +48,7 @@ import org.jumpmind.symmetric.io.data.writer.ConflictException;
 import org.jumpmind.symmetric.service.impl.AbstractServiceTest;
 import org.jumpmind.util.FormatUtils;
 import org.junit.Assert;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -71,20 +72,20 @@ public class DbExportImportTest extends AbstractServiceTest {
 
     @Test
     public void testInsertBigIntIntoOracleIntField() {
-        if (getPlatform().getName().equals(DatabaseNamesConstants.ORACLE) || getPlatform().getName().equals(DatabaseNamesConstants.ORACLE122) || getPlatform()
-                .getName().equals(DatabaseNamesConstants.ORACLE23)) {
-            ISymmetricEngine engine = getSymmetricEngine();
-            IDatabasePlatform platform = engine.getDatabasePlatform();
-            Table table = new Table("TEST_ORACLE_INTEGER");
-            table.addColumn(new Column("A", false, Types.INTEGER, -1, -1));
-            platform.alterCaseToMatchDatabaseDefaultCase(table);
-            platform.createTables(true, false, table);
-            DbImport importer = new DbImport(platform);
-            importer.setFormat(DbImport.Format.CSV);
-            importer.importTables("\"A\"\n1149140000100490", table.getName());
-            Assert.assertEquals(1149140000100490l,
-                    platform.getSqlTemplate().queryForLong("select A from TEST_ORACLE_INTEGER"));
-        }
+        Assumptions.assumeTrue(getPlatform().getName().equals(DatabaseNamesConstants.ORACLE) || getPlatform().getName().equals(DatabaseNamesConstants.ORACLE122)
+                || getPlatform()
+                        .getName().equals(DatabaseNamesConstants.ORACLE23));
+        ISymmetricEngine engine = getSymmetricEngine();
+        IDatabasePlatform platform = engine.getDatabasePlatform();
+        Table table = new Table("TEST_ORACLE_INTEGER");
+        table.addColumn(new Column("A", false, Types.INTEGER, -1, -1));
+        platform.alterCaseToMatchDatabaseDefaultCase(table);
+        platform.createTables(true, false, table);
+        DbImport importer = new DbImport(platform);
+        importer.setFormat(DbImport.Format.CSV);
+        importer.importTables("\"A\"\n1149140000100490", table.getName());
+        Assert.assertEquals(1149140000100490l,
+                platform.getSqlTemplate().queryForLong("select A from TEST_ORACLE_INTEGER"));
     }
 
     @Test
@@ -176,21 +177,20 @@ public class DbExportImportTest extends AbstractServiceTest {
 
     @Test
     public void testExportTimestampWithTimeZone() throws Exception {
-        if (createAndFillTimestampWithTimeZoneTable()) {
-            ISymmetricEngine engine = getSymmetricEngine();
-            DbExport export = new DbExport(engine.getDatabasePlatform());
-            export.setCompatible(Compatible.POSTGRES);
-            export.setFormat(Format.SQL);
-            String sql = export.exportTables(new String[] { TEST_TS_W_TZ });
-            final String EXPECTED_POSTGRES = "insert into \"test_ts_w_tz\"(\"id\", \"tz\") (select 1,cast('1973-06-08 07:00:00.000000 -04:00' as timestamp with time zone) where (select distinct 1 from \"test_ts_w_tz\" where  \"id\" = 1) is null);";
-            Assert.assertTrue("Expected the following sql:\n" + sql + "\n\n to contain:\n"
-                    + EXPECTED_POSTGRES, sql.contains(EXPECTED_POSTGRES));
-            export.setCompatible(Compatible.ORACLE);
-            sql = export.exportTables(new String[] { TEST_TS_W_TZ });
-            final String EXPECTED_ORACLE = "insert into \"test_ts_w_tz\" (\"id\", \"tz\") values (1,TO_TIMESTAMP_TZ('1973-06-08 07:00:00.000000 -04:00', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'));";
-            Assert.assertTrue("Expected the following sql:\n" + sql + "\n\n to contain:\n"
-                    + EXPECTED_ORACLE, sql.contains(EXPECTED_ORACLE));
-        }
+        Assumptions.assumeTrue(createAndFillTimestampWithTimeZoneTable());
+        ISymmetricEngine engine = getSymmetricEngine();
+        DbExport export = new DbExport(engine.getDatabasePlatform());
+        export.setCompatible(Compatible.POSTGRES);
+        export.setFormat(Format.SQL);
+        String sql = export.exportTables(new String[] { TEST_TS_W_TZ });
+        final String EXPECTED_POSTGRES = "insert into \"test_ts_w_tz\"(\"id\", \"tz\") (select 1,cast('1973-06-08 07:00:00.000000 -04:00' as timestamp with time zone) where (select distinct 1 from \"test_ts_w_tz\" where  \"id\" = 1) is null);";
+        Assert.assertTrue("Expected the following sql:\n" + sql + "\n\n to contain:\n"
+                + EXPECTED_POSTGRES, sql.contains(EXPECTED_POSTGRES));
+        export.setCompatible(Compatible.ORACLE);
+        sql = export.exportTables(new String[] { TEST_TS_W_TZ });
+        final String EXPECTED_ORACLE = "insert into \"test_ts_w_tz\" (\"id\", \"tz\") values (1,TO_TIMESTAMP_TZ('1973-06-08 07:00:00.000000 -04:00', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'));";
+        Assert.assertTrue("Expected the following sql:\n" + sql + "\n\n to contain:\n"
+                + EXPECTED_ORACLE, sql.contains(EXPECTED_ORACLE));
     }
 
     protected boolean createAndFillTimestampWithTimeZoneTable() {
@@ -292,33 +292,32 @@ public class DbExportImportTest extends AbstractServiceTest {
     @Test
     public void exportUniqueKeywordSqliteTable() throws Exception {
         String dbName = engine.getDatabasePlatform().getName();
-        if (dbName.equals(DatabaseNamesConstants.SQLITE)) {
-            ISymmetricEngine engine = getSymmetricEngine();
-            DbImport dbImport = new DbImport(engine.getDatabasePlatform());
-            dbImport.setFormat(DbImport.Format.XML);
-            dbImport.setDropIfExists(true);
-            dbImport.setAlterCaseToMatchDatabaseDefaultCase(true);
-            dbImport.importTables(getClass().getResourceAsStream("/test-dbimport-unique.xml"));
-            IDatabasePlatform platform = engine.getSymmetricDialect().getPlatform();
-            Database testTables = platform.readDatabaseFromXml("/test-dbimport-unique.xml", true);
-            Table table = testTables.findTable("test_db_import_unique", false);
-            Assert.assertEquals(0, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
-            Assert.assertEquals(table.getColumnWithName("string_required_value").isUnique(), true);
-            final int RECORD_COUNT = 100;
-            DbFill fill = new DbFill(platform);
-            fill.setRecordCount(RECORD_COUNT);
-            fill.fillTables(table.getName());
-            Assert.assertEquals(RECORD_COUNT, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
-            DbExport export = new DbExport(platform);
-            export.setFormat(Format.XML);
-            export.setNoCreateInfo(false);
-            export.setNoData(true);
-            String xmlOutput = export.exportTables(new String[] { table.getName() });
-            dbImport.importTables(xmlOutput);
-            table = testTables.findTable("test_db_import_unique", false);
-            Assert.assertEquals(0, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
-            Assert.assertEquals(table.getColumnWithName("string_required_value").isUnique(), true);
-        }
+        Assumptions.assumeTrue(dbName.equals(DatabaseNamesConstants.SQLITE));
+        ISymmetricEngine engine = getSymmetricEngine();
+        DbImport dbImport = new DbImport(engine.getDatabasePlatform());
+        dbImport.setFormat(DbImport.Format.XML);
+        dbImport.setDropIfExists(true);
+        dbImport.setAlterCaseToMatchDatabaseDefaultCase(true);
+        dbImport.importTables(getClass().getResourceAsStream("/test-dbimport-unique.xml"));
+        IDatabasePlatform platform = engine.getSymmetricDialect().getPlatform();
+        Database testTables = platform.readDatabaseFromXml("/test-dbimport-unique.xml", true);
+        Table table = testTables.findTable("test_db_import_unique", false);
+        Assert.assertEquals(0, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
+        Assert.assertEquals(table.getColumnWithName("string_required_value").isUnique(), true);
+        final int RECORD_COUNT = 100;
+        DbFill fill = new DbFill(platform);
+        fill.setRecordCount(RECORD_COUNT);
+        fill.fillTables(table.getName());
+        Assert.assertEquals(RECORD_COUNT, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
+        DbExport export = new DbExport(platform);
+        export.setFormat(Format.XML);
+        export.setNoCreateInfo(false);
+        export.setNoData(true);
+        String xmlOutput = export.exportTables(new String[] { table.getName() });
+        dbImport.importTables(xmlOutput);
+        table = testTables.findTable("test_db_import_unique", false);
+        Assert.assertEquals(0, platform.getSqlTemplate().queryForInt("select count(*) from " + table.getName()));
+        Assert.assertEquals(table.getColumnWithName("string_required_value").isUnique(), true);
     }
 
     @Test

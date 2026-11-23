@@ -44,6 +44,7 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.util.FormatUtils;
 import org.junit.Assert;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -266,85 +267,82 @@ abstract public class AbstractTriggerRouterServiceTest extends AbstractServiceTe
     @Test
     public void test11BinaryColumnTypesForOracle() {
         ISymmetricDialect dialect = getDbDialect();
-        if (DatabaseNamesConstants.ORACLE.equals(dialect.getName()) || DatabaseNamesConstants.ORACLE122.equals(dialect.getName())
-                || DatabaseNamesConstants.ORACLE23.equals(dialect.getName())) {
-            getSqlTemplate().update(CREATE_ORACLE_BINARY_TYPE);
-            TriggerRouter trouter = new TriggerRouter();
-            Trigger trigger = trouter.getTrigger();
-            trigger.setSourceTableName("test_oracle_binary_types");
-            trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
-            Router router = trouter.getRouter();
-            router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            getTriggerRouterService().saveTriggerRouter(trouter);
-            ITriggerRouterService triggerService = getTriggerRouterService();
-            triggerService.syncTriggers();
-            Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
-                    .getFailedTriggers().size());
-            getSqlTemplate().update(INSERT_ORACLE_BINARY_TYPE_1);
-            String csvString = getNextDataRow();
-            Assert.assertEquals(EXPECTED_INSERT_ORALCE_BINARY_TYPE_1, csvString);
-        }
+        Assumptions.assumeTrue(DatabaseNamesConstants.ORACLE.equals(dialect.getName()) || DatabaseNamesConstants.ORACLE122.equals(dialect.getName())
+                || DatabaseNamesConstants.ORACLE23.equals(dialect.getName()));
+        getSqlTemplate().update(CREATE_ORACLE_BINARY_TYPE);
+        TriggerRouter trouter = new TriggerRouter();
+        Trigger trigger = trouter.getTrigger();
+        trigger.setSourceTableName("test_oracle_binary_types");
+        trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
+        Router router = trouter.getRouter();
+        router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        getTriggerRouterService().saveTriggerRouter(trouter);
+        ITriggerRouterService triggerService = getTriggerRouterService();
+        triggerService.syncTriggers();
+        Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
+                .getFailedTriggers().size());
+        getSqlTemplate().update(INSERT_ORACLE_BINARY_TYPE_1);
+        String csvString = getNextDataRow();
+        Assert.assertEquals(EXPECTED_INSERT_ORALCE_BINARY_TYPE_1, csvString);
     }
 
     @Test
     public void test12BinaryColumnTypesForPostgres() {
         ISymmetricDialect dialect = getDbDialect();
-        if (DatabaseNamesConstants.POSTGRESQL.equals(dialect.getName())) {
-            getSqlTemplate().update(DROP_POSTGRES_BINARY_TYPE);
-            getSqlTemplate().update(CREATE_POSTGRES_BINARY_TYPE);
-            TriggerRouter trouter = new TriggerRouter();
-            Trigger trigger = trouter.getTrigger();
-            trigger.setSourceTableName("test_postgres_binary_types");
-            trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
-            Router router = trouter.getRouter();
-            router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            getTriggerRouterService().saveTriggerRouter(trouter);
-            ITriggerRouterService triggerService = getTriggerRouterService();
-            triggerService.syncTriggers();
-            Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
-                    .getFailedTriggers().size());
-            // new SerialBlob("test 1 2 3".getBytes())
-            ISqlTransaction transaction = getSqlTemplate().startSqlTransaction();
-            try {
-                getSqlTemplate().update(INSERT_POSTGRES_BINARY_TYPE_1, "test 1 2 3".getBytes());
-                transaction.commit();
-            } finally {
-                transaction.close();
-            }
-            String csvString = getNextDataRow();
-            Assert.assertEquals(EXPECTED_INSERT_POSTGRES_BINARY_TYPE_1, csvString);
+        Assumptions.assumeTrue(DatabaseNamesConstants.POSTGRESQL.equals(dialect.getName()));
+        getSqlTemplate().update(DROP_POSTGRES_BINARY_TYPE);
+        getSqlTemplate().update(CREATE_POSTGRES_BINARY_TYPE);
+        TriggerRouter trouter = new TriggerRouter();
+        Trigger trigger = trouter.getTrigger();
+        trigger.setSourceTableName("test_postgres_binary_types");
+        trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
+        Router router = trouter.getRouter();
+        router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        getTriggerRouterService().saveTriggerRouter(trouter);
+        ITriggerRouterService triggerService = getTriggerRouterService();
+        triggerService.syncTriggers();
+        Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
+                .getFailedTriggers().size());
+        // new SerialBlob("test 1 2 3".getBytes())
+        ISqlTransaction transaction = getSqlTemplate().startSqlTransaction();
+        try {
+            getSqlTemplate().update(INSERT_POSTGRES_BINARY_TYPE_1, "test 1 2 3".getBytes());
+            transaction.commit();
+        } finally {
+            transaction.close();
         }
+        String csvString = getNextDataRow();
+        Assert.assertEquals(EXPECTED_INSERT_POSTGRES_BINARY_TYPE_1, csvString);
     }
 
     @Test
     public void test13BinaryColumnTypesForDerby() {
         ISymmetricDialect dialect = getDbDialect();
-        if (DatabaseNamesConstants.DERBY.equals(dialect.getName())) {
-            try {
-                getSqlTemplate().update("drop table test_derby_binary_types");
-            } catch (Exception e) {
-            }
-            getSqlTemplate()
-                    .update("create table test_derby_binary_types (id integer, data VARCHAR (100) FOR BIT DATA, data2 CHAR(12) FOR BIT DATA)");
-            TriggerRouter trouter = new TriggerRouter();
-            Trigger trigger = trouter.getTrigger();
-            trigger.setSourceTableName("test_derby_binary_types");
-            trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
-            Router router = trouter.getRouter();
-            router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
-            getTriggerRouterService().saveTriggerRouter(trouter);
-            ITriggerRouterService triggerService = getTriggerRouterService();
-            triggerService.syncTriggers();
-            Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
-                    .getFailedTriggers().size());
-            getSqlTemplate().update("insert into test_derby_binary_types values (?, ?, ?)",
-                    new Object[] { 23, "test 1 2 3".getBytes(), "test 1 2 3".getBytes() });
-            String csvString = getNextDataRow();
-            Assert.assertEquals("\"23\",\"dGVzdCAxIDIgMw==\",\"dGVzdCAxIDIgMyAg\"", csvString);
+        Assumptions.assumeTrue(DatabaseNamesConstants.DERBY.equals(dialect.getName()));
+        try {
+            getSqlTemplate().update("drop table test_derby_binary_types");
+        } catch (Exception e) {
         }
+        getSqlTemplate()
+                .update("create table test_derby_binary_types (id integer, data VARCHAR (100) FOR BIT DATA, data2 CHAR(12) FOR BIT DATA)");
+        TriggerRouter trouter = new TriggerRouter();
+        Trigger trigger = trouter.getTrigger();
+        trigger.setSourceTableName("test_derby_binary_types");
+        trigger.setChannelId(TestConstants.TEST_CHANNEL_ID);
+        Router router = trouter.getRouter();
+        router.getNodeGroupLink().setSourceNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        router.getNodeGroupLink().setTargetNodeGroupId(TestConstants.TEST_ROOT_NODE_GROUP);
+        getTriggerRouterService().saveTriggerRouter(trouter);
+        ITriggerRouterService triggerService = getTriggerRouterService();
+        triggerService.syncTriggers();
+        Assert.assertEquals("Some triggers must have failed to build.", 0, triggerService
+                .getFailedTriggers().size());
+        getSqlTemplate().update("insert into test_derby_binary_types values (?, ?, ?)",
+                new Object[] { 23, "test 1 2 3".getBytes(), "test 1 2 3".getBytes() });
+        String csvString = getNextDataRow();
+        Assert.assertEquals("\"23\",\"dGVzdCAxIDIgMw==\",\"dGVzdCAxIDIgMyAg\"", csvString);
     }
 
     @Test

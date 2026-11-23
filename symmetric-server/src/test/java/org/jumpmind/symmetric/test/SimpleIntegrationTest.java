@@ -69,6 +69,7 @@ import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.util.AppUtils;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -343,9 +344,7 @@ public class SimpleIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     public void test10LargeLob() {
-        if (!isServerOracle()) {
-            return;
-        }
+        Assumptions.assumeTrue(isServerOracle());
         logTestRunning();
         Assertions.assertTimeoutPreemptively(Duration.ofMinutes(5), () -> {
             String bigString = StringUtils.rightPad("Feeling tired... ", 6000, "Z");
