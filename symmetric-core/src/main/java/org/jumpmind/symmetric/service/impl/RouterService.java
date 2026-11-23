@@ -222,7 +222,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
                                 identity.getNodeId(), null, ProcessType.GAP_DETECT));
                         processInfo.setStatus(ProcessStatus.QUERYING);
                         engine.getOutgoingBatchService().updateAbandonedRoutingBatches();
-                        if (engine.getDataService().fixLastDataGap()) {
+                        if (engine.getDataService().fixLastDataGap() || engine.getContextService().getString(
+                                ContextConstants.ROUTING_FULL_GAP_ANALYSIS) == null) {
                             engine.getContextService().save(ContextConstants.ROUTING_FULL_GAP_ANALYSIS, Boolean.TRUE.toString());
                         }
                         firstTimeCheck = false;
