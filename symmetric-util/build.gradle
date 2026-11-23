@@ -11,6 +11,12 @@ apply from: symAssembleDir + '/common.gradle'
         api "com.google.code.gson:gson:$gsonVersion"
         compileOnly "org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion"
         compileOnly "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
+        testImplementation "org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion"
+        testImplementation "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
+        compileOnly "software.amazon.awssdk:kms:$awsSdkVersion"
+        testImplementation "software.amazon.awssdk:kms:$awsSdkVersion"
+        compileOnly "software.amazon.awssdk:secretsmanager:$awsSdkVersion"
+        testImplementation "software.amazon.awssdk:secretsmanager:$awsSdkVersion"
         compileOnly "org.codehaus.mojo:animal-sniffer-annotations:$animalSnifferVersion"
         compileOnly "tools.jackson.core:jackson-core:$jacksonVersion"
         compileOnly ("com.azure:azure-core:1.60.0") {
@@ -45,4 +51,6 @@ apply from: symAssembleDir + '/common.gradle'
         compileOnly ("com.azure:azure-core-http-okhttp:1.13.8") {
             exclude group: "com.azure", module: "azure-core"
         }
+        testImplementation "com.azure:azure-security-keyvault-secrets:4.11.0"
+        testImplementation "com.azure:azure-security-keyvault-certificates:4.9.0"
     }

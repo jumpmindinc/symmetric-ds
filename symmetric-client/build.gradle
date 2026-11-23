@@ -43,3 +43,8 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation project(path: ':symmetric-jdbc', configuration: 'testArtifacts')
         testImplementation project(path: ':symmetric-core', configuration: 'testArtifacts')
     }
+
+    test {
+        // SymmetricModulesPropertiesTest checks the AWS SDK versions in symmetric-modules.properties against this
+        systemProperty "awsSdkVersion", awsSdkVersion
+    }
