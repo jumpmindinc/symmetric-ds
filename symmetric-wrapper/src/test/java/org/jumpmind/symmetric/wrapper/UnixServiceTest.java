@@ -28,11 +28,14 @@ import static org.mockito.Mockito.mock;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.jumpmind.symmetric.wrapper.jna.CLibrary;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,6 +139,31 @@ class UnixServiceTest {
         } else {
             assertEquals(Constants.RC_MISSING_INIT_FOLDER,
                     assertThrows(WrapperException.class, () -> service.getRunCommandDir()).getErrorCode());
+        }
+    }
+
+    @Test
+    void testSystemdTemplate_disablesBase64IntrinsicsForEveryCommand() throws IOException {
+        List<String> commands = readTemplateLines("/symmetricds.systemd").stream().filter(line -> line.startsWith("Exec")).collect(Collectors.toList());
+        assertEquals(3, commands.size());
+        for (String command : commands) {
+            assertTrue(command.contains("${wrapper.java.command} -XX:-UseBASE64Intrinsics "), command);
+        }
+    }
+
+    @Test
+    void testInitdTemplate_disablesBase64IntrinsicsForEveryCommand() throws IOException {
+        List<String> commands = readTemplateLines("/symmetricds.initd").stream().filter(line -> line.contains("-jar \"$JARFILE\""))
+                .collect(Collectors.toList());
+        assertEquals(4, commands.size());
+        for (String command : commands) {
+            assertTrue(command.contains("\"$JAVA\" -XX:-UseBASE64Intrinsics "), command);
+        }
+    }
+
+    private List<String> readTemplateLines(String resource) throws IOException {
+        try (InputStream in = UnixService.class.getResourceAsStream(resource)) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().map(String::trim).collect(Collectors.toList());
         }
     }
 

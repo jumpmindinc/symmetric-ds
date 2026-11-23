@@ -403,6 +403,7 @@ public abstract class WrapperService {
             cmd.add("-Xms16m");
             cmd.add("-Xmx64m");
         }
+        cmd.add(Constants.JVM_OPTION_DISABLE_BASE64_INTRINSICS);
         String tmpDir = System.getProperty("java.io.tmpdir");
         if (tmpDir != null && tmpDir.endsWith("\\")) {
             tmpDir = tmpDir.substring(0, tmpDir.length() - 1);

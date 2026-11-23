@@ -48,16 +48,16 @@ cd "$SYM_HOME"
 
 case "$1" in
    start)
-      "$JAVA" "$SYM_OPTIONS" -jar "$JARFILE" start
+      "$JAVA" -XX:-UseBASE64Intrinsics "$SYM_OPTIONS" -jar "$JARFILE" start
       ;;
    stop)
-      "$JAVA" "$SYM_OPTIONS" -jar "$JARFILE" stop
+      "$JAVA" -XX:-UseBASE64Intrinsics "$SYM_OPTIONS" -jar "$JARFILE" stop
       ;;
    restart)
-      "$JAVA" "$SYM_OPTIONS" -jar "$JARFILE" restart
+      "$JAVA" -XX:-UseBASE64Intrinsics "$SYM_OPTIONS" -jar "$JARFILE" restart
       ;;
    status)
-      "$JAVA" "$SYM_OPTIONS" -jar "$JARFILE" status
+      "$JAVA" -XX:-UseBASE64Intrinsics "$SYM_OPTIONS" -jar "$JARFILE" status
       ;;
    *)
       echo "Usage: `basename $0` {start|stop|restart|status}"
