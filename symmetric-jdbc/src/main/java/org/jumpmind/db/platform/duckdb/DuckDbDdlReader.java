@@ -24,12 +24,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Collection;
 import java.util.Map;
 
 import org.apache.commons.collections4.map.ListOrderedMap;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -80,6 +82,12 @@ public class DuckDbDdlReader extends AbstractJdbcDdlReader {
             column.setAutoIncrement(true);
             defaultValue = null;
             column.setDefaultValue(defaultValue);
+        }
+        if (column.getMappedTypeCode() == Types.DECIMAL) {
+            PlatformColumn platformColumn = column.findPlatformColumn(platform.getName());
+            if (platformColumn != null) {
+                platformColumn.setType("DECIMAL");
+            }
         }
         return column;
     }

@@ -37,6 +37,8 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
+import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.AfterEach;
@@ -154,6 +156,29 @@ class DuckDbDdlReaderTest {
         assertNull(column.getDefaultValue());
     }
 
+    @Test
+    void testReadColumn_decimalTypeName_platformTypeDropsPrecisionAndScale() throws SQLException {
+        Column column = readColumn("DECIMAL(18,6)", Types.DECIMAL, "18", 6, null);
+        PlatformColumn platformColumn = column.findPlatformColumn(platform.getName());
+        assertEquals("DECIMAL", platformColumn.getType());
+        assertEquals(18, platformColumn.getSize());
+        assertEquals(6, platformColumn.getDecimalDigits());
+    }
+
+    @Test
+    void testReadColumn_enumTypeName_platformTypeIsUnchanged() throws SQLException {
+        Column column = readColumn("ENUM('a', 'b')", Types.OTHER, null, 0, null);
+        assertEquals("ENUM('a', 'b')", column.findPlatformColumn(platform.getName()).getType());
+    }
+
+    @Test
+    void testGetSqlType_decimalColumnReadFromDatabase_precisionAndScaleNotRepeated() {
+        platform.getSqlTemplate().update("CREATE TABLE item (id INTEGER, amount DECIMAL(18,6), price NUMERIC(10,2))");
+        Relation item = platform.getDdlReader().readRelation(platform.getDefaultCatalog(), platform.getDefaultSchema(), "item");
+        assertEquals("DECIMAL(18,6)", platform.getDdlBuilder().getSqlType(item.findColumn("amount")));
+        assertEquals("DECIMAL(10,2)", platform.getDdlBuilder().getSqlType(item.findColumn("price")));
+    }
+
     private List<IIndex> readIndices(String tableName) throws SQLException {
         DatabaseMetaDataWrapper metaData = new DatabaseMetaDataWrapper();
         metaData.setSchemaPattern(platform.getDefaultSchema());
@@ -161,13 +186,17 @@ class DuckDbDdlReaderTest {
     }
 
     private Column readColumn(String columnDef) throws SQLException {
+        return readColumn("INTEGER", Types.INTEGER, "32", 0, columnDef);
+    }
+
+    private Column readColumn(String typeName, int dataType, String columnSize, int decimalDigits, String columnDef) throws SQLException {
         Map<String, Object> values = new HashMap<String, Object>();
         values.put("COLUMN_NAME", "id");
-        values.put("TYPE_NAME", "INTEGER");
-        values.put("DATA_TYPE", Integer.valueOf(Types.INTEGER));
+        values.put("TYPE_NAME", typeName);
+        values.put("DATA_TYPE", Integer.valueOf(dataType));
         values.put("NUM_PREC_RADIX", Integer.valueOf(10));
-        values.put("COLUMN_SIZE", "32");
-        values.put("DECIMAL_DIGITS", Integer.valueOf(0));
+        values.put("COLUMN_SIZE", columnSize);
+        values.put("DECIMAL_DIGITS", Integer.valueOf(decimalDigits));
         values.put("COLUMN_DEF", columnDef);
         values.put("IS_NULLABLE", "YES");
         return ((DuckDbDdlReader) platform.getDdlReader()).readColumn(null, values);
