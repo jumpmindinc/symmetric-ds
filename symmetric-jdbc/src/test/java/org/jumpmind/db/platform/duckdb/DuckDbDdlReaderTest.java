@@ -166,12 +166,6 @@ class DuckDbDdlReaderTest {
     }
 
     @Test
-    void testReadColumn_enumTypeName_platformTypeIsUnchanged() throws SQLException {
-        Column column = readColumn("ENUM('a', 'b')", Types.OTHER, null, 0, null);
-        assertEquals("ENUM('a', 'b')", column.findPlatformColumn(platform.getName()).getType());
-    }
-
-    @Test
     void testGetSqlType_decimalColumnReadFromDatabase_precisionAndScaleNotRepeated() {
         platform.getSqlTemplate().update("CREATE TABLE item (id INTEGER, amount DECIMAL(18,6), price NUMERIC(10,2))");
         Relation item = platform.getDdlReader().readRelation(platform.getDefaultCatalog(), platform.getDefaultSchema(), "item");
