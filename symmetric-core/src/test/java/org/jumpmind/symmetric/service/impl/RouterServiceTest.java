@@ -39,20 +39,13 @@ import java.util.List;
 
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
-<<<<<<< HEAD
 import org.jumpmind.db.sql.ISqlRowMapper;
-=======
->>>>>>> d44c474584 (SYM-8321: Routing job reports a duplicate key error when clustering enabled (#1346))
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
-<<<<<<< HEAD
-import org.jumpmind.symmetric.common.Constants;
-=======
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ContextConstants;
->>>>>>> d44c474584 (SYM-8321: Routing job reports a duplicate key error when clustering enabled (#1346))
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
@@ -70,12 +63,8 @@ import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ChannelRouterContext;
-<<<<<<< HEAD
 import org.jumpmind.symmetric.route.DataGapDetector;
-=======
-import org.jumpmind.symmetric.route.IDataRouter;
 import org.jumpmind.symmetric.service.IClusterService;
->>>>>>> d44c474584 (SYM-8321: Routing job reports a duplicate key error when clustering enabled (#1346))
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IDataService;
