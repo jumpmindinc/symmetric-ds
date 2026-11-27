@@ -86,6 +86,20 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     private static final String POS_INFINITY = "infinity";
     private static final String NEG_INFINITY = "-infinity";
     private static final String POS_INFINITY_YEAR = "292278994";
+    static final int BLOCKING_PIDS_MIN_MAJOR_VERSION = 9;
+    static final int BLOCKING_PIDS_MIN_MINOR_VERSION = 6;
+    static final String TRANSACTIONS_SQL = "select" +
+            "  a.pid as pid," +
+            "  a.usename," +
+            "  a.client_addr," +
+            "  a.client_hostname," +
+            "  a.state," +
+            "  b.blocking_pid as blockingPid," +
+            "  a.query_start," +
+            "  a.query as query " +
+            "from pg_stat_activity a " +
+            "left join lateral unnest(case when a.wait_event_type = 'Lock' then pg_blocking_pids(a.pid) end) as b(blocking_pid) on true " +
+            "where a.xact_start is not null";
 
     /*
      * Creates a new platform instance.
@@ -372,43 +386,14 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public List<Transaction> getTransactions() {
-        ISqlTemplate template = getSqlTemplate();
-        String sql = "";
-        boolean oldVersion = (template.getDatabaseMajorVersion() == 9 && template.getDatabaseMinorVersion() < 2)
-                || template.getDatabaseMajorVersion() < 9;
-        if (oldVersion) {
-            sql = "select distinct" +
-                    "  a.procpid as pid," +
-                    "  a.usename," +
-                    "  a.client_addr," +
-                    "  blocking.pid as blockingPid," +
-                    "  a.query_start," +
-                    "  a.current_query as query " +
-                    "from pg_stat_activity a " +
-                    "join pg_catalog.pg_locks blocked" +
-                    "  on a.procpid = blocked.pid " +
-                    "left join pg_catalog.pg_locks blocking" +
-                    "  on (blocking.relation = blocked.relation and blocking.locktype = blocked.locktype and blocked.pid != blocking.pid)";
-        } else {
-            sql = "select distinct" +
-                    "  a.pid as pid," +
-                    "  a.usename," +
-                    "  a.client_addr," +
-                    "  a.client_hostname," +
-                    "  a.state," +
-                    "  blocking.pid as blockingPid," +
-                    "  a.query_start," +
-                    "  a.query as query " +
-                    "from pg_stat_activity a " +
-                    "join pg_catalog.pg_locks blocked" +
-                    "  on a.pid = blocked.pid " +
-                    "left join pg_catalog.pg_locks blocking" +
-                    "  on (blocking.relation = blocked.relation and blocking.locktype = blocked.locktype and blocked.pid != blocking.pid)";
-        }
         List<Transaction> transactions = new ArrayList<Transaction>();
+        ISqlTemplate template = getSqlTemplate();
+        if (!isBlockingPidsSupported(template)) {
+            return transactions;
+        }
         final String formatString = "yyyy-MM-dd HH:mm:ss.SSSX";
         final SimpleDateFormat dateFormat = new SimpleDateFormat(formatString);
-        for (Row row : template.query(sql)) {
+        for (Row row : template.query(TRANSACTIONS_SQL)) {
             try {
                 String startTime = row.getString("query_start");
                 String adjustedTime;
@@ -429,16 +414,20 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
                 Transaction transaction = new Transaction(row.getString("pid"), row.getString("usename"), row.getString("blockingPid"),
                         dateFormat.parse(adjustedTime), row.getString("query"));
                 transaction.setRemoteIp(row.getString("client_addr"));
-                if (!oldVersion) {
-                    transaction.setRemoteHost(row.getString("client_hostname"));
-                    transaction.setStatus(row.getString("state"));
-                }
+                transaction.setRemoteHost(row.getString("client_hostname"));
+                transaction.setStatus(row.getString("state"));
                 transactions.add(transaction);
             } catch (ParseException e) {
                 log.error("Could not parse date", e);
             }
         }
         return transactions;
+    }
+
+    private boolean isBlockingPidsSupported(ISqlTemplate template) {
+        int majorVersion = template.getDatabaseMajorVersion();
+        return majorVersion > BLOCKING_PIDS_MIN_MAJOR_VERSION
+                || (majorVersion == BLOCKING_PIDS_MIN_MAJOR_VERSION && template.getDatabaseMinorVersion() >= BLOCKING_PIDS_MIN_MINOR_VERSION);
     }
 
     @Override
