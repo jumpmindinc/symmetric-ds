@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,9 +38,14 @@ import static org.mockito.Mockito.when;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.sql.ISqlTemplate;
+import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
 import org.junit.jupiter.api.Test;
 
@@ -139,5 +145,91 @@ class PostgreSqlDatabasePlatformTest {
     void testCreateArray_emptyArrayLiteralForRequiredColumnBinds() {
         Array array = platform.createArray(arrayColumn(true), "{}");
         assertEquals("{}", array.toString());
+    }
+
+    @Test
+    void testGetTransactions_versionBelow96ReturnsEmptyListWithoutQuery() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(9, 5);
+        assertEquals(Collections.emptyList(), platform.getTransactions());
+        verify(sqlTemplate, never()).query(anyString());
+    }
+
+    @Test
+    void testGetTransactions_version8ReturnsEmptyListWithoutQuery() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(8, 4);
+        assertEquals(Collections.emptyList(), platform.getTransactions());
+        verify(sqlTemplate, never()).query(anyString());
+    }
+
+    @Test
+    void testGetTransactions_version96UsesBlockingPids() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(9, 6);
+        when(sqlTemplate.query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL)).thenReturn(Collections.emptyList());
+        assertEquals(Collections.emptyList(), platform.getTransactions());
+        verify(sqlTemplate).query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL);
+    }
+
+    @Test
+    void testGetTransactions_version18UsesBlockingPids() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(18, 0);
+        when(sqlTemplate.query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL)).thenReturn(Collections.emptyList());
+        platform.getTransactions();
+        verify(sqlTemplate).query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL);
+    }
+
+    @Test
+    void testTransactionsSql_derivesBlockingFromLockWaitsOnly() {
+        assertTrue(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL.contains("pg_blocking_pids(a.pid)"));
+        assertTrue(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL.contains("a.wait_event_type = 'Lock'"));
+        assertFalse(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL.contains("pg_locks"));
+    }
+
+    @Test
+    void testGetTransactions_mapsUnblockedAndBlockedSessions() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(18, 0);
+        Row holder = transactionRow("101", null, "idle in transaction");
+        Row waiter = transactionRow("202", "101", "active");
+        when(sqlTemplate.query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL)).thenReturn(Arrays.asList(holder, waiter));
+        List<Transaction> transactions = platform.getTransactions();
+        assertEquals(2, transactions.size());
+        assertEquals("101", transactions.get(0).getId());
+        assertEquals("", transactions.get(0).getBlockingId());
+        assertEquals("idle in transaction", transactions.get(0).getStatus());
+        assertEquals("202", transactions.get(1).getId());
+        assertEquals("101", transactions.get(1).getBlockingId());
+        assertEquals("symmetric", transactions.get(1).getUsername());
+        assertEquals("10.0.0.5", transactions.get(1).getRemoteIp());
+        assertEquals("app-host", transactions.get(1).getRemoteHost());
+        assertEquals("update sym_node_host set heartbeat_time = now()", transactions.get(1).getText());
+    }
+
+    @Test
+    void testGetTransactions_skipsRowWithoutQueryStart() {
+        ISqlTemplate sqlTemplate = sqlTemplateForVersion(18, 0);
+        Row row = transactionRow("101", null, "active");
+        row.put("query_start", null);
+        when(sqlTemplate.query(PostgreSqlDatabasePlatform.TRANSACTIONS_SQL)).thenReturn(Collections.singletonList(row));
+        assertEquals(Collections.emptyList(), platform.getTransactions());
+    }
+
+    private ISqlTemplate sqlTemplateForVersion(int majorVersion, int minorVersion) {
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(majorVersion);
+        when(sqlTemplate.getDatabaseMinorVersion()).thenReturn(minorVersion);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        return sqlTemplate;
+    }
+
+    private Row transactionRow(String pid, String blockingPid, String state) {
+        Row row = new Row(8);
+        row.put("pid", pid);
+        row.put("usename", "symmetric");
+        row.put("client_addr", "10.0.0.5");
+        row.put("client_hostname", "app-host");
+        row.put("state", state);
+        row.put("blockingPid", blockingPid);
+        row.put("query_start", "2026-11-27 10:15:30.123456-05");
+        row.put("query", "update sym_node_host set heartbeat_time = now()");
+        return row;
     }
 }
