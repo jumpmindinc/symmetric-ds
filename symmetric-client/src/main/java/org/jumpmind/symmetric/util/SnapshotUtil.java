@@ -121,6 +121,8 @@ public class SnapshotUtil {
     protected static final int THREAD_INDENT_SPACE = 50;
     public static final String SNAPSHOT_DIR = "snapshots";
     public static final String ERROR_BATCHES_SUBDIR = "batches";
+    static final String TRANSACTIONS_FILE_NAME = "transactions.csv";
+    static final String BLOCKED_TRANSACTIONS_FILE_NAME = "transactions-blocked.csv";
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
         File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
@@ -465,7 +467,7 @@ public class SnapshotUtil {
             log.info("Writing transactions file");
             List<Transaction> transactions = targetPlatform.getTransactions();
             if (!transactions.isEmpty()) {
-                createTransactionsFile(engine, tmpDir.getPath(), transactions);
+                createTransactionsFiles(tmpDir.getPath(), transactions, engine.getParameterService().getString("db.user"));
             }
         } catch (Throwable e) {
             log.warn("Failed to create transactions file", e);
@@ -955,24 +957,34 @@ public class SnapshotUtil {
         }
     }
 
-    private static File createTransactionsFile(ISymmetricEngine engine, String parent, List<Transaction> transactions) {
+    static void createTransactionsFiles(String parent, List<Transaction> transactions, String dbUser) {
+        writeTransactionsCsv(new File(parent, TRANSACTIONS_FILE_NAME), transactions);
+        List<Transaction> blockedTransactions = filterBlockedTransactions(transactions, dbUser);
+        if (!blockedTransactions.isEmpty()) {
+            writeTransactionsCsv(new File(parent, BLOCKED_TRANSACTIONS_FILE_NAME), blockedTransactions);
+        }
+    }
+
+    private static List<Transaction> filterBlockedTransactions(List<Transaction> transactions, String dbUser) {
         Map<String, Transaction> transactionMap = new HashMap<>();
         for (Transaction transaction : transactions) {
             transactionMap.put(transaction.getId(), transaction);
         }
-        List<Transaction> filteredTransactions = new ArrayList<>();
-        String dbUser = engine.getParameterService().getString("db.user");
+        List<Transaction> blockedTransactions = new ArrayList<>();
         for (Transaction transaction : transactions) {
-            SymmetricUtils.filterTransactions(transaction, transactionMap, filteredTransactions, dbUser, false, false);
+            SymmetricUtils.filterTransactions(transaction, transactionMap, blockedTransactions, dbUser, false, false);
         }
-        File file = new File(parent, "transactions.csv");
+        return blockedTransactions;
+    }
+
+    private static void writeTransactionsCsv(File file, List<Transaction> transactions) {
         try (OutputStream outputStream = new FileOutputStream(file);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.forName("ISO-8859-1"))) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
             String[] heading = { "ID", "Username", "Remote IP", "Remote Host", "Status", "Reads", "Writes",
                     "Blocking ID", "Duration", "Text" };
             csvWriter.writeRecord(heading);
-            for (Transaction transaction : filteredTransactions) {
+            for (Transaction transaction : transactions) {
                 String[] row = { transaction.getId(), transaction.getUsername(), transaction.getRemoteIp(),
                         transaction.getRemoteHost(), transaction.getStatus(),
                         transaction.getReads() == -1 ? "" : String.valueOf(transaction.getReads()),
@@ -983,9 +995,8 @@ public class SnapshotUtil {
             }
             csvWriter.flush();
         } catch (Exception e) {
-            log.warn("Failed to create transactions file", e);
+            log.warn("Failed to create transactions file " + file.getName(), e);
         }
-        return file;
     }
 
     public static void outputSymDataForBatchesInError(ISymmetricEngine engine, File tmpDir) {
