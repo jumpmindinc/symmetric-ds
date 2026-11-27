@@ -46,8 +46,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -1073,6 +1075,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         private ExecutorService executor;
         private List<Future<IncomingBatch>> futures = new ArrayList<Future<IncomingBatch>>();
         private boolean isError;
+        private final Set<String> batchesLoading = ConcurrentHashMap.newKeySet();
 
         public LoadIntoDatabaseOnArrivalListener(ProcessInfo transferInfo, String sourceNodeId,
                 ManageIncomingBatchListener listener, ExecutorService executor) {
@@ -1115,91 +1118,107 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             Callable<IncomingBatch> loadBatchFromStage = new Callable<IncomingBatch>() {
                 @Override
                 public IncomingBatch call() throws Exception {
-                    IncomingBatch incomingBatch = null;
-                    DataProcessor processor = null;
-                    MDC.put("engineName", engine.getParameterService().getEngineName());
-                    if (!isError && resource != null && resource.exists()) {
-                        try {
-                            loadInfo = statisticManager.newProcessInfo(new ProcessInfoKey(transferInfo.getSourceNodeId(),
-                                    transferInfo.getQueue(), transferInfo.getTargetNodeId(), transferInfo.getProcessType() == PULL_JOB_TRANSFER ? PULL_JOB_LOAD
-                                            : PUSH_HANDLER_LOAD));
-                            loadInfo.setCurrentLoadId(transferInfo.getCurrentLoadId());
-                            if (batchInStaging.getStatistics() != null) {
-                                long dataRowCount = batchInStaging.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
-                                loadInfo.setTotalDataCount(dataRowCount);
-                                loadInfo.setCurrentLoadId(batchInStaging.getStatistics().get(DataReaderStatistics.LOAD_ID));
-                                statisticManager.incrementDataReceived(batchInStaging.getChannelId(), dataRowCount);
-                            }
-                            statisticManager.incrementDataBytesReceived(batchInStaging.getChannelId(), resource.getSize());
-                            loadInfo.setStatus(ProcessInfo.ProcessStatus.LOADING);
-                            ProtocolDataReader reader = buildDataReader(batchInStaging, resource);
-                            processor = new DataProcessor(reader, null, listener, "data load from stage") {
-                                @Override
-                                protected IDataWriter chooseDataWriter(Batch batch) {
-                                    boolean isRetry = ((ManageIncomingBatchListener) listener).getCurrentBatch().isRetry();
-                                    return buildDataWriter(loadInfo, sourceNodeId, batch.getChannelId(), batch.getBatchId(), isRetry);
+                    String key = batchInStaging.getNodeBatchId(); // sourceNode-batchId
+                    if (!batchesLoading.add(key)) {
+                        log.info("Batch {} is already being loaded by another thread. Skipping this duplicate.", key);
+                        return null;
+                    }
+                    try {
+                        IncomingBatch incomingBatch = null;
+                        DataProcessor processor = null;
+                        MDC.put("engineName", engine.getParameterService().getEngineName());
+                        if (!isError && resource != null && resource.exists()) {
+                            try {
+                                loadInfo = statisticManager.newProcessInfo(new ProcessInfoKey(transferInfo.getSourceNodeId(),
+                                        transferInfo.getQueue(), transferInfo.getTargetNodeId(), transferInfo.getProcessType() == PULL_JOB_TRANSFER
+                                                ? PULL_JOB_LOAD
+                                                : PUSH_HANDLER_LOAD));
+                                loadInfo.setCurrentLoadId(transferInfo.getCurrentLoadId());
+                                if (batchInStaging.getStatistics() != null) {
+                                    long dataRowCount = batchInStaging.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
+                                    loadInfo.setTotalDataCount(dataRowCount);
+                                    loadInfo.setCurrentLoadId(batchInStaging.getStatistics().get(DataReaderStatistics.LOAD_ID));
+                                    statisticManager.incrementDataReceived(batchInStaging.getChannelId(), dataRowCount);
                                 }
-                            };
-                            processor.process(ctx);
-                            if (loadInfo.getCurrentBatchCount() == 0) {
-                                loadInfo.setStatus(ProcessStatus.OK);
-                            }
-                        } catch (Exception e) {
-                            if (ctx.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE) != null && ctx.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE).equals(
-                                    "bulk")) {
-                                log.debug("Bulk loader failed : ", e);
-                                log.info("Bulk loader failed in class {} with message: {}", e.getClass().getName(), e.getMessage());
-                                ctx.put(ContextConstants.CONTEXT_BULK_WRITER_TO_USE, "default");
-                                ctx.setLastError(null);
-                                if (listener.currentBatch != null) {
-                                    listener.currentBatch.setStatus(Status.OK);
-                                }
-                                processor.setDataReader(buildDataReader(batchInStaging, resource));
-                                try {
-                                    listener.getBatchesProcessed().remove(listener.currentBatch);
-                                    processor.process(ctx);
-                                } catch (Exception retryException) {
-                                    isError = true;
-                                    incomingBatch = listener.currentBatch;
-                                    incomingBatch.setStatus(Status.ER);
-                                    incomingBatch.setErrorFlag(true);
-                                    incomingBatchService.updateIncomingBatch(incomingBatch);
-                                    throw e;
-                                }
-                            } else {
-                                isError = true;
-                                if (listener.isErrorSuppressed()) {
+                                statisticManager.incrementDataBytesReceived(batchInStaging.getChannelId(), resource.getSize());
+                                loadInfo.setStatus(ProcessInfo.ProcessStatus.LOADING);
+                                ProtocolDataReader reader = buildDataReader(batchInStaging, resource);
+                                processor = new DataProcessor(reader, null, listener, "data load from stage") {
+                                    @Override
+                                    protected IDataWriter chooseDataWriter(Batch batch) {
+                                        boolean isRetry = ((ManageIncomingBatchListener) listener).getCurrentBatch().isRetry();
+                                        return buildDataWriter(loadInfo, sourceNodeId, batch.getChannelId(), batch.getBatchId(), isRetry);
+                                    }
+                                };
+                                processor.process(ctx);
+                                if (loadInfo.getCurrentBatchCount() == 0) {
                                     loadInfo.setStatus(ProcessStatus.OK);
-                                    loadInfo.setCurrentBatchId(0);
                                 }
-                                if (listener.currentBatch != null && listener.currentBatch.getSqlCode() == ErrorConstants.PROTOCOL_VIOLATION_CODE) {
-                                    log.info("The batch {} may be corrupt in staging, so removing it.", batchInStaging.getNodeBatchId());
-                                    resource.delete();
-                                    incomingBatch = listener.currentBatch;
+                            } catch (Exception e) {
+                                if (ctx.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE) != null && ctx.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE).equals(
+                                        "bulk")) {
+                                    log.debug("Bulk loader failed : ", e);
+                                    log.info("Bulk loader failed in class {} with message: {}", e.getClass().getName(), e.getMessage());
+                                    ctx.put(ContextConstants.CONTEXT_BULK_WRITER_TO_USE, "default");
+                                    ctx.setLastError(null);
+                                    if (listener.currentBatch != null) {
+                                        listener.currentBatch.setStatus(Status.OK);
+                                    }
+                                    processor.setDataReader(buildDataReader(batchInStaging, resource));
+                                    try {
+                                        listener.getBatchesProcessed().remove(listener.currentBatch);
+                                        processor.process(ctx);
+                                    } catch (Exception retryException) {
+                                        isError = true;
+                                        incomingBatch = listener.currentBatch;
+                                        incomingBatch.setStatus(Status.ER);
+                                        incomingBatch.setErrorFlag(true);
+                                        incomingBatchService.updateIncomingBatch(incomingBatch);
+                                        throw e;
+                                    }
                                 } else {
-                                    throw e;
+                                    isError = true;
+                                    if (listener.isErrorSuppressed()) {
+                                        loadInfo.setStatus(ProcessStatus.OK);
+                                        loadInfo.setCurrentBatchId(0);
+                                    }
+                                    if (listener.currentBatch != null && listener.currentBatch.getSqlCode() == ErrorConstants.PROTOCOL_VIOLATION_CODE) {
+                                        log.info("The batch {} may be corrupt in staging, so removing it.", batchInStaging.getNodeBatchId());
+                                        resource.delete();
+                                        incomingBatch = listener.currentBatch;
+                                    } else {
+                                        throw e;
+                                    }
+                                }
+                            } finally {
+                                incomingBatch = listener.currentBatch;
+                                if (incomingBatch != null) {
+                                    incomingBatch.setNetworkMillis(networkMillis);
+                                    if (batchInStaging.isIgnored()) {
+                                        incomingBatch.incrementIgnoreCount();
+                                    }
+                                }
+                                resource.setState(State.DONE);
+                                if (!resource.isFileResource()) {
+                                    resource.delete();
                                 }
                             }
-                        } finally {
-                            incomingBatch = listener.currentBatch;
-                            if (incomingBatch != null) {
-                                incomingBatch.setNetworkMillis(networkMillis);
-                                if (batchInStaging.isIgnored()) {
-                                    incomingBatch.incrementIgnoreCount();
-                                }
-                            }
-                            resource.setState(State.DONE);
-                            if (!resource.isFileResource()) {
-                                resource.delete();
+                        } else if (resource == null || !resource.exists()) {
+                            IncomingBatch incomingBatchFromDb = incomingBatchService.findIncomingBatch(batchInStaging.getBatchId(), batchInStaging
+                                    .getNodeBatchId());
+                            if (!(incomingBatchFromDb.getStatus().equals(Status.OK) || incomingBatchFromDb.getStatus().equals(Status.IG))) {
+                                log.info("The batch {} was missing in staging.  Setting status to resend.", batchInStaging.getNodeBatchId());
+                                incomingBatch = new IncomingBatch(batchInStaging);
+                                incomingBatch.setStatus(Status.RS);
+                                incomingBatchService.updateIncomingBatch(incomingBatch);
+                            } else {
+                                log.info("The batch {} was already marked as {}.", incomingBatchFromDb.getBatchId(), incomingBatchFromDb.getStatus().name());
                             }
                         }
-                    } else if (resource == null || !resource.exists()) {
-                        log.info("The batch {} was missing in staging.  Setting status to resend.", batchInStaging.getNodeBatchId());
-                        incomingBatch = new IncomingBatch(batchInStaging);
-                        incomingBatch.setStatus(Status.RS);
-                        incomingBatchService.updateIncomingBatch(incomingBatch);
+                        return incomingBatch;
+                    } finally {
+                        batchesLoading.remove(key);
                     }
-                    return incomingBatch;
                 }
             };
             if (resource == null) {
