@@ -397,14 +397,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return batches.getBatches();
     }
 
-    /**
-     * Removes the batches on channels the target has suspended or ignored, completing the ignored ones so that they are not offered again. Safe to call more
-     * than once for the same batches: each call only sees what earlier calls left behind, so a local list can be applied before the combined remote and local
-     * list is available.
-     *
-     * @return the batches that were removed, empty when there was nothing to filter
-     */
-    List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList) {
+    @Override
+    public List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList) {
         if (batches == null || !batches.containsBatches() || suspendIgnoreChannelsList == null) {
             return Collections.emptyList();
         }

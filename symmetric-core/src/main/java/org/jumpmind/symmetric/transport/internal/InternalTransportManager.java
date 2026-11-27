@@ -97,13 +97,17 @@ public class InternalTransportManager extends AbstractTransportManager implement
             throws IOException {
         final PipedOutputStream respOs = new PipedOutputStream();
         final PipedInputStream respIs = new PipedInputStream(respOs);
+        final NodeChannels suspendIgnoreChannels = symmetricEngine.getConfigurationService()
+                .getSuspendIgnoreChannelLists(remote.getNodeId());
         runAtClient(remote.getSyncUrl(), null, respOs, new IClientRunnable() {
             public void run(ISymmetricEngine engine, InputStream is, OutputStream os)
                     throws Exception {
                 String localNodeId = local.getNodeId();
                 log.debug("Internal file sync pull request received from {}", localNodeId);
-                IOutgoingTransport transport = new InternalOutgoingTransport(respOs,
-                        engine.getConfigurationService().getSuspendIgnoreChannelLists(localNodeId), null);
+                NodeChannels remoteSuspendIgnoreChannels = engine.getConfigurationService().getSuspendIgnoreChannelLists();
+                suspendIgnoreChannels.addSuspendChannels(remoteSuspendIgnoreChannels.getSuspendChannels());
+                suspendIgnoreChannels.addIgnoreChannels(remoteSuspendIgnoreChannels.getIgnoreChannels());
+                IOutgoingTransport transport = new InternalOutgoingTransport(respOs, suspendIgnoreChannels, null);
                 ProcessInfo processInfo = engine.getStatisticManager().newProcessInfo(new ProcessInfoKey(
                         engine.getNodeService().findIdentityNodeId(), localNodeId, ProcessType.FILE_SYNC_PULL_HANDLER));
                 try {
@@ -281,6 +285,10 @@ public class InternalTransportManager extends AbstractTransportManager implement
 
     public IOutgoingWithResponseTransport getFilePushTransport(final Node targetNode, final Node sourceNode,
             String securityToken, String registrationUrl) throws IOException {
+        ISymmetricEngine targetEngine = getTargetEngine(targetNode.getSyncUrl());
+        NodeChannels remoteNodeChannels = targetEngine != null
+                ? targetEngine.getConfigurationService().getSuspendIgnoreChannelLists(sourceNode.getNodeId())
+                : null;
         final PipedOutputStream pushOs = new PipedOutputStream();
         final PipedInputStream pushIs = new PipedInputStream(pushOs);
         final PipedOutputStream respOs = new PipedOutputStream();
@@ -292,7 +300,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
                 engine.getFileSyncService().loadFilesFromPush(sourceNode.getNodeId(), is, os);
             }
         });
-        return new InternalOutgoingWithResponseTransport(pushOs, respIs);
+        return new InternalOutgoingWithResponseTransport(pushOs, respIs, remoteNodeChannels);
     }
 
     public IIncomingTransport getRegisterTransport(final Node client, String registrationUrl) throws IOException {

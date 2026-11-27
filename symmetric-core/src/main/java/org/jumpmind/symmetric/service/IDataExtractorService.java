@@ -29,7 +29,9 @@ import org.jumpmind.symmetric.io.data.writer.StructureDataWriter.PayloadType;
 import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.OutgoingBatch;
+import org.jumpmind.symmetric.model.OutgoingBatches;
 import org.jumpmind.symmetric.model.OutgoingBatchWithPayload;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
@@ -51,6 +53,15 @@ public interface IDataExtractorService {
     public List<OutgoingBatch> extract(ProcessInfo processInfo, Node node, IOutgoingTransport transport);
 
     public List<OutgoingBatch> extract(ProcessInfo processInfo, Node node, String channelId, IOutgoingTransport transport);
+
+    /**
+     * Removes the batches on channels the target has suspended or ignored, completing the ignored ones so that they are not offered again. Safe to call more
+     * than once for the same batches: each call only sees what earlier calls left behind, so a local list can be applied before the combined remote and local
+     * list is available.
+     *
+     * @return the batches that were removed, empty when there was nothing to filter
+     */
+    public List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList);
 
     public boolean extractBatchRange(Writer writer, String nodeId, long startBatchId, long endBatchId);
 

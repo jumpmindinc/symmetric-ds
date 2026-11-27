@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,6 +81,7 @@ import org.jumpmind.symmetric.model.FileTrigger;
 import org.jumpmind.symmetric.model.FileTriggerRouter;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
 import org.jumpmind.symmetric.model.NodeSecurity;
@@ -91,6 +93,8 @@ import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatus;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.service.ClusterConstants;
+import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.IFileSyncService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
@@ -103,6 +107,7 @@ import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.NoContentException;
 import org.jumpmind.symmetric.transport.file.FileIncomingTransport;
 import org.jumpmind.symmetric.transport.file.FileOutgoingTransport;
+import org.jumpmind.symmetric.web.WebConstants;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 
@@ -662,7 +667,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     @Override
     public List<OutgoingBatch> sendFiles(ProcessInfo processInfo, Node targetNode,
             IOutgoingTransport outgoingTransport) {
-        List<OutgoingBatch> batchesToProcess = getBatchesToProcess(targetNode);
+        List<OutgoingBatch> batchesToProcess = getBatchesToProcess(targetNode, outgoingTransport);
         if (batchesToProcess.isEmpty()) {
             return batchesToProcess;
         }
@@ -811,7 +816,23 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
-    protected List<OutgoingBatch> getBatchesToProcess(Node targetNode) {
+    /**
+     * Applies the local suspend and ignore list first, so a transport that needs a round trip for the remote list (an HTTP push reservation) is only asked when
+     * batches remain.
+     */
+    protected List<OutgoingBatch> getBatchesToProcess(Node targetNode, IOutgoingTransport outgoingTransport) {
+        OutgoingBatches batches = new OutgoingBatches(getPendingFileSyncBatches(targetNode));
+        IDataExtractorService dataExtractorService = engine.getDataExtractorService();
+        IConfigurationService configurationService = engine.getConfigurationService();
+        dataExtractorService.filterSuspendedAndIgnoredBatches(batches, configurationService.getSuspendIgnoreChannelLists());
+        if (batches.containsBatches()) {
+            dataExtractorService.filterSuspendedAndIgnoredBatches(batches,
+                    outgoingTransport.getSuspendIgnoreChannelLists(configurationService, null, targetNode));
+        }
+        return batches.getBatches();
+    }
+
+    protected List<OutgoingBatch> getPendingFileSyncBatches(Node targetNode) {
         List<OutgoingBatch> batchesToProcess = new ArrayList<OutgoingBatch>();
         List<Channel> fileSyncChannels = engine.getConfigurationService().getFileSyncChannels();
         OutgoingBatches batches = engine.getOutgoingBatchService().getOutgoingBatches(
@@ -1206,6 +1227,17 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    /**
+     * Tells the remote node which file sync channels this node suspended or ignored for it, the same headers a table data pull sends.
+     */
+    protected Map<String, String> buildSuspendIgnoreRequestProperties(Node remote, Node local) {
+        NodeChannels suspendIgnoreChannels = engine.getConfigurationService().getSuspendIgnoreChannelLists(remote.getNodeId());
+        Map<String, String> requestProperties = new HashMap<String, String>();
+        requestProperties.put(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString(local.getNodeId()));
+        requestProperties.put(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString(local.getNodeId()));
+        return requestProperties;
+    }
+
     protected void pullFilesFromNode(NodeCommunication nodeCommunication, RemoteNodeStatus status,
             Node identity, NodeSecurity security) {
         IIncomingTransport transport = null;
@@ -1215,15 +1247,16 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         try {
             processInfo.setStatus(ProcessInfo.ProcessStatus.TRANSFERRING);
             ITransportManager transportManager;
+            Map<String, String> requestProperties = buildSuspendIgnoreRequestProperties(nodeCommunication.getNode(), identity);
             if (!engine.getParameterService().is(ParameterConstants.NODE_OFFLINE)) {
                 transportManager = engine.getTransportManager();
                 transport = transportManager.getFilePullTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(), null,
+                        nodeCommunication.getNode(), identity, security.getNodePassword(), requestProperties,
                         parameterService.getRegistrationUrl());
             } else {
                 transportManager = ((AbstractSymmetricEngine) engine).getOfflineTransportManager();
                 transport = transportManager.getFilePullTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(), null,
+                        nodeCommunication.getNode(), identity, security.getNodePassword(), requestProperties,
                         parameterService.getRegistrationUrl());
             }
             List<IncomingBatch> batchesProcessed = processZip(transport.openStream(),
