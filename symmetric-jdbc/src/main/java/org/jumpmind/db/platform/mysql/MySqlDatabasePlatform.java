@@ -272,6 +272,11 @@ public class MySqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public boolean isBlockedTransactionDetectionSupported() {
+        return true;
+    }
+
+    @Override
     public List<Transaction> getTransactions() {
         ISqlTemplate template = getSqlTemplate();
         String transactionString = "trx";

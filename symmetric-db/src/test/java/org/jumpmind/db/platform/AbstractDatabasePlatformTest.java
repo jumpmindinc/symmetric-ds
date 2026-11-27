@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.Timestamp;
@@ -35,6 +36,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 public class AbstractDatabasePlatformTest {
+    @Test
+    void testIsBlockedTransactionDetectionSupported_falseByDefault() {
+        assertFalse(testDatabasePlatform.isBlockedTransactionDetectionSupported());
+    }
+
     @Test
     public void testParseDate() {
         {

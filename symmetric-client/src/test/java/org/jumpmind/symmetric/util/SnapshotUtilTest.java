@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
@@ -14,12 +16,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.jumpmind.db.model.Transaction;
+import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.csv.CsvReader;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
@@ -105,6 +109,49 @@ public class SnapshotUtilTest {
         notActuallyAFile.mkdirs();
         assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFile(snapshotDir, notActuallyAFile.getAbsolutePath()));
         assertEquals(0, snapshotDir.list().length, "a failed copy should not leave a partial file behind");
+    }
+
+    @Test
+    void addBlockedTransactionsDetectionProperty_supported() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.isBlockedTransactionDetectionSupported()).thenReturn(true);
+        SnapshotUtil.addBlockedTransactionsDetectionProperty(properties, platform);
+        assertEquals("true", properties.getProperty("blocked.transactions.detection.supported"));
+    }
+
+    @Test
+    void addBlockedTransactionsDetectionProperty_unsupported() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.isBlockedTransactionDetectionSupported()).thenReturn(false);
+        SnapshotUtil.addBlockedTransactionsDetectionProperty(properties, platform);
+        assertEquals("false", properties.getProperty("blocked.transactions.detection.supported"));
+    }
+
+    @Test
+    void writeTransactionsFiles_unsupportedPlatformIsNotQueriedAndWritesNoFile() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.isBlockedTransactionDetectionSupported()).thenReturn(false);
+        SnapshotUtil.writeTransactionsFiles(platform, tempDir.toString(), DB_USER);
+        verify(platform, never()).getTransactions();
+        assertFalse(tempDir.resolve(SnapshotUtil.TRANSACTIONS_FILE_NAME).toFile().exists());
+    }
+
+    @Test
+    void writeTransactionsFiles_supportedPlatformWritesTransactions() throws IOException {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.isBlockedTransactionDetectionSupported()).thenReturn(true);
+        when(platform.getTransactions()).thenReturn(Arrays.asList(transaction("101", DB_USER, null)));
+        SnapshotUtil.writeTransactionsFiles(platform, tempDir.toString(), DB_USER);
+        assertEquals(Arrays.asList("101"), readTransactionIds(SnapshotUtil.TRANSACTIONS_FILE_NAME));
+    }
+
+    @Test
+    void writeTransactionsFiles_supportedPlatformWithoutTransactionsWritesNoFile() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(platform.isBlockedTransactionDetectionSupported()).thenReturn(true);
+        when(platform.getTransactions()).thenReturn(Collections.emptyList());
+        SnapshotUtil.writeTransactionsFiles(platform, tempDir.toString(), DB_USER);
+        assertFalse(tempDir.resolve(SnapshotUtil.TRANSACTIONS_FILE_NAME).toFile().exists());
     }
 
     @Test

@@ -133,6 +133,11 @@ public class FirebirdDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public boolean isBlockedTransactionDetectionSupported() {
+        return true;
+    }
+
+    @Override
     public List<Transaction> getTransactions() {
         // Uncommitted transactions that are older than 5 minutes and have either an active IUD statement or no activity
         int minutesOld = -5;
