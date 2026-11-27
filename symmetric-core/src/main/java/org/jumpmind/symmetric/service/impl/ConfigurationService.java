@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.service.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -52,7 +51,6 @@ import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
-import org.jumpmind.symmetric.model.ChannelNodesMap;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -707,13 +705,11 @@ public class ConfigurationService extends AbstractService implements IConfigurat
             for (NodeChannel nc : nodeChannelList) {
                 String channelId = nc.getChannelId();
                 for (NodeChannelControl ncc : nc.getNodeChannelControlMap().values()) {
-                    ChannelNodesMap channelNodesMap = new ChannelNodesMap();
-                    channelNodesMap.put(channelId, Collections.singleton(ncc.getTargetNodeId()));
                     if (ncc.isSuspendEnabled()) {
-                        nodeChannels.addSuspendChannels(channelNodesMap);
+                        nodeChannels.addSuspendChannel(channelId, ncc.getTargetNodeId());
                     }
                     if (ncc.isIgnoreEnabled()) {
-                        nodeChannels.addIgnoreChannels(channelNodesMap);
+                        nodeChannels.addIgnoreChannel(channelId, ncc.getTargetNodeId());
                     }
                 }
             }

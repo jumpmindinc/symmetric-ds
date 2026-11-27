@@ -20,63 +20,58 @@
  */
 package org.jumpmind.symmetric.model;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
+/**
+ * Channel IDs mapped to the target node IDs for which each channel is suspended or ignored. Adding only ever unions node IDs into a channel, so merging lists
+ * from several sources (control rows, remote headers, the local node) keeps every node.
+ */
 public class ChannelNodesMap {
-    /**
-     * Each entry maps a channel ID to a set of target node IDs for which the channel is suspended or ignored
-     */
-    private Map<String, Set<String>> map = new TreeMap<String, Set<String>>();
+    private final Map<String, Set<String>> map = new TreeMap<String, Set<String>>();
 
-    public int size() {
-        return map.size();
+    public void add(String channelId, String targetNodeId) {
+        getOrCreateTargetNodeIds(channelId).add(targetNodeId);
+    }
+
+    public void addAll(ChannelNodesMap other) {
+        for (Entry<String, Set<String>> entry : other.map.entrySet()) {
+            getOrCreateTargetNodeIds(entry.getKey()).addAll(entry.getValue());
+        }
+    }
+
+    public boolean contains(String channelId, String targetNodeId) {
+        Set<String> targetNodeIds = map.get(channelId);
+        return targetNodeIds != null && targetNodeIds.contains(targetNodeId);
+    }
+
+    public Set<String> getChannelIds(String targetNodeId) {
+        Set<String> channelIds = new TreeSet<String>();
+        for (Entry<String, Set<String>> entry : map.entrySet()) {
+            if (entry.getValue().contains(targetNodeId)) {
+                channelIds.add(entry.getKey());
+            }
+        }
+        return channelIds;
+    }
+
+    /**
+     * @return a read-only view of the target node IDs for the channel, or null when the channel has none
+     */
+    public Set<String> getByChannelId(String channelId) {
+        Set<String> targetNodeIds = map.get(channelId);
+        return targetNodeIds == null ? null : Collections.unmodifiableSet(targetNodeIds);
     }
 
     public boolean isEmpty() {
         return map.isEmpty();
     }
 
-    public boolean containsChannelId(Object channelId) {
-        return map.containsKey(channelId);
-    }
-
-    public boolean containsValue(Object targetNodeIdSet) {
-        return map.containsValue(targetNodeIdSet);
-    }
-
-    public Set<String> getByChannelId(Object channelId) {
-        return map.get(channelId);
-    }
-
-    public Set<String> put(String channelId, Set<String> targetNodeIdSet) {
-        return map.put(channelId, targetNodeIdSet);
-    }
-
-    public Set<String> removeByChannelId(Object channelId) {
-        return map.remove(channelId);
-    }
-
-    public void putAll(ChannelNodesMap channelNodesMap) {
-        map.putAll(channelNodesMap.map);
-    }
-
-    public void clear() {
-        map.clear();
-    }
-
-    public Set<String> channelIdSet() {
-        return map.keySet();
-    }
-
-    public Collection<Set<String>> values() {
-        return map.values();
-    }
-
-    public Set<Entry<String, Set<String>>> entrySet() {
-        return map.entrySet();
+    private Set<String> getOrCreateTargetNodeIds(String channelId) {
+        return map.computeIfAbsent(channelId, id -> new TreeSet<String>());
     }
 }

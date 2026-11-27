@@ -20,25 +20,15 @@
  */
 package org.jumpmind.symmetric.model;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Validate;
 
 /**
- * 
+ * The channels suspended and ignored per target node, as merged from control rows, remote headers and the local node.
  */
 public class NodeChannels {
     private String channelQueue;
     private final ChannelNodesMap suspendMap = new ChannelNodesMap();
     private final ChannelNodesMap ignoreMap = new ChannelNodesMap();
-
-    public NodeChannels() {
-    }
 
     public void addSuspendChannels(ChannelNodesMap suspends) {
         addChannels(suspendMap, suspends);
@@ -46,12 +36,6 @@ public class NodeChannels {
 
     public void addIgnoreChannels(ChannelNodesMap ignores) {
         addChannels(ignoreMap, ignores);
-    }
-
-    private void addChannels(ChannelNodesMap map, ChannelNodesMap channels) {
-        if (channels != null) {
-            map.putAll(channels);
-        }
     }
 
     public void addSuspendChannels(String targetNodeId, String suspends) {
@@ -62,41 +46,32 @@ public class NodeChannels {
         addChannels(ignoreMap, targetNodeId, ignores);
     }
 
-    private void addChannels(ChannelNodesMap map, String targetNodeId, String channels) {
+    public void addSuspendChannel(String channelId, String targetNodeId) {
+        suspendMap.add(channelId, targetNodeId);
+    }
+
+    public void addIgnoreChannel(String channelId, String targetNodeId) {
+        ignoreMap.add(channelId, targetNodeId);
+    }
+
+    private static void addChannels(ChannelNodesMap map, ChannelNodesMap channels) {
         if (channels != null) {
-            for (String channel : channels.split(",")) {
-                map.put(channel, Collections.singleton(targetNodeId));
-            }
+            map.addAll(channels);
+        }
+    }
+
+    private static void addChannels(ChannelNodesMap map, String targetNodeId, String commaSeparatedChannelIds) {
+        for (String channelId : StringUtils.split(StringUtils.defaultString(commaSeparatedChannelIds), ',')) {
+            map.add(channelId, targetNodeId);
         }
     }
 
     public String getSuspendChannelsAsString(String targetNodeId) {
-        return getChannelsAsString(suspendMap, targetNodeId);
+        return StringUtils.join(suspendMap.getChannelIds(targetNodeId), ",");
     }
 
     public String getIgnoreChannelsAsString(String targetNodeId) {
-        return getChannelsAsString(ignoreMap, targetNodeId);
-    }
-
-    /**
-     * Returns a comma-separated list of channel IDs that are suspended or ignored.
-     * 
-     * @param map
-     *            Either suspendMap or ignoreMap
-     * @param targetNodeId
-     *            Node ID of the target node that the list of suspended or ignored channel IDs applies to
-     */
-    private String getChannelsAsString(ChannelNodesMap map, String targetNodeId) {
-        Validate.isTrue(Arrays.asList(suspendMap, ignoreMap).contains(map), "Key must be suspendMap or ignoreMap");
-        Set<String> channelIdSet = new HashSet<String>();
-        for (Entry<String, Set<String>> channelEntry : map.entrySet()) {
-            Set<String> targetNodeIdSet = channelEntry.getValue();
-            if (targetNodeIdSet.contains(targetNodeId)) {
-                String channelId = channelEntry.getKey();
-                channelIdSet.add(channelId);
-            }
-        }
-        return StringUtils.join(channelIdSet, ",");
+        return StringUtils.join(ignoreMap.getChannelIds(targetNodeId), ",");
     }
 
     public ChannelNodesMap getSuspendChannels() {
@@ -108,16 +83,11 @@ public class NodeChannels {
     }
 
     public boolean isBatchSuspended(OutgoingBatch batch) {
-        return isBatchSuspendedOrIgnored(suspendMap, batch);
+        return suspendMap.contains(batch.getChannelId(), batch.getNodeId());
     }
 
     public boolean isBatchIgnored(OutgoingBatch batch) {
-        return isBatchSuspendedOrIgnored(ignoreMap, batch);
-    }
-
-    private boolean isBatchSuspendedOrIgnored(ChannelNodesMap map, OutgoingBatch batch) {
-        Set<String> targetNodeIdSet = map.getByChannelId(batch.getChannelId());
-        return targetNodeIdSet != null && targetNodeIdSet.contains(batch.getNodeId());
+        return ignoreMap.contains(batch.getChannelId(), batch.getNodeId());
     }
 
     public String getChannelQueue() {

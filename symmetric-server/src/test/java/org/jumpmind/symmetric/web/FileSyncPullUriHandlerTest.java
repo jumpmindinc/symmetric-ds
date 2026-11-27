@@ -77,6 +77,16 @@ class FileSyncPullUriHandlerTest {
     }
 
     @Test
+    void buildSuspendIgnoreChannels_pullerAndAnotherNodeSuspendedOnSameChannel_suspendsBothNodes() {
+        when(request.getHeader(WebConstants.SUSPENDED_CHANNELS)).thenReturn(Constants.CHANNEL_FILESYNC);
+        NodeChannels localChannels = new NodeChannels();
+        localChannels.addSuspendChannel(Constants.CHANNEL_FILESYNC, OTHER_NODE_ID);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(localChannels);
+        NodeChannels nodeChannels = handler.buildSuspendIgnoreChannels(CLIENT_NODE_ID, request);
+        assertEquals(Set.of(CLIENT_NODE_ID, OTHER_NODE_ID), nodeChannels.getSuspendChannels().getByChannelId(Constants.CHANNEL_FILESYNC));
+    }
+
+    @Test
     void buildSuspendIgnoreChannels_noHeadersAndNoLocalControls_suspendsNothing() {
         NodeChannels nodeChannels = handler.buildSuspendIgnoreChannels(CLIENT_NODE_ID, request);
         assertNull(nodeChannels.getSuspendChannels().getByChannelId(Constants.CHANNEL_FILESYNC));
