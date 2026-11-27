@@ -123,6 +123,7 @@ public class SnapshotUtil {
     public static final String ERROR_BATCHES_SUBDIR = "batches";
     static final String TRANSACTIONS_FILE_NAME = "transactions.csv";
     static final String BLOCKED_TRANSACTIONS_FILE_NAME = "transactions-blocked.csv";
+    static final String BLOCKED_TRANSACTIONS_DETECTION_SUPPORTED = "blocked.transactions.detection.supported";
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
         File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
@@ -465,10 +466,7 @@ public class SnapshotUtil {
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Writing transactions file");
-            List<Transaction> transactions = targetPlatform.getTransactions();
-            if (!transactions.isEmpty()) {
-                createTransactionsFiles(tmpDir.getPath(), transactions, engine.getParameterService().getString("db.user"));
-            }
+            writeTransactionsFiles(targetPlatform, tmpDir.getPath(), engine.getParameterService().getString("db.user"));
         } catch (Throwable e) {
             log.warn("Failed to create transactions file", e);
         }
@@ -731,6 +729,7 @@ public class SnapshotUtil {
             runtimeProperties.setProperty("jvm.bits", System.getProperty("sun.arch.data.model", System.getProperty("com.ibm.vm.bitmode")));
             runtimeProperties.setProperty("hostname", AppUtils.getHostName());
             addUsableDiskSpaceProperties(runtimeProperties, engine, tmpDir, logDir);
+            addBlockedTransactionsDetectionProperty(runtimeProperties, engine.getSymmetricDialect().getTargetPlatform());
             runtimeProperties.setProperty("instance.id", engine.getClusterService().getInstanceId());
             runtimeProperties.setProperty("server.id", engine.getClusterService().getServerId());
             try {
@@ -767,6 +766,10 @@ public class SnapshotUtil {
             logDir = new File("target");
         }
         return logDir;
+    }
+
+    static void addBlockedTransactionsDetectionProperty(Properties properties, IDatabasePlatform targetPlatform) {
+        properties.setProperty(BLOCKED_TRANSACTIONS_DETECTION_SUPPORTED, Boolean.toString(targetPlatform.isBlockedTransactionDetectionSupported()));
     }
 
     protected static void addUsableDiskSpaceProperties(Properties properties, ISymmetricEngine engine, File tmpDir, File logDir) {
@@ -954,6 +957,15 @@ public class SnapshotUtil {
             }
         } catch (Exception e) {
             log.warn("Failed to write process info", e);
+        }
+    }
+
+    static void writeTransactionsFiles(IDatabasePlatform targetPlatform, String parent, String dbUser) {
+        if (targetPlatform.isBlockedTransactionDetectionSupported()) {
+            List<Transaction> transactions = targetPlatform.getTransactions();
+            if (!transactions.isEmpty()) {
+                createTransactionsFiles(parent, transactions, dbUser);
+            }
         }
     }
 

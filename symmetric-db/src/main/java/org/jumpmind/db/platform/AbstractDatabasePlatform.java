@@ -1515,6 +1515,11 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
+    public boolean isBlockedTransactionDetectionSupported() {
+        return false;
+    }
+
+    @Override
     public boolean supportsLimitOffset() {
         return false;
     }

@@ -120,14 +120,7 @@ class PostgreSqlTransactionsIntegrationTest {
     }
 
     private static boolean isPostgreSqlWithBlockingPids() {
-        if (!(platform instanceof PostgreSqlDatabasePlatform)) {
-            return false;
-        }
-        ISqlTemplate template = platform.getSqlTemplate();
-        int majorVersion = template.getDatabaseMajorVersion();
-        return majorVersion > PostgreSqlDatabasePlatform.BLOCKING_PIDS_MIN_MAJOR_VERSION
-                || (majorVersion == PostgreSqlDatabasePlatform.BLOCKING_PIDS_MIN_MAJOR_VERSION
-                        && template.getDatabaseMinorVersion() >= PostgreSqlDatabasePlatform.BLOCKING_PIDS_MIN_MINOR_VERSION);
+        return platform instanceof PostgreSqlDatabasePlatform && platform.isBlockedTransactionDetectionSupported();
     }
 
     private Connection openTransaction() throws SQLException {

@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform.mysql;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 
@@ -31,5 +32,11 @@ class MySqlDatabasePlatformTest {
     void testGetClassName() {
         MySqlDatabasePlatform platform = mock(MySqlDatabasePlatform.class, CALLS_REAL_METHODS);
         assertEquals(MySqlDatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
+    void testIsBlockedTransactionDetectionSupported() {
+        MySqlDatabasePlatform platform = mock(MySqlDatabasePlatform.class, CALLS_REAL_METHODS);
+        assertTrue(platform.isBlockedTransactionDetectionSupported());
     }
 }

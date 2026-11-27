@@ -387,10 +387,10 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     @Override
     public List<Transaction> getTransactions() {
         List<Transaction> transactions = new ArrayList<Transaction>();
-        ISqlTemplate template = getSqlTemplate();
-        if (!isBlockingPidsSupported(template)) {
+        if (!isBlockedTransactionDetectionSupported()) {
             return transactions;
         }
+        ISqlTemplate template = getSqlTemplate();
         final String formatString = "yyyy-MM-dd HH:mm:ss.SSSX";
         final SimpleDateFormat dateFormat = new SimpleDateFormat(formatString);
         for (Row row : template.query(TRANSACTIONS_SQL)) {
@@ -424,7 +424,9 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return transactions;
     }
 
-    private boolean isBlockingPidsSupported(ISqlTemplate template) {
+    @Override
+    public boolean isBlockedTransactionDetectionSupported() {
+        ISqlTemplate template = getSqlTemplate();
         int majorVersion = template.getDatabaseMajorVersion();
         return majorVersion > BLOCKING_PIDS_MIN_MAJOR_VERSION
                 || (majorVersion == BLOCKING_PIDS_MIN_MAJOR_VERSION && template.getDatabaseMinorVersion() >= BLOCKING_PIDS_MIN_MINOR_VERSION);

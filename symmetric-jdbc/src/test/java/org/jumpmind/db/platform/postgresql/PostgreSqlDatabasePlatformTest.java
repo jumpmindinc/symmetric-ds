@@ -148,6 +148,30 @@ class PostgreSqlDatabasePlatformTest {
     }
 
     @Test
+    void testIsBlockedTransactionDetectionSupported_version84() {
+        sqlTemplateForVersion(8, 4);
+        assertFalse(platform.isBlockedTransactionDetectionSupported());
+    }
+
+    @Test
+    void testIsBlockedTransactionDetectionSupported_version95() {
+        sqlTemplateForVersion(9, 5);
+        assertFalse(platform.isBlockedTransactionDetectionSupported());
+    }
+
+    @Test
+    void testIsBlockedTransactionDetectionSupported_version96() {
+        sqlTemplateForVersion(9, 6);
+        assertTrue(platform.isBlockedTransactionDetectionSupported());
+    }
+
+    @Test
+    void testIsBlockedTransactionDetectionSupported_version10() {
+        sqlTemplateForVersion(10, 0);
+        assertTrue(platform.isBlockedTransactionDetectionSupported());
+    }
+
+    @Test
     void testGetTransactions_versionBelow96ReturnsEmptyListWithoutQuery() {
         ISqlTemplate sqlTemplate = sqlTemplateForVersion(9, 5);
         assertEquals(Collections.emptyList(), platform.getTransactions());

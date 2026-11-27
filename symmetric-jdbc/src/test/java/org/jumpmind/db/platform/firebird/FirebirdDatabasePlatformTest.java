@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform.firebird;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 
@@ -31,5 +32,11 @@ class FirebirdDatabasePlatformTest {
     void testGetClassName() {
         FirebirdDatabasePlatform platform = mock(FirebirdDatabasePlatform.class, CALLS_REAL_METHODS);
         assertEquals(FirebirdDatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
+    void testIsBlockedTransactionDetectionSupported() {
+        FirebirdDatabasePlatform platform = mock(FirebirdDatabasePlatform.class, CALLS_REAL_METHODS);
+        assertTrue(platform.isBlockedTransactionDetectionSupported());
     }
 }
