@@ -224,9 +224,12 @@ class FileSyncServiceTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
-        when(engine.getCacheManager()).thenReturn(mock(ICacheManager.class));
-        when(engine.getOutgoingBatchService()).thenReturn(mock(IOutgoingBatchService.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        ICacheManager cacheManager = mock(ICacheManager.class);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
         when(engine.getStatisticManager()).thenReturn(statisticManager);
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);

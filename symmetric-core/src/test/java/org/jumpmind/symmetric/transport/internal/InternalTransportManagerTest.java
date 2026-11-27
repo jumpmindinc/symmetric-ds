@@ -565,7 +565,7 @@ public class InternalTransportManagerTest {
     void testGetFilePushTransport_targetSuspendedFilesyncForSource_suspendsFilesyncToTarget() throws IOException {
         NodeChannels targetNodeChannels = new NodeChannels();
         targetNodeChannels.addSuspendChannels("remote-001", Constants.CHANNEL_FILESYNC);
-        when(configurationService.getSuspendIgnoreChannelLists(eq("local-001"))).thenReturn(targetNodeChannels);
+        when(configurationService.getSuspendIgnoreChannelLists("local-001")).thenReturn(targetNodeChannels);
         when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
         doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());

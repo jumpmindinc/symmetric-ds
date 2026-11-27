@@ -48,7 +48,8 @@ class FileSyncPullUriHandlerTest {
     void setUp() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         configurationService = mock(IConfigurationService.class);
-        when(engine.getParameterService()).thenReturn(mock(IParameterService.class));
+        IParameterService parameterService = mock(IParameterService.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
         request = mock(HttpServletRequest.class);
