@@ -67,6 +67,7 @@ import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IFileSyncService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -78,11 +79,14 @@ import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.RegistrationNotOpenException;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
+import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.SyncDisabledException;
+import org.jumpmind.symmetric.transport.internal.InternalTransportManager.IClientRunnable;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 public class InternalTransportManagerTest {
     private InternalTransportManager manager;
@@ -372,6 +376,7 @@ public class InternalTransportManagerTest {
     @Test
     void testGetFilePullTransport_returnsIncomingTransport() throws IOException {
         NodeChannels nodeChannels = new NodeChannels();
+        when(engine.getConfigurationService()).thenReturn(configurationService);
         when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(nodeChannels);
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         IIncomingTransport transport = manager.getFilePullTransport(remoteNode, localNode, "token", null, "http://reg");
@@ -548,10 +553,51 @@ public class InternalTransportManagerTest {
 
     @Test
     void testGetFilePushTransport_returnsOutgoingWithResponseTransport() throws IOException {
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         IOutgoingWithResponseTransport transport = manager.getFilePushTransport(remoteNode, localNode, "token", "http://reg");
         assertNotNull(transport);
         assertInstanceOf(InternalOutgoingWithResponseTransport.class, transport);
+    }
+
+    @Test
+    void testGetFilePushTransport_targetSuspendedFilesyncForSource_suspendsFilesyncToTarget() throws IOException {
+        NodeChannels targetNodeChannels = new NodeChannels();
+        targetNodeChannels.addSuspendChannels("remote-001", Constants.CHANNEL_FILESYNC);
+        when(configurationService.getSuspendIgnoreChannelLists(eq("local-001"))).thenReturn(targetNodeChannels);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IOutgoingWithResponseTransport transport = manager.getFilePushTransport(remoteNode, localNode, "token", "http://reg");
+        NodeChannels suspendIgnoreChannels = transport.getSuspendIgnoreChannelLists(configurationService, null, remoteNode);
+        assertEquals(Collections.singleton("remote-001"), suspendIgnoreChannels.getSuspendChannels().getByChannelId(Constants.CHANNEL_FILESYNC));
+    }
+
+    @Test
+    void testGetFilePullTransport_pullerAndServerSuspends_reachSendFiles() throws Exception {
+        NodeChannels pullerNodeChannels = new NodeChannels();
+        pullerNodeChannels.addSuspendChannels("local-001", Constants.CHANNEL_FILESYNC);
+        IConfigurationService pullerConfigurationService = mock(IConfigurationService.class);
+        when(engine.getConfigurationService()).thenReturn(pullerConfigurationService);
+        when(pullerConfigurationService.getSuspendIgnoreChannelLists("remote-001")).thenReturn(pullerNodeChannels);
+        NodeChannels serverNodeChannels = new NodeChannels();
+        serverNodeChannels.addIgnoreChannels("local-001", Constants.CHANNEL_FILESYNC_RELOAD);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(serverNodeChannels);
+        IFileSyncService fileSyncService = mock(IFileSyncService.class);
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        when(statisticManager.newProcessInfo(any(ProcessInfoKey.class))).thenReturn(new ProcessInfo(new ProcessInfoKey("remote-001", "local-001", null)));
+        when(targetEngine.getFileSyncService()).thenReturn(fileSyncService);
+        when(targetEngine.getStatisticManager()).thenReturn(statisticManager);
+        ArgumentCaptor<IClientRunnable> runnableCaptor = ArgumentCaptor.forClass(IClientRunnable.class);
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), runnableCaptor.capture());
+        manager.getFilePullTransport(remoteNode, localNode, "token", null, "http://reg");
+        runnableCaptor.getValue().run(targetEngine, null, new ByteArrayOutputStream());
+        ArgumentCaptor<IOutgoingTransport> transportCaptor = ArgumentCaptor.forClass(IOutgoingTransport.class);
+        verify(fileSyncService).sendFiles(any(ProcessInfo.class), eq(localNode), transportCaptor.capture());
+        NodeChannels suspendIgnoreChannels = transportCaptor.getValue().getSuspendIgnoreChannelLists(configurationService, null, localNode);
+        assertEquals(Collections.singleton("local-001"), suspendIgnoreChannels.getSuspendChannels().getByChannelId(Constants.CHANNEL_FILESYNC));
+        assertEquals(Collections.singleton("local-001"), suspendIgnoreChannels.getIgnoreChannels().getByChannelId(Constants.CHANNEL_FILESYNC_RELOAD));
     }
 
     @Test

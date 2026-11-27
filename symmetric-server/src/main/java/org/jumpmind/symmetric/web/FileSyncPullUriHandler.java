@@ -29,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
@@ -54,8 +55,7 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
             log.debug("File sync pull request received from {}", nodeId);
         }
         IOutgoingTransport outgoingTransport = createOutgoingTransport(res.getOutputStream(),
-                req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET),
-                engine.getConfigurationService().getSuspendIgnoreChannelLists(nodeId));
+                req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET), buildSuspendIgnoreChannels(nodeId, req));
         ProcessInfo processInfo = engine.getStatisticManager().newProcessInfo(
                 new ProcessInfoKey(engine.getNodeService().findIdentityNodeId(), nodeId,
                         ProcessType.FILE_SYNC_PULL_HANDLER));
@@ -79,5 +79,19 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
                 outgoingTransport.close();
             }
         }
+    }
+
+    /**
+     * Combines the channels the pulling node suspended or ignored (request headers, as for a table data pull) with the ones this node suspended or ignored for
+     * it.
+     */
+    protected NodeChannels buildSuspendIgnoreChannels(String nodeId, HttpServletRequest req) {
+        NodeChannels nodeChannels = new NodeChannels();
+        nodeChannels.addSuspendChannels(nodeId, req.getHeader(WebConstants.SUSPENDED_CHANNELS));
+        nodeChannels.addIgnoreChannels(nodeId, req.getHeader(WebConstants.IGNORED_CHANNELS));
+        NodeChannels localSuspendIgnoreChannels = engine.getConfigurationService().getSuspendIgnoreChannelLists();
+        nodeChannels.addSuspendChannels(localSuspendIgnoreChannels.getSuspendChannels());
+        nodeChannels.addIgnoreChannels(localSuspendIgnoreChannels.getIgnoreChannels());
+        return nodeChannels;
     }
 }

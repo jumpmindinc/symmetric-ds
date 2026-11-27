@@ -188,7 +188,9 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setConnectTimeout(httpConnectTimeout);
             connection.setReadTimeout(httpTimeout);
             connection.setRequestMethod("HEAD");
-            connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
+            if (queue != null) {
+                connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
+            }
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
             if (!isReservationHeld) {

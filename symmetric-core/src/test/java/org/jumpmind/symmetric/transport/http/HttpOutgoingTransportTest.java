@@ -294,6 +294,32 @@ class HttpOutgoingTransportTest {
     }
 
     @Test
+    void testGetSuspendIgnoreChannelLists_withoutQueue_sendsNoChannelQueueHeader() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("filesync");
+        NodeChannels result = transport.getSuspendIgnoreChannelLists(configurationService, null, targetNode);
+        verify(connection, never()).setRequestProperty(eq(WebConstants.CHANNEL_QUEUE), any());
+        assertEquals(Collections.singleton("target1"), result.getSuspendChannels().getByChannelId("filesync"));
+    }
+
+    @Test
+    void testGetSuspendIgnoreChannelLists_withQueue_sendsChannelQueueHeader() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        verify(connection).setRequestProperty(WebConstants.CHANNEL_QUEUE, "queue1");
+    }
+
+    @Test
     void testRequestReservation_onSuccess_beginsReservationForTargetUrl() throws IOException {
         HttpOutgoingTransport transport = newTransport(false, false);
         IConfigurationService configurationService = mock(IConfigurationService.class);
