@@ -182,6 +182,31 @@ class AbstractTriggerTemplateTest {
     }
 
     @Test
+    void testDeleteConditionInUpdateTriggerUsesOldRow() {
+        String triggerDdl = replaceConditions(DataEventType.UPDATE);
+        assertEquals("delete:deleted.flags = 0;insert:inserted.flags = 0;update:inserted.flags = 0", triggerDdl);
+    }
+
+    @Test
+    void testConditionsInDeleteAndInsertTriggers() {
+        assertEquals("delete:deleted.flags = 0;insert:inserted.flags = 0;update:deleted.flags = 0", replaceConditions(DataEventType.DELETE));
+        assertEquals("delete:deleted.flags = 0;insert:inserted.flags = 0;update:inserted.flags = 0", replaceConditions(DataEventType.INSERT));
+    }
+
+    private String replaceConditions(DataEventType dml) {
+        Table table = buildTable_UniqueIndexWithNullableColumns("TBL5", 1, 1);
+        Trigger trigger = new Trigger(table.getFullyQualifiedName(), channel.getChannelId());
+        trigger.setSyncOnInsertCondition("$(curTriggerValue).flags = 0");
+        trigger.setSyncOnUpdateCondition("$(curTriggerValue).flags = 0");
+        trigger.setSyncOnDeleteCondition("$(curTriggerValue).flags = 0");
+        TriggerHistory triggerHistory = new TriggerHistory(table, trigger, triggerTemplate);
+        Table targetTable = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(), true, false);
+        String templateDdl = "delete:$(syncOnDeleteCondition);insert:$(syncOnInsertCondition);update:$(syncOnUpdateCondition)";
+        return triggerTemplate.replaceTemplateVariables(dml, trigger, triggerHistory, channel, tablePrefix, table, targetTable, defaultCatalog,
+                defaultSchema, templateDdl);
+    }
+
+    @Test
     void testToHashedValueIsStableUnderConcurrentCallers() throws Exception {
         int callerCount = 16;
         int expectedHash = new WrapperAbstractTriggerTemplate(symmetricDialect).toHashedValue();
