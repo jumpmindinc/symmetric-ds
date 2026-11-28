@@ -21,11 +21,14 @@
 package org.jumpmind.symmetric;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.h2.jdbcx.JdbcDataSource;
+import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
@@ -66,5 +69,15 @@ class ClientSymmetricEnginePoolParametersTest {
         metaData.setKey(key);
         metaData.setDefaultValue(defaultValue);
         parameterMetaData.put(key, metaData);
+    }
+
+    @Test
+    void createDatabasePlatform_externalDataSource_usesItInsteadOfBuildingAPool() {
+        JdbcDataSource dataSource = new JdbcDataSource();
+        dataSource.setURL("jdbc:h2:mem:pool-params-external;DB_CLOSE_DELAY=-1");
+        TypedProperties properties = new TypedProperties();
+        properties.setProperty("db.pool.max.active", "200");
+        IDatabasePlatform platform = ClientSymmetricEngine.createDatabasePlatform(null, properties, dataSource, false);
+        assertSame(dataSource, platform.getDataSource());
     }
 }
