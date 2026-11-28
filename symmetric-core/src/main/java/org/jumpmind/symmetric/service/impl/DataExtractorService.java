@@ -1606,6 +1606,19 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     @Override
+    public List<ExtractRequest> getTablesForExtractByLoadIdAndSourceNodeIdAndNodeId(long loadId, String sourceNodeId, String nodeId) {
+        return sqlTemplate.query(getSql("selectTablesForExtractByLoadIdAndSourceNodeIdAndNodeId"), new ExtractRequestMapper(), loadId, sourceNodeId,
+                nodeId);
+    }
+
+    @Override
+    public List<ExtractRequest> getTablesForExtractByLoadIdAndSourceNodeIdAndNodeId(ISqlTransaction transaction, long loadId, String sourceNodeId,
+            String nodeId) {
+        return transaction.query(getSql("selectTablesForExtractByLoadIdAndSourceNodeIdAndNodeId"), new ExtractRequestMapper(),
+                new Object[] { loadId, sourceNodeId, nodeId }, null);
+    }
+
+    @Override
     public void updateExtractRequestLoadTime(ISqlTransaction transaction, Date loadTime, OutgoingBatch outgoingBatch) {
         if (platform.supportsParametersInSelect()) {
             transaction.prepareAndExecute(getSql("updateExtractRequestLoadTime"), outgoingBatch.getBatchId(), new Date(),

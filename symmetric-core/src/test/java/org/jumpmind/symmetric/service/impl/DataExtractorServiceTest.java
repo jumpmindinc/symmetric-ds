@@ -362,6 +362,24 @@ class DataExtractorServiceTest {
     }
 
     @Test
+    void testGetTablesForExtractByLoadIdAndSourceNodeIdAndNodeId_queriesBySourceAndTarget() {
+        ExtractRequest request = new ExtractRequest();
+        when(sqlTemplate.query(any(String.class), any(), eq(LOAD_ID), eq("store2"), eq("hub"))).thenReturn(List.of(request));
+        DataExtractorService extractorService = new DataExtractorService(engine);
+        assertEquals(List.of(request), extractorService.getTablesForExtractByLoadIdAndSourceNodeIdAndNodeId(LOAD_ID, "store2", "hub"));
+    }
+
+    @Test
+    void testGetTablesForExtractByLoadIdAndSourceNodeIdAndNodeId_withTransaction_queriesThroughTransaction() {
+        ExtractRequest request = new ExtractRequest();
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        when(transaction.query(any(String.class), any(), aryEq(new Object[] { LOAD_ID, "store2", "hub" }), isNull())).thenReturn(List.of(request));
+        DataExtractorService extractorService = new DataExtractorService(engine);
+        assertEquals(List.of(request), extractorService.getTablesForExtractByLoadIdAndSourceNodeIdAndNodeId(transaction, LOAD_ID, "store2", "hub"));
+        verifyNoInteractions(sqlTemplate);
+    }
+
+    @Test
     void testGetTablesForExtractByLoadIdAndNodeId_withTransaction_queriesThroughTransaction() {
         ExtractRequest request = new ExtractRequest();
         ISqlTransaction transaction = mock(ISqlTransaction.class);
