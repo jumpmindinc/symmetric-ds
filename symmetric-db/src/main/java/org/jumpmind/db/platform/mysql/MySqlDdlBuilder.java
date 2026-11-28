@@ -111,7 +111,7 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
         databaseInfo.addNativeTypeMapping(Types.REAL, "FLOAT");
         databaseInfo.addNativeTypeMapping(Types.REF, "MEDIUMBLOB", Types.LONGVARBINARY);
         databaseInfo.addNativeTypeMapping(Types.STRUCT, "LONGBLOB", Types.LONGVARBINARY);
-        databaseInfo.addNativeTypeMapping(Types.NCLOB, "LONGTEXT(MAX)");
+        databaseInfo.addNativeTypeMapping(Types.NCLOB, "LONGTEXT", Types.LONGVARCHAR);
         // Since TIMESTAMP is not a stable datatype yet, and does not support a
         // higher precision
         // than DATETIME (year to seconds) as of MySQL 5, we map the JDBC type

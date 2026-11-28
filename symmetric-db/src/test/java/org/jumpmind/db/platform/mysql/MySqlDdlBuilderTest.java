@@ -15,6 +15,15 @@ import org.junit.jupiter.api.Test;
 
 public class MySqlDdlBuilderTest {
     @Test
+    void testCreateTable_nclobColumn_writesLongtextWithoutLength() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        Table table = new Table("test_table", new Column("id", true, Types.INTEGER, 10, 0), new Column("notes", false, Types.NCLOB, 0, 0));
+        String ddl = ddlBuilder.createTable(table);
+        assertTrue(ddl.contains("`notes` LONGTEXT"), "NCLOB should be written as LONGTEXT: " + ddl);
+        assertFalse(ddl.contains("LONGTEXT("), "LONGTEXT takes no length: " + ddl);
+    }
+
+    @Test
     void testWriteEmbeddedPrimaryKeysStmt_SinglePkAutoIncrement_NoExtraKey() {
         MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
         Column id = new Column("id", true, Types.INTEGER, 10, 0);

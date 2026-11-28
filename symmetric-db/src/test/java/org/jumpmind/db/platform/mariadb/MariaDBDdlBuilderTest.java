@@ -35,6 +35,15 @@ import org.junit.jupiter.api.Test;
 
 class MariaDBDdlBuilderTest {
     @Test
+    void testCreateTable_nclobColumn_writesLongtextWithoutLength() {
+        MariaDBDdlBuilder ddlBuilder = new MariaDBDdlBuilder();
+        Table table = new Table("test_table", new Column("id", true, Types.INTEGER, 10, 0), new Column("notes", false, Types.NCLOB, 0, 0));
+        String ddl = ddlBuilder.createTable(table);
+        assertTrue(ddl.contains("`notes` LONGTEXT"), "NCLOB should be written as LONGTEXT: " + ddl);
+        assertFalse(ddl.contains("LONGTEXT("), "LONGTEXT takes no length: " + ddl);
+    }
+
+    @Test
     void testWriteGeneratedColumn_persisted_emitsPersistentKeyword() {
         MariaDBDdlBuilder ddlBuilder = new MariaDBDdlBuilder();
         ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
