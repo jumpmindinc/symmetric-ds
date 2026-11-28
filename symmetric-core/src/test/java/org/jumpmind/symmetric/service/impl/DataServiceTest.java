@@ -1190,6 +1190,22 @@ public class DataServiceTest {
     /**
      * Holds test fixtures and mocks for reload event tests.
      */
+    @Test
+    void buildDeleteTableReloadRequestSql_escapesQuotedValues() {
+        TableReloadRequest request = new TableReloadRequest();
+        request.setTargetNodeId("t'1");
+        request.setSourceNodeId("s'1");
+        request.setTriggerId("tr'1");
+        request.setRouterId("r'1");
+        assertEquals("delete from sym_table_reload_request where target_node_id='t''1' and source_node_id='s''1'"
+                + " and trigger_id='tr''1' and router_id='r''1'", ((DataService) dataService).buildDeleteTableReloadRequestSql(request));
+    }
+
+    @Test
+    void buildNodeIdWhereClause_escapesQuotedNodeId() {
+        assertEquals(" t.node_id = 'a''b'", DataService.buildNodeIdWhereClause("a'b"));
+    }
+
     private static class ReloadTestFixture {
         Node targetNode;
         List<TableReloadRequest> reloadRequests;

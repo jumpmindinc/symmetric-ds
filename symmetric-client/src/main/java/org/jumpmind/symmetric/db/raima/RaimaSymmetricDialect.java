@@ -102,7 +102,7 @@ public class RaimaSymmetricDialect extends AbstractSymmetricDialect implements I
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         transaction.prepareAndExecute("set sync_triggers_disabled = 1;");
         if (nodeId != null) {
-            transaction.prepareAndExecute("set sync_node_disabled = '" + nodeId + "';");
+            transaction.prepareAndExecute("set sync_node_disabled = " + SqlUtils.toStringLiteral(nodeId) + ";");
         }
     }
 

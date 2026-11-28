@@ -65,6 +65,7 @@ import org.jumpmind.db.sql.DmlStatement.DmlType;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.InvalidSqlException;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
@@ -186,15 +187,7 @@ public class DataService extends AbstractService implements IDataService {
                                             triggerHistory,
                                             trigger.getChannelId(),
                                             targetNode,
-                                            String.format(
-                                                    "delete from %s where target_node_id='%s' and source_node_id='%s' and trigger_id='%s' and router_id='%s'",
-                                                    TableConstants
-                                                            .getTableName(
-                                                                    tablePrefix,
-                                                                    TableConstants.SYM_TABLE_RELOAD_REQUEST),
-                                                    request.getTargetNodeId(), request
-                                                            .getSourceNodeId(), request
-                                                                    .getTriggerId(), request.getRouterId()),
+                                            buildDeleteTableReloadRequestSql(request),
                                             false, -1, null, null);
                                 }
                                 deleteTableReloadRequest(transaction, request);
@@ -2707,10 +2700,23 @@ public class DataService extends AbstractService implements IDataService {
         }
     }
 
+    protected String buildDeleteTableReloadRequestSql(TableReloadRequest request) {
+        return String.format("delete from %s where target_node_id=%s and source_node_id=%s and trigger_id=%s and router_id=%s",
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_RELOAD_REQUEST),
+                SqlUtils.toStringLiteral(request.getTargetNodeId()),
+                SqlUtils.toStringLiteral(request.getSourceNodeId()),
+                SqlUtils.toStringLiteral(request.getTriggerId()),
+                SqlUtils.toStringLiteral(request.getRouterId()));
+    }
+
+    protected static String buildNodeIdWhereClause(String nodeId) {
+        return " t.node_id = " + SqlUtils.toStringLiteral(nodeId);
+    }
+
     private void insertNodeSecurityUpdate(ISqlTransaction transaction, String nodeIdRecord,
             String targetNodeId, boolean isLoad, long loadId, String createBy, String channelId) {
         Data data = createData(transaction, null, null, tablePrefix + "_node_security",
-                " t.node_id = '" + nodeIdRecord + "'");
+                buildNodeIdWhereClause(nodeIdRecord));
         if (data != null) {
             insertDataAndDataEventAndOutgoingBatch(transaction, data, targetNodeId,
                     isLoad, loadId, createBy, Status.LS, channelId, -1);

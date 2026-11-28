@@ -194,8 +194,8 @@ public class DerbySymmetricDialect extends AbstractSymmetricDialect implements I
                 Integer.class);
         if (nodeId != null) {
             transaction.queryForObject(
-                    String.format("values %s_sync_node_set_disabled('%s')", parameterService.getTablePrefix(), nodeId),
-                    String.class);
+                    String.format("values %s_sync_node_set_disabled(?)", parameterService.getTablePrefix()),
+                    String.class, nodeId);
         }
     }
 

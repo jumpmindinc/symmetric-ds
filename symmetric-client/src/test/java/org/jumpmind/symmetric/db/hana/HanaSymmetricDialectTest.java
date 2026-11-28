@@ -55,7 +55,14 @@ class HanaSymmetricDialectTest {
         InOrder inOrder = inOrder(transaction);
         dialect.disableSyncTriggers(transaction, nodeId);
         inOrder.verify(transaction).prepareAndExecute("set '" + "sync_triggers_disabled" + "'='1'");
-        inOrder.verify(transaction).prepareAndExecute("set '" + "sync_node_disabled" + "'='" + nodeId + "'");
+        inOrder.verify(transaction).prepareAndExecute("set 'sync_node_disabled'='source'");
+    }
+
+    @Test
+    void testDisableSyncTriggersEscapesNodeIdContainingQuote() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        dialect.disableSyncTriggers(transaction, "a'b");
+        verify(transaction).prepareAndExecute("set 'sync_node_disabled'='a''b'");
     }
 
     @Test

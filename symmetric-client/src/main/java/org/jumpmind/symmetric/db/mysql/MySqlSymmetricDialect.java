@@ -228,7 +228,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         transaction.prepareAndExecute("set " + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "=1");
         if (nodeId != null) {
             transaction
-                    .prepareAndExecute("set " + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "='" + nodeId + "'");
+                    .prepareAndExecute("set " + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "=?", nodeId);
         }
     }
 

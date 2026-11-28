@@ -84,7 +84,7 @@ public class IngresSymmetricDialect extends AbstractSymmetricDialect implements 
     private void insertSymContextRecord(ISqlTransaction transaction, String variableName, String contextValue) {
         transaction.prepareAndExecute("insert into " + parameterService.getTablePrefix() + "_" + TableConstants.SYM_CONTEXT +
                 " (name, context_value, create_time, last_update_time) " +
-                " values(DBMSINFO('session_id') || ':" + variableName + "', '" + contextValue + "', current_timestamp, current_timestamp)");
+                " values(DBMSINFO('session_id') || ':" + variableName + "', ?, current_timestamp, current_timestamp)", contextValue);
     }
 
     @Override

@@ -132,4 +132,11 @@ abstract public class SqlUtils {
         }
         return s;
     }
+
+    public static String toStringLiteral(String value) {
+        if (value == null) {
+            return "null";
+        }
+        return "'" + escapeString(value) + "'";
+    }
 }

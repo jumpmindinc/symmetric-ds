@@ -39,7 +39,7 @@ public class Firebird20SymmetricDialect extends FirebirdSymmetricDialect {
                 + "',1) from rdb$database");
         if (nodeId != null) {
             transaction.queryForInt("select rdb$set_context('USER_SESSION','" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE
-                    + "','" + nodeId + "') from rdb$database");
+                    + "',cast(? as varchar(50))) from rdb$database", nodeId);
         }
     }
 

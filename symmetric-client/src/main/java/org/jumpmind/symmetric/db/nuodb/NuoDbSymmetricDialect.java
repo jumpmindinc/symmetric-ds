@@ -151,7 +151,7 @@ public class NuoDbSymmetricDialect extends AbstractSymmetricDialect implements I
         if (nodeId != null) {
             transaction
                     .prepareAndExecute("select " + this.parameterService.getTablePrefix() + "_set_session_variable('" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE
-                            + "','" + nodeId + "') from dual");
+                            + "',?) from dual", nodeId);
         }
     }
 

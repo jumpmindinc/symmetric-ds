@@ -30,6 +30,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
@@ -111,5 +116,32 @@ class PostgreSqlSymmetricDialectTest {
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> dialect.acquireDatabaseInstallLock());
         assertSame(failure, thrown);
         verify(transaction).close();
+    }
+
+    @Test
+    void disableSyncTriggers_bindsNodeIdContainingQuote() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        dialect.disableSyncTriggers(transaction, "a'b");
+        verify(transaction).prepareAndExecute("select set_config('symmetric.node_disabled', ?, false)", "a'b");
+    }
+
+    @Test
+    void disableSyncTriggers_bindsEmptyNodeIdWhenNull() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        dialect.disableSyncTriggers(transaction, null);
+        verify(transaction).prepareAndExecute("select set_config('symmetric.node_disabled', ?, false)", "");
+    }
+
+    @Test
+    void disableSyncTriggersOnConnection_bindsNodeIdContainingQuote() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        PreparedStatement nodeStatement = mock(PreparedStatement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(connection.prepareStatement("select set_config('symmetric.node_disabled', ?, false)")).thenReturn(nodeStatement);
+        dialect.disableSyncTriggers(connection, "a'b");
+        verify(statement).execute("select set_config('symmetric.triggers_disabled', '1', false)");
+        verify(nodeStatement).setString(1, "a'b");
+        verify(nodeStatement).execute();
     }
 }

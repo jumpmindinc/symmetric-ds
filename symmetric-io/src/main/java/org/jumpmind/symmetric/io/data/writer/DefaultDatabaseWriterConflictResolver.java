@@ -799,8 +799,8 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 transaction = platform.getSqlTemplate().startSqlTransaction(true);
                 transaction.prepareAndExecute("select set_config('symmetric.triggers_disabled', '1', false)");
                 String sourceNodeId = (String) databaseWriter.getContext().get("sourceNodeId");
-                transaction.prepareAndExecute("select set_config('symmetric.node_disabled', '" +
-                        (sourceNodeId == null ? "" : sourceNodeId) + "', false)");
+                transaction.prepareAndExecute("select set_config('symmetric.node_disabled', ?, false)",
+                        sourceNodeId == null ? "" : sourceNodeId);
             } else {
                 transaction = databaseWriter.getTransaction();
                 if (useSavepoints) {

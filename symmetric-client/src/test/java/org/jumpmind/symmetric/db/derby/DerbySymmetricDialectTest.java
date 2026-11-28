@@ -124,7 +124,14 @@ class DerbySymmetricDialectTest {
         InOrder inOrder = inOrder(transaction);
         newDialect().disableSyncTriggers(transaction, "store-001");
         inOrder.verify(transaction).queryForObject("values sym_sync_triggers_set_disabled(1)", Integer.class);
-        inOrder.verify(transaction).queryForObject("values sym_sync_node_set_disabled('store-001')", String.class);
+        inOrder.verify(transaction).queryForObject("values sym_sync_node_set_disabled(?)", String.class, "store-001");
+    }
+
+    @Test
+    void testDisableSyncTriggers_bindsNodeIdContainingQuote() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        newDialect().disableSyncTriggers(transaction, "a'b");
+        verify(transaction).queryForObject("values sym_sync_node_set_disabled(?)", String.class, "a'b");
     }
 
     @Test
