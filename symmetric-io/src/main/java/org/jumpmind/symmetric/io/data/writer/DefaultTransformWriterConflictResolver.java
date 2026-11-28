@@ -91,8 +91,14 @@ public class DefaultTransformWriterConflictResolver extends DefaultDatabaseWrite
     protected void performFallbackToUpdate(AbstractDatabaseWriter writer, CsvData data, Conflict conflict, boolean retransform) {
         TransformedData transformedData = data.getAttribute(TransformedData.class.getName());
         if (transformedData != null && retransform) {
+            /*
+             * A source delete that the delete action turned into an update (UPDATE_COL) must be transformed as a delete again, so the delete action and the
+             * delete-only columns apply instead of the update action and the update-only columns.
+             */
+            DataEventType retransformEventType = transformedData.getSourceDmlType() == DataEventType.DELETE ? DataEventType.DELETE
+                    : DataEventType.UPDATE;
             List<TransformedData> newlyTransformedDatas = transformWriter.transform(
-                    DataEventType.UPDATE, writer.getContext(), transformedData.getTransformation(),
+                    retransformEventType, writer.getContext(), transformedData.getTransformation(),
                     transformedData.getSourceKeyValues(), transformedData.getOldSourceValues(),
                     transformedData.getSourceValues());
             for (TransformedData newlyTransformedData : newlyTransformedDatas) {
