@@ -491,6 +491,7 @@ final public class ParameterConstants {
             TRIGGER_CAPTURE_DDL_DELIMITER,
             TRIGGER_CAPTURE_DDL_CHANNEL,
             TRIGGER_CAPTURE_DDL_TABLE,
+            SYNC_USE_READY_QUEUES, // Chooses the status index on outgoing_batch
             "db.url", "db.user", // See DataSourceProperties class
             LOAD_ONLY_PROPERTY_PREFIX + "db.url", LOAD_ONLY_PROPERTY_PREFIX + "db.user",
             "mssql.use.ntypes.for.sync" // See ConsoleConstants class
