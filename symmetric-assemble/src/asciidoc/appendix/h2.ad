@@ -3,6 +3,12 @@
 
 The H2 database allows only Java-based triggers. Therefore the H2 dialect requires that the SymmetricDS jar file be in the database's classpath.
 
+A file-based H2 database can use either the `file:` or the `async:` file system prefix.
+Both use the same database file and format, so an existing database opens unchanged after the prefix is switched.
+
+* `file:` (default) reads and writes through a Java NIO `FileChannel`. If a thread is interrupted during file I/O, Java closes the channel and H2 marks the database closed, so later statements fail until the engine restarts.
+* `async:`, for example `db.url=jdbc:h2:async:./corp;LOCK_TIMEOUT=60000;WRITE_DELAY=0`, uses an `AsynchronousFileChannel`, which stays open when a thread is interrupted. On Linux, Java runs every read through a thread pool, which made H2 processing about 15 to 45 percent slower in replication tests. Use it only when the database is closed by interrupted threads, reported as `ClosedByInterruptException` or `Database is already closed`.
+
 .Supported Data Types
 |===
 |Data Type|Supported?

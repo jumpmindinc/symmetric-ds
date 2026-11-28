@@ -62,6 +62,8 @@ import bsh.Interpreter;
 
 final public class SymmetricUtils {
     private static final Logger log = LoggerFactory.getLogger(SymmetricUtils.class);
+    private static final String H2_FILE_URL_PREFIX = "jdbc:h2:file:";
+    private static final String H2_ASYNC_URL_PREFIX = "jdbc:h2:async:";
     private static SecureRandom rand;
     protected static boolean isNoticeLogged;
 
@@ -234,6 +236,10 @@ final public class SymmetricUtils {
         return false;
     }
 
+    public static boolean isH2FileUrl(String url) {
+        return url != null && (url.startsWith(H2_FILE_URL_PREFIX) || url.startsWith(H2_ASYNC_URL_PREFIX));
+    }
+
     public static String getDeploymentSubType(Properties properties) {
         if (properties != null) {
             boolean isLoadOnly = Boolean.valueOf(properties.getProperty(ParameterConstants.NODE_LOAD_ONLY, "false"));
@@ -247,7 +253,7 @@ final public class SymmetricUtils {
                     return Constants.DEPLOYMENT_SUB_TYPE_LOG_BASED;
                 }
                 String dbUrl = properties.getProperty("db.url");
-                if (dbUrl != null && dbUrl.startsWith("jdbc:h2:file:") && dbUrl.contains("extract-only")) {
+                if (isH2FileUrl(dbUrl) && dbUrl.contains("extract-only")) {
                     return Constants.DEPLOYMENT_SUB_TYPE_EXTRACT_ONLY;
                 } else {
                     return Constants.DEPLOYMENT_SUB_TYPE_LOAD_ONLY;
