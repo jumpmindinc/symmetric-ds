@@ -1,5 +1,15 @@
 package org.jumpmind.symmetric.service.impl;
 
+import static org.mockito.ArgumentMatchers.eq;
+
+import static org.mockito.ArgumentMatchers.any;
+
+import static org.mockito.ArgumentMatchers.anyBoolean;
+
+import static org.mockito.AdditionalMatchers.aryEq;
+
+import static org.mockito.Mockito.doThrow;
+
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.sql.Types;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -644,6 +655,48 @@ class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
         actualList = spyTriggerRouterService.findTriggerHistories("", "schem", "table");
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
+    }
+
+    @Test
+    void testRebuildTriggerIfNecessary_deadlockRetryReactivatesSharedHistory() {
+        TriggerRouterService service = spy(buildService());
+        Table table = new Table("orders");
+        when(symmetricDialect.getTargetPlatform("orders")).thenReturn(platform);
+        when(platform.getName()).thenReturn("h2");
+        RuntimeException deadlock = new RuntimeException(new SQLException("deadlock", "40001", 1205));
+        when(sqlTemplate.isDeadlock(deadlock)).thenReturn(true);
+        TriggerHistory sharedHistory = new TriggerHistory();
+        sharedHistory.setTriggerHistoryId(7);
+        doAnswer(invocation -> {
+            service.invalidateTriggerHistory(sharedHistory, deadlock);
+            throw deadlock;
+        }).doReturn(sharedHistory).when(service).rebuildTriggerIfNecessaryWithException(any(), anyBoolean(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), any());
+        TriggerHistory result = service.rebuildTriggerIfNecessary(new StringBuilder(), false, new Trigger(), DataEventType.UPDATE,
+                TriggerReBuildReason.NEW_TRIGGERS, null, sharedHistory, true, table, new ArrayList<TriggerHistory>(), null);
+        assertSame(sharedHistory, result);
+        assertNull(result.getInactiveTime());
+        assertNull(result.getErrorMessage());
+        verify(sqlTemplate).update(eq(service.getSql("inactivateTriggerHistorySql")), aryEq(new Object[] { null, null, 7 }), any(int[].class));
+    }
+
+    @Test
+    void testRebuildTriggerIfNecessary_deadlockRetryKeepsHistoryThatWasAlreadyInactive() {
+        TriggerRouterService service = spy(buildService());
+        Table table = new Table("orders");
+        when(symmetricDialect.getTargetPlatform("orders")).thenReturn(platform);
+        when(platform.getName()).thenReturn("h2");
+        RuntimeException deadlock = new RuntimeException(new SQLException("deadlock", "40001", 1205));
+        when(sqlTemplate.isDeadlock(deadlock)).thenReturn(true);
+        TriggerHistory inactiveHistory = new TriggerHistory();
+        inactiveHistory.setTriggerHistoryId(8);
+        Date inactiveTime = new Date(1000);
+        inactiveHistory.setInactiveTime(inactiveTime);
+        doThrow(deadlock).doReturn(inactiveHistory).when(service).rebuildTriggerIfNecessaryWithException(any(), anyBoolean(), any(), any(), any(),
+                any(), any(), anyBoolean(), any(), any(), any());
+        TriggerHistory result = service.rebuildTriggerIfNecessary(new StringBuilder(), false, new Trigger(), DataEventType.UPDATE,
+                TriggerReBuildReason.NEW_TRIGGERS, null, inactiveHistory, true, table, new ArrayList<TriggerHistory>(), null);
+        assertEquals(inactiveTime, result.getInactiveTime());
     }
 
     @Test
