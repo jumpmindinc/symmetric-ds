@@ -228,4 +228,30 @@ class NodeConcurrencyInterceptorTest {
         when(nodeChannels.getIgnoreChannelsAsString(anyString())).thenReturn("");
         when(configurationService.getSuspendIgnoreChannelLists(NODE_ID)).thenReturn(nodeChannels);
     }
+
+    @Test
+    void before_pushStatusPost_doesNotRequireExistingReservation() throws Exception {
+        when(request.getRequestURI()).thenReturn("/sync/corp-000/pushstatus/");
+        when(request.getMethod()).thenReturn("POST");
+        stubReservationStatus(ReservationStatus.ACCEPTED);
+        interceptor.before(request, response);
+        verify(concurrentConnectionManager).reserveConnection(eq(NODE_ID), any(), eq("/sync/corp-000/pushstatus/"), eq(ReservationType.HARD), eq(false));
+    }
+
+    @Test
+    void before_pushPut_requiresExistingReservation() throws Exception {
+        stubReservationStatus(ReservationStatus.ACCEPTED);
+        interceptor.before(request, response);
+        verify(concurrentConnectionManager).reserveConnection(eq(NODE_ID), any(), eq(PUSH_URI), eq(ReservationType.HARD), eq(true));
+    }
+
+    @Test
+    void hasPathSegment_matchesWholeSegmentsOnly() {
+        assertTrue(NodeConcurrencyInterceptor.hasPathSegment("/corp-000/push", "push"));
+        assertTrue(NodeConcurrencyInterceptor.hasPathSegment("/corp-000/filesync/push", "push"));
+        assertTrue(NodeConcurrencyInterceptor.hasPathSegment("/corp-000/compare/push", "push"));
+        assertTrue(NodeConcurrencyInterceptor.hasPathSegment("/corp-000/filesync/push", "filesync"));
+        assertFalse(NodeConcurrencyInterceptor.hasPathSegment("/corp-000/pushstatus/", "push"));
+        assertFalse(NodeConcurrencyInterceptor.hasPathSegment("/pushers/pull", "push"));
+    }
 }
