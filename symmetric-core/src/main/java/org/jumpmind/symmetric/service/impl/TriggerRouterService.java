@@ -2767,6 +2767,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             TriggerReBuildReason reason, TriggerHistory oldhist, TriggerHistory hist,
             boolean triggerIsActive, Relation relation, List<TriggerHistory> activeTriggerHistories,
             TriggerRelationSupportingInfo triggerRelationSupportingInfo) {
+        boolean isHistoryActiveBeforeRebuild = hist != null && hist.getInactiveTime() == null;
         try {
             return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
                     activeTriggerHistories, triggerRelationSupportingInfo);
@@ -2777,15 +2778,35 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 log.error("Retrying trigger for {} after exception {} [{}]: {}", relation.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
                 relation = platform.readRelationFromDatabase(relation.getCatalog(), relation.getSchema(), relation.getName());
                 if (relation != null) {
-                    return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
-                            activeTriggerHistories, triggerRelationSupportingInfo);
+                    TriggerHistory retriedHistory = rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist,
+                            triggerIsActive, relation, activeTriggerHistories, triggerRelationSupportingInfo);
+                    reactivateTriggerHistoryAfterRetry(retriedHistory, isHistoryActiveBeforeRebuild);
+                    return retriedHistory;
                 }
             } else if (platform.getSqlTemplate().isDeadlock(e)) {
-                log.error("Retrying trigger for {} after deadlock {} [{}]: {}", relation.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
-                return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
-                        activeTriggerHistories, triggerRelationSupportingInfo);
+                log.error("Retrying trigger for {} after deadlock {} [{}]: {}", relation.getName(), e.getClass().getName(),
+                        se != null ? se.getErrorCode() : null, e.getMessage());
+                TriggerHistory retriedHistory = rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist,
+                        triggerIsActive, relation, activeTriggerHistories, triggerRelationSupportingInfo);
+                reactivateTriggerHistoryAfterRetry(retriedHistory, isHistoryActiveBeforeRebuild);
+                return retriedHistory;
             }
             throw e;
+        }
+    }
+
+    /*
+     * The failed attempt inactivates the trigger history it was given (invalidateTriggerHistory). The insert, update and delete triggers share one history, so
+     * when the retry succeeds for the update or delete trigger, the history it returns must be active again.
+     */
+    protected void reactivateTriggerHistoryAfterRetry(TriggerHistory history, boolean isHistoryActiveBeforeRebuild) {
+        if (isHistoryActiveBeforeRebuild && history != null && history.getInactiveTime() != null) {
+            log.info("Reactivating trigger hist row of {} after retrying the trigger for {}", history.getTriggerHistoryId(),
+                    history.getFullyQualifiedSourceTableName());
+            history.setInactiveTime(null);
+            history.setErrorMessage(null);
+            sqlTemplate.update(getSql("inactivateTriggerHistorySql"), new Object[] { null, null, history.getTriggerHistoryId() },
+                    new int[] { Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER });
         }
     }
 
