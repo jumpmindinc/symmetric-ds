@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
@@ -99,5 +100,47 @@ public class PostgreSqlDdlBuilderTest {
         computedCol.setDefaultValue("(a + b)");
         computedCol.addPlatformColumn(new PlatformColumn(DatabaseNamesConstants.POSTGRESQL, "INTEGER", 0, 0, null));
         return new Table("test_computed", idCol, aCol, bCol, computedCol);
+    }
+
+    @Test
+    void testAreColumnSizesTheSame_timestamptzWithoutDesiredSize_matchesDefaultPrecision() {
+        PostgreSqlDdlBuilder ddlBuilder = new PostgreSqlDdlBuilder();
+        Column live = timestamptzColumn(null, 6);
+        assertTrue(ddlBuilder.areColumnSizesTheSame(live, timestamptzColumn(null, -1)));
+        assertTrue(ddlBuilder.areColumnSizesTheSame(live, timestamptzColumn("6", -1)));
+        assertTrue(ddlBuilder.areColumnSizesTheSame(live, timestamptzColumn(null, 6)));
+    }
+
+    @Test
+    void testAreColumnSizesTheSame_timestamptzWithDifferentDesiredSize_detectsChange() {
+        PostgreSqlDdlBuilder ddlBuilder = new PostgreSqlDdlBuilder();
+        Column live = timestamptzColumn(null, 6);
+        assertFalse(ddlBuilder.areColumnSizesTheSame(live, timestamptzColumn("3", -1)));
+        assertFalse(ddlBuilder.areColumnSizesTheSame(live, timestamptzColumn(null, 3)));
+    }
+
+    @Test
+    void testGetSqlType_timeZoneTypeWithSize_putsSizeBeforeTimeZoneClause() {
+        PostgreSqlDdlBuilder ddlBuilder = new PostgreSqlDdlBuilder();
+        Column column = new Column("created_at");
+        column.setMappedType(TypeMap.TIMESTAMPTZ);
+        column.addPlatformColumn(new PlatformColumn(DatabaseNamesConstants.POSTGRESQL, "TIMESTAMP WITH TIME ZONE", 6, -1, null));
+        assertEquals("TIMESTAMP(6) WITH TIME ZONE", ddlBuilder.getSqlType(column));
+    }
+
+    @Test
+    void testMoveSizeBeforeTimeZoneClause() {
+        assertEquals("TIMESTAMP(3) WITH TIME ZONE", PostgreSqlDdlBuilder.moveSizeBeforeTimeZoneClause("TIMESTAMP WITH TIME ZONE(3)"));
+        assertEquals("time(6) without time zone", PostgreSqlDdlBuilder.moveSizeBeforeTimeZoneClause("time without time zone(6)"));
+        assertEquals("TIMESTAMPTZ(6)", PostgreSqlDdlBuilder.moveSizeBeforeTimeZoneClause("TIMESTAMPTZ(6)"));
+        assertEquals("TIMESTAMP WITH TIME ZONE", PostgreSqlDdlBuilder.moveSizeBeforeTimeZoneClause("TIMESTAMP WITH TIME ZONE"));
+    }
+
+    private static Column timestamptzColumn(String size, int platformSize) {
+        Column column = new Column("created_at");
+        column.setMappedType(TypeMap.TIMESTAMPTZ);
+        column.setSize(size);
+        column.addPlatformColumn(new PlatformColumn(DatabaseNamesConstants.POSTGRESQL, "TIMESTAMPTZ", platformSize, -1, null));
+        return column;
     }
 }
