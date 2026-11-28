@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.model;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Types;
@@ -536,5 +537,38 @@ class TriggerTest {
         Column c5 = new Column("col5", false, Types.INTEGER, 50, 0);
         Column c6 = new Column("col6", false, Types.INTEGER, 50, 0);
         return new Column[] { c1, c2, c3, c4, c5, c6 };
+    }
+
+    @Test
+    void toHashedValue_changesWhenCaptureChangesOnlyIsEnabled() {
+        Trigger trigger = hashTestTrigger();
+        long defaultHash = trigger.toHashedValue();
+        trigger.setCaptureChangesOnly(true);
+        assertNotEquals(defaultHash, trigger.toHashedValue());
+    }
+
+    @Test
+    void toHashedValue_changesWhenStreamRowIsEnabled() {
+        Trigger trigger = hashTestTrigger();
+        long defaultHash = trigger.toHashedValue();
+        trigger.setStreamRow(true);
+        assertNotEquals(defaultHash, trigger.toHashedValue());
+    }
+
+    @Test
+    void toHashedValue_defaultsKeepTheExistingHash() {
+        Trigger trigger = hashTestTrigger();
+        long defaultHash = trigger.toHashedValue();
+        trigger.setCaptureChangesOnly(false);
+        trigger.setStreamRow(false);
+        assertEquals(defaultHash, trigger.toHashedValue());
+    }
+
+    private static Trigger hashTestTrigger() {
+        Trigger trigger = new Trigger();
+        trigger.setTriggerId("item");
+        trigger.setSourceTableName("item");
+        trigger.setChannelId("default");
+        return trigger;
     }
 }

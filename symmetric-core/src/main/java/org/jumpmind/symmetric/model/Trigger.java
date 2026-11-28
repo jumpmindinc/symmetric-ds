@@ -680,6 +680,8 @@ public class Trigger implements IModelObject, Cloneable {
         hashedValue += useCaptureLobs ? "useCaptureLobs".hashCode() : 0;
         hashedValue += useCaptureOldData ? "useCaptureOldData".hashCode() : 0;
         hashedValue += useHandleKeyUpdates ? "useHandleKeyUpdates".hashCode() : 0;
+        hashedValue += captureChangesOnly ? "captureChangesOnly".hashCode() : 0;
+        hashedValue += streamRow ? "streamRow".hashCode() : 0;
         if (null != nameForInsertTrigger) {
             hashedValue += nameForInsertTrigger.hashCode();
         }
