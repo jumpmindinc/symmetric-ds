@@ -75,7 +75,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     }
 
     private void addConnectionAndUpdateUtilizationGauge(int connectionChange) {
-        if (connectionsCounter != null) {
+        if (connectionsCounter != null && connectionChange != 0) {
             connectionsCounter.add(connectionChange);
         }
         if (utilizationGauge != null) {
@@ -232,10 +232,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     private Reservation grantReservation(Map<String, Reservation> reservations, String reservationId, String nodeId,
             ReservationType reservationRequest) {
         Reservation reservation = new Reservation(reservationId, computeExpirationTime(reservationRequest), reservationRequest);
-        reservations.put(reservationId, reservation);
+        Reservation replacedReservation = reservations.put(reservationId, reservation);
         transportErrorTimeByNode.remove(nodeId);
         updateReadiness(reservations);
-        addConnectionAndUpdateUtilizationGauge(1);
+        addConnectionAndUpdateUtilizationGauge(replacedReservation == null ? 1 : 0);
         return reservation;
     }
 

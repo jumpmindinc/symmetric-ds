@@ -70,6 +70,34 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
+    void metrics_softThenHardReservationThenRelease_countsOneReservation() {
+        IUpDownCounter counter = mock(IUpDownCounter.class);
+        ConcurrentConnectionManager mgr = newMgrWithMetrics(5, metricsServiceWith(counter));
+        mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false);
+        mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, true);
+        mgr.releaseConnection("node1", "0", "push");
+        verify(counter, times(1)).add(1L);
+        verify(counter, times(1)).add(-1L);
+        verify(counter, never()).add(0L);
+    }
+
+    @Test
+    void metrics_renewedSoftReservation_countsOneReservation() {
+        IUpDownCounter counter = mock(IUpDownCounter.class);
+        ConcurrentConnectionManager mgr = newMgrWithMetrics(5, metricsServiceWith(counter));
+        mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false);
+        mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false);
+        verify(counter, times(1)).add(1L);
+    }
+
+    private static IEngineMetricsService metricsServiceWith(IUpDownCounter counter) {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        when(metricsService.getUpDownCounter(anyString())).thenReturn(counter);
+        when(metricsService.getDoubleGauge(anyString())).thenReturn(mock(ISymDoubleGauge.class));
+        return metricsService;
+    }
+
+    @Test
     void metrics_zeroMaxPoolSize_setsGaugeToZero() {
         IUpDownCounter counter = mock(IUpDownCounter.class);
         ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
