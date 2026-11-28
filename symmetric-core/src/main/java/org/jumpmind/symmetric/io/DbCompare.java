@@ -415,9 +415,12 @@ public class DbCompare {
                 mappedPkColumns.add(targetColumn);
             }
         }
+        Column[] sortByColumns = tables.getTargetTable().getPrimaryKeyColumns();
+        if (!mappedPkColumns.isEmpty() && mappedPkColumns.size() == tables.getSourceTable().getPrimaryKeyColumnCount()) {
+            sortByColumns = mappedPkColumns.toArray(new Column[mappedPkColumns.size()]);
+        }
         String whereClause = config.getTargetWhereClause(tables.getTargetTable().getName());
-        String sql = getComparisonSQL(tables.getTargetTable(), tables.getTargetTable().getPrimaryKeyColumns(), platform,
-                whereClause, false);
+        String sql = getComparisonSQL(tables.getTargetTable(), sortByColumns, platform, whereClause, false);
         log.info("Target comparison SQL: {}", sql);
         return sql;
     }
