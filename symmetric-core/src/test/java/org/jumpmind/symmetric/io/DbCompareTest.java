@@ -13,6 +13,15 @@ import java.sql.DriverManager;
 import java.util.List;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.service.ITransformService;
+import org.jumpmind.symmetric.service.INodeService;
+import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.symmetric.model.Trigger;
+import org.jumpmind.symmetric.model.Router;
+import org.jumpmind.symmetric.model.Node;
+import java.util.Arrays;
 import org.jumpmind.db.platform.JdbcDatabasePlatformFactory;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -98,6 +107,60 @@ public class DbCompareTest {
         this.config.setSourceTableNames(this.sourceTableNames);
         this.config.setTargetTableNames(this.targetTableNames);
         this.test = new DbCompare(sourceEngine, targetEngine, config);
+    }
+
+    @Test
+    void sourceTableNamesOfWildcardTriggerComeFromActiveTriggerHistories() {
+        changeTableBeingTested(nonEmptyTableWithPKNoDifferences);
+        Trigger trigger = new Trigger("*", "default");
+        trigger.setTriggerId("all");
+        ITriggerRouterService triggerRouterService = mock(ITriggerRouterService.class);
+        when(sourceEngine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        when(triggerRouterService.getActiveTriggerHistories(trigger))
+                .thenReturn(Arrays.asList(history(nonEmptyTableWithPKNoDifferences), history(emptyTableWithPK)));
+        assertEquals(Arrays.asList(nonEmptyTableWithPKNoDifferences, emptyTableWithPK), test.getSourceTableNames(trigger));
+    }
+
+    @Test
+    void sourceTableNameOfTriggerWithoutWildcardIsItsConfiguredTable() {
+        changeTableBeingTested(nonEmptyTableWithPKNoDifferences);
+        assertEquals(Arrays.asList(emptyTableWithPK), test.getSourceTableNames(new Trigger(emptyTableWithPK, "default")));
+    }
+
+    @Test
+    void compareUsingSymmetricConfigWithWildcardTriggerComparesItsTables() {
+        Trigger trigger = new Trigger("*", "default");
+        trigger.setTriggerId("all");
+        TriggerRouter triggerRouter = new TriggerRouter(trigger, new Router());
+        INodeService sourceNodeService = mock(INodeService.class);
+        INodeService targetNodeService = mock(INodeService.class);
+        when(sourceNodeService.findIdentity(true, true)).thenReturn(new Node("corp", "corp"));
+        when(targetNodeService.findIdentity(true, true)).thenReturn(new Node("store", "store"));
+        when(sourceEngine.getNodeService()).thenReturn(sourceNodeService);
+        when(targetEngine.getNodeService()).thenReturn(targetNodeService);
+        when(sourceEngine.getTablePrefix()).thenReturn("sym");
+        ITriggerRouterService triggerRouterService = mock(ITriggerRouterService.class);
+        when(sourceEngine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        when(targetEngine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        when(triggerRouterService.getTriggerRoutersForSourceAndTargetNodes("corp", "store")).thenReturn(Arrays.asList(triggerRouter));
+        when(triggerRouterService.getActiveTriggerHistories(trigger))
+                .thenReturn(Arrays.asList(history(nonEmptyTableWithPKNoDifferences), history(emptyTableWithPK)));
+        when(sourceEngine.getTransformService()).thenReturn(mock(ITransformService.class));
+        when(targetEngine.getTransformService()).thenReturn(mock(ITransformService.class));
+        config = new DbCompareConfig();
+        config.setUseSymmetricConfig(true);
+        test = new DbCompare(sourceEngine, targetEngine, config);
+        List<TableReport> tableReports = test.compare().getTableReports();
+        assertEquals(2, tableReports.size());
+        assertEquals(nonEmptyTableWithPKNoDifferences.toUpperCase(), tableReports.get(0).getSourceTable().toUpperCase());
+        assertEquals(2, tableReports.get(0).getMatchedRows());
+        assertEquals(emptyTableWithPK.toUpperCase(), tableReports.get(1).getSourceTable().toUpperCase());
+    }
+
+    private static TriggerHistory history(String tableName) {
+        TriggerHistory history = new TriggerHistory();
+        history.setSourceTableName(tableName);
+        return history;
     }
 
     @Test

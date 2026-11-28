@@ -24,6 +24,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -53,6 +54,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.DbCompareReport.TableReport;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -509,15 +511,30 @@ public class DbCompare {
         Set<String> configTables = TableConstants.getTables(sourceEngine.getTablePrefix());
         List<String> tableNames = new ArrayList<String>();
         for (TriggerRouter triggerRouter : triggerRouters) {
-            String tableName = triggerRouter.getTrigger().getFullyQualifiedSourceTableName();
-            if (!tableNames.contains(tableName) && !configTables.contains(tableName)
-                    && ((!CollectionUtils.isEmpty(config.getSourceTableNames())
-                            && config.getSourceTableNames().contains(tableName))
-                            || CollectionUtils.isEmpty(config.getSourceTableNames()))) {
-                tableNames.add(tableName);
+            for (String tableName : getSourceTableNames(triggerRouter.getTrigger())) {
+                if (!tableNames.contains(tableName) && !configTables.contains(tableName)
+                        && ((!CollectionUtils.isEmpty(config.getSourceTableNames())
+                                && config.getSourceTableNames().contains(tableName))
+                                || CollectionUtils.isEmpty(config.getSourceTableNames()))) {
+                    tableNames.add(tableName);
+                }
             }
         }
         return loadTables(tableNames, config.getTargetTableNames());
+    }
+
+    /*
+     * A trigger with a wildcard (or an expanded table name) captures the tables of its active trigger histories, not the table name it is configured with.
+     */
+    protected List<String> getSourceTableNames(Trigger trigger) {
+        if (trigger.isSourceWildCarded() || trigger.isSourceTableNameExpanded()) {
+            List<String> tableNames = new ArrayList<String>();
+            for (TriggerHistory history : sourceEngine.getTriggerRouterService().getActiveTriggerHistories(trigger)) {
+                tableNames.add(history.getFullyQualifiedSourceTableName());
+            }
+            return tableNames;
+        }
+        return Collections.singletonList(trigger.getFullyQualifiedSourceTableName());
     }
 
     protected List<DbCompareTables> loadTables(List<String> tableNames, List<String> targetTableNames) {
