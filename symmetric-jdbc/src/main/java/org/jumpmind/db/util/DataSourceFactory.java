@@ -23,7 +23,6 @@ package org.jumpmind.db.util;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -36,7 +35,8 @@ import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.slf4j.LoggerFactory;
 
 public class DataSourceFactory {
-    protected static Map<String, String> requiredConnectionProperties = new HashMap<>();
+    private static final String FIREBIRD_DRIVER = "org.firebirdsql.jdbc.FBDriver";
+    private static final Map<String, String> FIREBIRD_REQUIRED_CONNECTION_PROPERTIES = Map.of("columnLabelForName", "true");
 
     private DataSourceFactory() {
     }
@@ -62,9 +62,10 @@ public class DataSourceFactory {
                 }
             }
         }
-        if (clazzName.equals("org.firebirdsql.jdbc.FBDriver")) {
-            requiredConnectionProperties.put("columnLabelForName", "true");
-        }
+    }
+
+    public static Map<String, String> getRequiredConnectionProperties(String driverClassName) {
+        return FIREBIRD_DRIVER.equals(driverClassName) ? FIREBIRD_REQUIRED_CONNECTION_PROPERTIES : Map.of();
     }
 
     public static DataSource create(TypedProperties properties) {
