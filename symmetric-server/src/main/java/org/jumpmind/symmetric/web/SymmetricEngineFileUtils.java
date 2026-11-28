@@ -35,15 +35,12 @@ import org.slf4j.LoggerFactory;
 
 public class SymmetricEngineFileUtils {
     private static final Logger log = LoggerFactory.getLogger(SymmetricEngineFileUtils.class);
+    /**
+     * @deprecated Use {@link ParameterConstants#STARTUP_DB_OBJECTS_SETUP_PARAMS}, the list the engine hashes at startup.
+     */
+    @Deprecated
+    public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS;
     // Parameters for creating engine files from environment variables:
-    public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] {
-            ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES,
-            ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
-            ParameterConstants.TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
-            ParameterConstants.TRIGGER_CAPTURE_DDL_DELIMITER,
-            DataSourceProperties.DB_POOL_USER,
-            DataSourceProperties.DB_POOL_URL,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_URL };
     public static final String[] ENGINE_MANDATORY_STARTUP_PARAMETERS = {
             DataSourceProperties.DB_POOL_URL,
             DataSourceProperties.DB_POOL_DRIVER,

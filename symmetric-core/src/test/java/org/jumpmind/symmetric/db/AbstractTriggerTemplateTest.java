@@ -248,6 +248,10 @@ class AbstractTriggerTemplateTest {
             super(parameterService, platform);
         }
 
+        public MockAbstractSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
+            super(parameterService, platform);
+        }
+
         @Override
         public void cleanDatabase() {
             // TODO Auto-generated method stub

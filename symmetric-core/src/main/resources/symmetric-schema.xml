@@ -719,6 +719,13 @@
             <index-column name="status" />
             <include-column name="error_flag" />
         </index>
+        <index name="idx_ob_ready_queue">
+            <index-column name="status" />
+            <index-column name="node_id" />
+            <index-column name="channel_id" />
+            <index-column name="thread_id" />
+            <include-column name="error_flag" />
+        </index>
         <index name="idx_ob_in_error">
             <index-column name="error_flag" />
         </index>

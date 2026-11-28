@@ -670,6 +670,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     public Database readSymmetricSchemaFromXml() {
         try {
             Database database = merge(readDatabaseFromXml("/symmetric-schema.xml"), readDatabaseFromXml("/console-schema.xml"));
+            OutgoingBatchStatusIndexSelector.removeUnusedStatusIndex(database, parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES));
             prefixConfigDatabase(database);
             String extraTablesXml = parameterService.getString(ParameterConstants.AUTO_CONFIGURE_EXTRA_TABLES);
             if (StringUtils.isNotBlank(extraTablesXml)) {

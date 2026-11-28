@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -984,7 +986,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
 
     @Override
     public Map<String, ReadyChannels> getReadyChannelsFromDb() {
-        List<Row> rows = sqlTemplateDirty.query(getSql("selectReadyChannels"), new Object[] {
+        List<Row> rows = sqlTemplateDirty.query(getSql(getReadyChannelsSqlName(platform.getName())), new Object[] {
                 OutgoingBatch.Status.NE.name(), OutgoingBatch.Status.QY.name(), OutgoingBatch.Status.SE.name(), OutgoingBatch.Status.LD.name(),
                 OutgoingBatch.Status.ER.name(), OutgoingBatch.Status.IG.name(), OutgoingBatch.Status.RS.name() });
         Map<String, ReadyChannels> readyChannelMap = new HashMap<>();
@@ -1000,6 +1002,12 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
             channels.add(channelId, threadId);
         }
         return readyChannelMap;
+    }
+
+    static String getReadyChannelsSqlName(String platformName) {
+        boolean isLooseIndexScanSupported = Strings.CI.equalsAny(platformName, DatabaseNamesConstants.POSTGRESQL95,
+                DatabaseNamesConstants.AURORA_POSTGRESQL, DatabaseNamesConstants.AZURE_POSTGRESQL, DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
+        return isLooseIndexScanSupported ? "selectReadyChannelsLooseScan" : "selectReadyChannels";
     }
 
     @Override

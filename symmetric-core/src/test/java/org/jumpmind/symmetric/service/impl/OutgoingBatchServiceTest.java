@@ -51,6 +51,7 @@ import static org.jumpmind.symmetric.service.impl.OutgoingBatchService.OUT_BATCH
 
 import java.util.Date;
 
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.model.BacklogSummary;
 import org.jumpmind.symmetric.model.OutgoingBatchSummary;
@@ -59,6 +60,8 @@ import org.jumpmind.symmetric.service.impl.OutgoingBatchService.BacklogSummaryMa
 import org.jumpmind.symmetric.service.impl.OutgoingBatchService.OutgoingBatchSummaryByNodeBriefStatsMapper;
 import org.jumpmind.symmetric.service.impl.OutgoingBatchService.OutgoingBatchSummaryMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OutgoingBatchServiceTest {
     @Test
@@ -161,5 +164,21 @@ class OutgoingBatchServiceTest {
         assertEquals(100L, summary.getExtractMillis());
         assertEquals(30L, summary.getTransferMillis());
         assertEquals(20L, summary.getLoadMillis());
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = { DatabaseNamesConstants.POSTGRESQL95, DatabaseNamesConstants.AURORA_POSTGRESQL, DatabaseNamesConstants.AZURE_POSTGRESQL,
+                    DatabaseNamesConstants.CLOUDSQL_POSTGRESQL })
+    void testReadyChannelsUseLooseScanOnPostgreSql(String platformName) {
+        assertEquals("selectReadyChannelsLooseScan", OutgoingBatchService.getReadyChannelsSqlName(platformName));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = { DatabaseNamesConstants.POSTGRESQL, DatabaseNamesConstants.GREENPLUM, DatabaseNamesConstants.REDSHIFT,
+                    DatabaseNamesConstants.H2, DatabaseNamesConstants.MSSQL2016, DatabaseNamesConstants.ORACLE, DatabaseNamesConstants.MYSQL })
+    void testReadyChannelsUseDistinctElsewhere(String platformName) {
+        assertEquals("selectReadyChannels", OutgoingBatchService.getReadyChannelsSqlName(platformName));
     }
 }
