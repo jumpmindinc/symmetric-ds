@@ -791,6 +791,15 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
     }
 
+    static void copyExtensionsXmlFiles(File confDir, File webInfClassesDir) throws IOException {
+        File[] extensionsXmlFiles = confDir.listFiles((dir, name) -> name.endsWith("-extensions.xml"));
+        if (extensionsXmlFiles != null) {
+            for (File file : extensionsXmlFiles) {
+                FileUtils.copyToDirectory(file, new File(webInfClassesDir, "conf"));
+            }
+        }
+    }
+
     private void generateWar(CommandLine line, List<String> args) throws Exception {
         String warFileName = popArg(args, "Filename");
         final File workingDirectory = new File(AppUtils.getSymHome() + "/.war");
@@ -825,6 +834,8 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 FileUtils.copyToDirectory(file, new File(workingDirectory, "WEB-INF/lib"));
             }
         }
+        System.out.println("Copying extension files");
+        copyExtensionsXmlFiles(new File(AppUtils.getSymHome(), "conf"), new File(workingDirectory, "WEB-INF/classes"));
         System.out.println("Copying symmetric-server.properties");
         Properties prop = new Properties();
         try (InputStream in = new FileInputStream(AppUtils.getSymHome() + "/conf/symmetric-server.properties")) {
