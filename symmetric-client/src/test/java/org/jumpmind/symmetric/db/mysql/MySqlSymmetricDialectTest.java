@@ -38,6 +38,7 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.SequenceIdentifier;
@@ -202,5 +203,13 @@ class MySqlSymmetricDialectTest {
         when(platform.getDdlBuilder()).thenReturn(new MySqlDdlBuilder());
         when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         return platform;
+    }
+
+    @Test
+    void disableSyncTriggers_bindsNodeIdContainingQuote() {
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), createPlatform("8.0.0"));
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        dialect.disableSyncTriggers(transaction, "a'b");
+        verify(transaction).prepareAndExecute("set @sync_node_disabled=?", "a'b");
     }
 }

@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
@@ -65,7 +66,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
         transaction.prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "'='1'");
         if (nodeId != null) {
             transaction
-                    .prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'='" + nodeId + "'");
+                    .prepareAndExecute("set '" + SYNC_TRIGGERS_DISABLED_NODE_VARIABLE + "'=" + SqlUtils.toStringLiteral(nodeId));
         }
     }
 

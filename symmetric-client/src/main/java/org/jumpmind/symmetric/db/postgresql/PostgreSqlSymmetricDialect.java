@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.db.postgresql;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -314,9 +315,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         return "select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "', '1', false)";
     }
 
-    private String getDisableSyncNodeSql(String nodeId) {
+    private String getDisableSyncNodeSql() {
         nodeDisabledCount++;
-        return "select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', '" + nodeId + "', false)";
+        return "select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', ?, false)";
     }
 
     private String getEnableSyncTriggersSql() {
@@ -332,10 +333,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     @Override
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         transaction.prepareAndExecute(getDisableSyncTriggersSql());
-        if (nodeId == null) {
-            nodeId = "";
-        }
-        transaction.prepareAndExecute(getDisableSyncNodeSql(nodeId));
+        transaction.prepareAndExecute(getDisableSyncNodeSql(), Objects.toString(nodeId, ""));
     }
 
     @Override
@@ -346,9 +344,10 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
 
     @Override
     public void disableSyncTriggers(Connection connection, String nodeId) {
-        try (Statement stmt = connection.createStatement()) {
+        try (Statement stmt = connection.createStatement(); PreparedStatement nodeStmt = connection.prepareStatement(getDisableSyncNodeSql())) {
             stmt.execute(getDisableSyncTriggersSql());
-            stmt.execute(getDisableSyncNodeSql(Objects.toString(nodeId, "")));
+            nodeStmt.setString(1, Objects.toString(nodeId, ""));
+            nodeStmt.execute();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

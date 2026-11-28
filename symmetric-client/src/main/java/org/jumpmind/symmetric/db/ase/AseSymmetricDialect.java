@@ -316,7 +316,7 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
             nodeId = "";
         }
         transaction.prepareAndExecute("set clientapplname 'SymmetricDS'");
-        transaction.prepareAndExecute("set clientname '" + nodeId + "'");
+        transaction.prepareAndExecute("set clientname " + SqlUtils.toStringLiteral(nodeId));
     }
 
     @Override

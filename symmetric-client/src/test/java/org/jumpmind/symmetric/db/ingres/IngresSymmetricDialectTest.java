@@ -78,11 +78,13 @@ class IngresSymmetricDialectTest {
         inOrder.verify(transaction).prepareAndExecute(
                 "delete from sym_context where name = DBMSINFO('session_id') || ':synctriggersdisabled'");
         inOrder.verify(transaction).prepareAndExecute(
-                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':synctriggersdisabled', '1', current_timestamp, current_timestamp)");
+                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':synctriggersdisabled', ?, current_timestamp, current_timestamp)",
+                "1");
         inOrder.verify(transaction).prepareAndExecute(
                 "delete from sym_context where name = DBMSINFO('session_id') || ':sourcenode'");
         inOrder.verify(transaction).prepareAndExecute(
-                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':sourcenode', 'store-001', current_timestamp, current_timestamp)");
+                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':sourcenode', ?, current_timestamp, current_timestamp)",
+                "store-001");
     }
 
     @Test
@@ -90,7 +92,17 @@ class IngresSymmetricDialectTest {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         newDialect().disableSyncTriggers(transaction, null);
         verify(transaction).prepareAndExecute(
-                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':sourcenode', 'null', current_timestamp, current_timestamp)");
+                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':sourcenode', ?, current_timestamp, current_timestamp)",
+                (Object) null);
+    }
+
+    @Test
+    void testDisableSyncTriggers_bindsNodeIdContainingQuote() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        newDialect().disableSyncTriggers(transaction, "a'b");
+        verify(transaction).prepareAndExecute(
+                "insert into sym_context (name, context_value, create_time, last_update_time)  values(DBMSINFO('session_id') || ':sourcenode', ?, current_timestamp, current_timestamp)",
+                "a'b");
     }
 
     @Test

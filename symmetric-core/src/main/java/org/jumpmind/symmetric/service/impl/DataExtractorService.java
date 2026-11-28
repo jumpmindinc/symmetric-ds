@@ -75,6 +75,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.mapper.LongMapper;
 import org.jumpmind.exception.IoException;
@@ -2235,9 +2236,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         String symIncomingBatch = TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_INCOMING_BATCH);
         String nodeIdentityId = nodeService.findIdentityNodeId();
         for (ExtractRequest extractRequest : allRequests) {
-            String sql = "delete from " + symIncomingBatch + " where node_id = '" + nodeIdentityId +
-                    "' and batch_id between " + extractRequest.getStartBatchId() + " and " + extractRequest.getEndBatchId();
-            dataService.sendSQL(extractRequest.getNodeId(), sql);
+            dataService.sendSQL(extractRequest.getNodeId(),
+                    buildDeleteIncomingBatchRangeSql(symIncomingBatch, nodeIdentityId, extractRequest.getStartBatchId(), extractRequest.getEndBatchId()));
         }
         for (ExtractRequest extractRequest : allRequests) {
             TableReloadStatus reloadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(extractRequest.getLoadId(), nodeIdentityId);
@@ -2245,14 +2245,18 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     reloadStatus.getStartDataBatchId() - 1, extractRequest.getTableName().toLowerCase());
             // clear incoming batch table for all batches at the target node that were used to setup this load for a specific table (delete, truncate, etc)
             for (OutgoingBatch batch : setupBatches.getBatches()) {
-                String sql = "delete from " + symIncomingBatch + " where node_id = '" + nodeIdentityId +
-                        "' and batch_id = " + batch.getBatchId();
-                dataService.sendSQL(batch.getNodeId(), sql);
+                dataService.sendSQL(batch.getNodeId(),
+                        buildDeleteIncomingBatchRangeSql(symIncomingBatch, nodeIdentityId, batch.getBatchId(), batch.getBatchId()));
                 // set status of these batches back to new so they are resent
                 batch.setStatus(Status.NE);
                 outgoingBatchService.updateOutgoingBatch(batch);
             }
         }
+    }
+
+    protected static String buildDeleteIncomingBatchRangeSql(String incomingBatchTable, String nodeId, long startBatchId, long endBatchId) {
+        return "delete from " + incomingBatchTable + " where node_id = " + SqlUtils.toStringLiteral(nodeId)
+                + " and batch_id between " + startBatchId + " and " + endBatchId;
     }
 
     @Override

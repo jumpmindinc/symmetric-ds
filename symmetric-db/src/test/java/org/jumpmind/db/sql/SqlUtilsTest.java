@@ -286,4 +286,24 @@ class SqlUtilsTest {
         String longName = "a".repeat(40);
         assertEquals(32, SqlUtils.sanitizeTablePrefix(longName).length());
     }
+
+    @Test
+    void testToStringLiteral_quotesPlainValue() {
+        assertEquals("'node1'", SqlUtils.toStringLiteral("node1"));
+    }
+
+    @Test
+    void testToStringLiteral_doublesSingleQuotes() {
+        assertEquals("'a''b'''", SqlUtils.toStringLiteral("a'b'"));
+    }
+
+    @Test
+    void testToStringLiteral_returnsEmptyLiteralForEmptyValue() {
+        assertEquals("''", SqlUtils.toStringLiteral(""));
+    }
+
+    @Test
+    void testToStringLiteral_returnsNullKeywordForNullValue() {
+        assertEquals("null", SqlUtils.toStringLiteral(null));
+    }
 }

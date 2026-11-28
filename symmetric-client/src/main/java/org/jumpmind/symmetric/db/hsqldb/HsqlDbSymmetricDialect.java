@@ -141,7 +141,11 @@ public class HsqlDbSymmetricDialect extends AbstractEmbeddedSymmetricDialect imp
 
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         transaction.prepareAndExecute("CALL " + parameterService.getTablePrefix() + "_set_session('sync_prevented','1')");
-        transaction.prepareAndExecute("CALL " + parameterService.getTablePrefix() + "_set_session('node_value','" + nodeId + "')");
+        if (nodeId == null) {
+            transaction.prepareAndExecute("CALL " + parameterService.getTablePrefix() + "_set_session('node_value',null)");
+        } else {
+            transaction.prepareAndExecute("CALL " + parameterService.getTablePrefix() + "_set_session('node_value',?)", nodeId);
+        }
     }
 
     public void enableSyncTriggers(ISqlTransaction transaction) {

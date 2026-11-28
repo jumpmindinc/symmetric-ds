@@ -810,4 +810,10 @@ class DataExtractorServiceTest {
         rule.addTransformColumn(column);
         return rule;
     }
+
+    @Test
+    void buildDeleteIncomingBatchRangeSql_escapesQuotedNodeId() {
+        assertEquals("delete from sym_incoming_batch where node_id = 'a''b' and batch_id between 10 and 20",
+                DataExtractorService.buildDeleteIncomingBatchRangeSql("sym_incoming_batch", "a'b", 10, 20));
+    }
 }

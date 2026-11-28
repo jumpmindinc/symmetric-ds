@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.db.db2;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.service.IParameterService;
 
@@ -73,7 +74,7 @@ public class Db2zOsSymmetricDialect extends Db2SymmetricDialect implements ISymm
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         transaction.prepareAndExecute("set " + parameterService.getTablePrefix() + VAR_TRIGGER_DISABLED + " = 1");
         if (nodeId != null) {
-            transaction.prepareAndExecute("set " + getSourceNodeExpression() + " = '" + nodeId + "'");
+            transaction.prepareAndExecute("set " + getSourceNodeExpression() + " = " + SqlUtils.toStringLiteral(nodeId));
         }
     }
 

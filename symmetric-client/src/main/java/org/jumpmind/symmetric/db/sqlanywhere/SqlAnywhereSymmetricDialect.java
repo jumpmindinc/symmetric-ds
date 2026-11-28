@@ -235,7 +235,7 @@ public class SqlAnywhereSymmetricDialect extends AbstractSymmetricDialect implem
                 "END IF;" +
                 "create variable " + SYNC_NODE_DISABLED + " varchar(50);");
         if (nodeId != null) {
-            transaction.prepareAndExecute("set " + SYNC_NODE_DISABLED + " = '" + nodeId + "'");
+            transaction.prepareAndExecute("set " + SYNC_NODE_DISABLED + " = " + SqlUtils.toStringLiteral(nodeId));
         }
     }
 

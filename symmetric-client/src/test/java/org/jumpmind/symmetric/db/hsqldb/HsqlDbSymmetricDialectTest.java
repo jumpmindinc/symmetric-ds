@@ -150,14 +150,21 @@ class HsqlDbSymmetricDialectTest {
         InOrder inOrder = inOrder(transaction);
         newDialect().disableSyncTriggers(transaction, "store-001");
         inOrder.verify(transaction).prepareAndExecute("CALL sym_set_session('sync_prevented','1')");
-        inOrder.verify(transaction).prepareAndExecute("CALL sym_set_session('node_value','store-001')");
+        inOrder.verify(transaction).prepareAndExecute("CALL sym_set_session('node_value',?)", "store-001");
     }
 
     @Test
     void testDisableSyncTriggers_withoutNodeId() {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         newDialect().disableSyncTriggers(transaction, null);
-        verify(transaction).prepareAndExecute("CALL sym_set_session('node_value','null')");
+        verify(transaction).prepareAndExecute("CALL sym_set_session('node_value',null)");
+    }
+
+    @Test
+    void testDisableSyncTriggers_bindsNodeIdContainingQuote() {
+        ISqlTransaction transaction = mock(ISqlTransaction.class);
+        newDialect().disableSyncTriggers(transaction, "a'b");
+        verify(transaction).prepareAndExecute("CALL sym_set_session('node_value',?)", "a'b");
     }
 
     @Test
