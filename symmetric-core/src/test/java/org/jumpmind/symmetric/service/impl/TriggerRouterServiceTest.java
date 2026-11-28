@@ -647,6 +647,24 @@ class TriggerRouterServiceTest {
     }
 
     @Test
+    void testResetCachedRelationModels_resetsTargetPlatformWhenCaptureIsNotTriggerBased() {
+        TriggerRouterService service = buildService();
+        IDatabasePlatform targetPlatform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getTargetPlatform()).thenReturn(targetPlatform);
+        service.resetCachedRelationModels();
+        verify(platform).resetCachedRelationModel();
+        verify(targetPlatform).resetCachedRelationModel();
+    }
+
+    @Test
+    void testResetCachedRelationModels_resetsSharedPlatformOnce() {
+        TriggerRouterService service = buildService();
+        when(symmetricDialect.getTargetPlatform()).thenReturn(platform);
+        service.resetCachedRelationModels();
+        verify(platform, times(1)).resetCachedRelationModel();
+    }
+
+    @Test
     void testSaveTriggerInsertsNewTriggerAfterUpdateWithoutCreateTime() {
         TriggerRouterService service = buildService();
         Trigger trigger = newTrigger();
