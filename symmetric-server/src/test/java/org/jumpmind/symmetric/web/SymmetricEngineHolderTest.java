@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -499,6 +500,40 @@ class SymmetricEngineHolderTest {
             holder.getEnginesStarting().clear();
             holder.buildCurrentEngineStateSnapshot("server1");
             verify(holder, Mockito.never()).stop();
+        }
+    }
+
+    @Nested
+    class DestroyExistingEngine {
+        @Test
+        void destroysReplacedEngineSoItsConnectionPoolCloses() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            ServerSymmetricEngine existingEngine = mock(ServerSymmetricEngine.class);
+            holder.getEngines().put("store-001", existingEngine);
+            holder.destroyExistingEngine("store-001");
+            verify(existingEngine).destroy();
+            verify(existingEngine, never()).stop();
+            assertFalse(holder.getEngines().containsKey("store-001"));
+        }
+
+        @Test
+        void removesEngineWhenDestroyFails() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            ServerSymmetricEngine existingEngine = mock(ServerSymmetricEngine.class);
+            doThrow(new RuntimeException("close failed")).when(existingEngine).destroy();
+            holder.getEngines().put("store-001", existingEngine);
+            assertDoesNotThrow(() -> holder.destroyExistingEngine("store-001"));
+            assertFalse(holder.getEngines().containsKey("store-001"));
+        }
+
+        @Test
+        void ignoresUnknownEngineName() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            ServerSymmetricEngine otherEngine = mock(ServerSymmetricEngine.class);
+            holder.getEngines().put("corp-000", otherEngine);
+            holder.destroyExistingEngine("store-001");
+            verify(otherEngine, never()).destroy();
+            assertEquals(1, holder.getEngines().size());
         }
     }
 }

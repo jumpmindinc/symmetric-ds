@@ -476,15 +476,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         String engineName = validateRequiredProperties(properties);
         passedInProperties.setProperty(ParameterConstants.ENGINE_NAME, engineName);
         properties = factory.reload(properties);
-        if (engines.get(engineName) != null) {
-            try {
-                engines.get(engineName).stop();
-            } catch (Exception e) {
-                log.error("", e);
-            }
-            engines.remove(engineName);
-            ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
-        }
+        destroyExistingEngine(engineName);
         File enginesDir = new File(PropertiesUtil.getEnginesDir());
         File symmetricProperties = new File(enginesDir, engineName + ".properties");
         try {
@@ -567,6 +559,21 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             }
             FileUtils.deleteQuietly(symmetricProperties);
             throw ex;
+        }
+    }
+
+    void destroyExistingEngine(String engineName) {
+        ISymmetricEngine existingEngine = engines.remove(engineName);
+        if (existingEngine != null) {
+            try {
+                existingEngine.destroy();
+            } catch (Exception e) {
+                log.error("Failed to destroy engine {} before replacing it", engineName, e);
+            }
+            IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
+            if (healthTracker != null) {
+                healthTracker.stopTrackingEngine(engineName);
+            }
         }
     }
 
