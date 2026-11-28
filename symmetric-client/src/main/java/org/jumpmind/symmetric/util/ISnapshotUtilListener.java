@@ -28,5 +28,9 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 public interface ISnapshotUtilListener extends IExtensionPoint {
     public void beforeSnapshot(ISymmetricEngine engine, File tmpDir);
 
+    /**
+     * Called after all snapshot files are written to tmpDir and before tmpDir is packaged into the ZIP file and deleted, so changes to the files are included
+     * in the ZIP file.
+     */
     public void afterSnapshot(ISymmetricEngine engine, File tmpDir);
 }
