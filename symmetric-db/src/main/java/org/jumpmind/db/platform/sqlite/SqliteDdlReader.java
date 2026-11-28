@@ -142,7 +142,7 @@ public class SqliteDdlReader implements IDdlReader {
 
     @Override
     public Relation readRelation(String catalog, String schema, String relationName) {
-        List<Column> columns = platform.getSqlTemplate().query("pragma table_xinfo(" + quote(relationName) + ")", COLUMN_MAPPER);
+        List<Column> columns = readColumns(relationName);
         checkColumns(columns, relationName);
         if (columns == null || columns.isEmpty()) {
             return null;
@@ -154,6 +154,18 @@ public class SqliteDdlReader implements IDdlReader {
         readIndexesIntoTable(table, relationName);
         readForeignKeysIntoTable(table, relationName);
         return table;
+    }
+
+    private List<Column> readColumns(String relationName) {
+        List<Column> columns = platform.getSqlTemplate().query("pragma table_xinfo(" + quote(relationName) + ")", COLUMN_MAPPER);
+        if (columns == null || columns.isEmpty()) {
+            /*
+             * table_xinfo requires SQLite 3.26. Older versions, such as the SQLite bundled with Android 9 and earlier, ignore unknown pragmas and return no
+             * rows. table_info has no hidden column, so its columns are read as not generated.
+             */
+            columns = platform.getSqlTemplate().query("pragma table_info(" + quote(relationName) + ")", COLUMN_MAPPER);
+        }
+        return columns;
     }
 
     private void readIndexesIntoTable(Table table, String relationName) {

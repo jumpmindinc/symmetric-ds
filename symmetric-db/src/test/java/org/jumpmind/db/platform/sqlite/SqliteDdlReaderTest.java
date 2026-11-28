@@ -24,27 +24,48 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.ColumnMapper;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.IndexColumnMapper;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.IndexMapper;
+import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class SqliteDdlReaderTest {
+    private static final String TABLE_XINFO_SQL = "pragma table_xinfo(\"item\")";
+    private static final String TABLE_INFO_SQL = "pragma table_info(\"item\")";
     private SqliteDdlReader reader;
     private ColumnMapper columnMapper;
+    private ISqlTemplate sqlTemplate;
 
     @BeforeEach
     void setUp() {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseInfo databaseInfo = mock(DatabaseInfo.class);
+        when(databaseInfo.getDelimiterToken()).thenReturn("\"");
+        when(platform.getDatabaseInfo()).thenReturn(databaseInfo);
+        sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         reader = new SqliteDdlReader(platform);
         columnMapper = new ColumnMapper();
     }
@@ -204,5 +225,51 @@ class SqliteDdlReaderTest {
         IndexColumn column = new IndexColumnMapper().mapRow(row);
         assertEquals("ID", column.getName());
         assertEquals(3, column.getOrdinalPosition());
+    }
+
+    @Test
+    void testReadRelation_readsColumnsWithTableXinfo() {
+        mockColumnQuery(TABLE_XINFO_SQL, Arrays.asList(new Column("id", true), new Column("name")));
+        Table table = (Table) reader.readRelation(null, null, "item");
+        assertEquals(2, table.getColumnCount());
+        assertEquals("id", table.getColumn(0).getName());
+        verify(sqlTemplate, never()).query(eq(TABLE_INFO_SQL), any(ISqlRowMapper.class));
+    }
+
+    @Test
+    void testReadRelation_fallsBackToTableInfoWhenTableXinfoReturnsNoRows() {
+        mockColumnQuery(TABLE_XINFO_SQL, Collections.emptyList());
+        mockColumnQuery(TABLE_INFO_SQL, Arrays.asList(new Column("id", true), new Column("name")));
+        Table table = (Table) reader.readRelation(null, null, "item");
+        assertEquals(2, table.getColumnCount());
+        assertEquals("id", table.getColumn(0).getName());
+        assertTrue(table.getColumn(0).isPrimaryKey());
+        assertEquals("name", table.getColumn(1).getName());
+    }
+
+    @Test
+    void testReadRelation_returnsNullWhenTableIsMissing() {
+        mockColumnQuery(TABLE_XINFO_SQL, Collections.emptyList());
+        mockColumnQuery(TABLE_INFO_SQL, Collections.emptyList());
+        assertNull(reader.readRelation(null, null, "item"));
+    }
+
+    @Test
+    void testColumnMapper_mapRow_withTableInfoRowWithoutHiddenColumn() {
+        Row row = new Row(5);
+        row.put("name", "ID");
+        row.put("type", "INTEGER");
+        row.put("pk", 1);
+        row.put("notnull", 1);
+        row.put("dflt_value", null);
+        Column column = columnMapper.mapRow(row);
+        assertEquals("ID", column.getName());
+        assertTrue(column.isPrimaryKey());
+        assertFalse(column.isGenerated());
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private void mockColumnQuery(String sql, List<Column> columns) {
+        when(sqlTemplate.query(eq(sql), any(ISqlRowMapper.class))).thenReturn((List) columns);
     }
 }
