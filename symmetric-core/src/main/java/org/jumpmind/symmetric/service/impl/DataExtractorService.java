@@ -347,6 +347,13 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return initialLoadSql;
     }
 
+    /*
+     * The data batch count is -1 until the load has created its data batches, which is when change capture batches must already wait for the load.
+     */
+    static boolean isLoadDataPending(TableReloadStatus loadStatus) {
+        return loadStatus.getDataBatchCount() < 0 || loadStatus.getDataBatchLoaded() < loadStatus.getDataBatchCount();
+    }
+
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
             NodeChannels suspendIgnoreChannelsList, String queue, Node targetNode) {
         long ts = 0l;
@@ -385,7 +392,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         TableReloadStatus loadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
                         duration = System.currentTimeMillis() - ts;
                         logQueryDuration("Get table reload status by load and source node took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-                        if (loadStatus != null && loadStatus.getDataBatchLoaded() < loadStatus.getDataBatchCount()) {
+                        if (loadStatus != null && isLoadDataPending(loadStatus)) {
                             batches.removeNonLoadBatches();
                             log.info("Deferring non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
                                     loadStatus.getLoadId());

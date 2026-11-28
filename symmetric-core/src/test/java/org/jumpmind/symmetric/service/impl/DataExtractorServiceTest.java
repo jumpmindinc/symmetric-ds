@@ -810,4 +810,27 @@ class DataExtractorServiceTest {
         rule.addTransformColumn(column);
         return rule;
     }
+
+    @Test
+    void testIsLoadDataPending_beforeDataBatchesAreCounted() {
+        assertTrue(DataExtractorService.isLoadDataPending(loadStatus(-1, 0)));
+    }
+
+    @Test
+    void testIsLoadDataPending_whileDataBatchesAreLoading() {
+        assertTrue(DataExtractorService.isLoadDataPending(loadStatus(5, 3)));
+    }
+
+    @Test
+    void testIsLoadDataPending_afterAllDataBatchesLoaded() {
+        assertFalse(DataExtractorService.isLoadDataPending(loadStatus(5, 5)));
+        assertFalse(DataExtractorService.isLoadDataPending(loadStatus(0, 0)));
+    }
+
+    private static TableReloadStatus loadStatus(int dataBatchCount, int dataBatchLoaded) {
+        TableReloadStatus status = new TableReloadStatus();
+        status.setDataBatchCount(dataBatchCount);
+        status.setDataBatchLoaded(dataBatchLoaded);
+        return status;
+    }
 }
