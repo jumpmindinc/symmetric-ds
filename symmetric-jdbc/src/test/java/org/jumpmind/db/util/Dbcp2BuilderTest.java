@@ -22,12 +22,16 @@ package org.jumpmind.db.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Properties;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
@@ -116,5 +120,22 @@ class Dbcp2BuilderTest {
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, H2_DRIVER);
         properties.setProperty(DataSourceProperties.DB_POOL_URL, H2_URL);
         return properties;
+    }
+
+    @Test
+    void buildAddsFirebirdPropertyOnlyForFirebirdDriver() throws Exception {
+        ResettableBasicDataSource h2DataSource = build(buildH2Properties(), "sa", "");
+        assertNull(getConnectionProperties(h2DataSource).getProperty("columnLabelForName"));
+        ResettableBasicDataSource firebirdDataSource = (ResettableBasicDataSource) new Dbcp2Builder().build(buildH2Properties(),
+                "org.firebirdsql.jdbc.FBDriver", "sa", "");
+        assertEquals("true", getConnectionProperties(firebirdDataSource).getProperty("columnLabelForName"));
+        ResettableBasicDataSource laterH2DataSource = build(buildH2Properties(), "sa", "");
+        assertNull(getConnectionProperties(laterH2DataSource).getProperty("columnLabelForName"));
+    }
+
+    private static Properties getConnectionProperties(ResettableBasicDataSource dataSource) throws Exception {
+        Method getter = BasicDataSource.class.getDeclaredMethod("getConnectionProperties");
+        getter.setAccessible(true);
+        return (Properties) getter.invoke(dataSource);
     }
 }

@@ -30,7 +30,11 @@ import org.jumpmind.security.ISecurityService;
  */
 @Deprecated(forRemoval = true)
 public class BasicDataSourceFactory {
-    protected static Map<String, String> requiredConnectionProperties = DataSourceFactory.requiredConnectionProperties;
+    /**
+     * @deprecated No longer used; required connection properties depend on the driver, see {@link DataSourceFactory#getRequiredConnectionProperties(String)}.
+     */
+    @Deprecated(forRemoval = true)
+    protected static Map<String, String> requiredConnectionProperties = Map.of();
 
     public static void prepareDriver(String clazzName) throws Exception {
         DataSourceFactory.prepareDriver(clazzName);

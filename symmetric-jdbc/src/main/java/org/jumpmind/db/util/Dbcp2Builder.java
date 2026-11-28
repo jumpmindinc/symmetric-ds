@@ -73,11 +73,10 @@ class Dbcp2Builder extends DataSourceBuilder {
                     log.info("Setting database connection property {} to {}", key, value);
                     dataSource.addConnectionProperty(key, value);
                 });
-        for (String key : DataSourceFactory.requiredConnectionProperties.keySet()) {
-            String value = DataSourceFactory.requiredConnectionProperties.get(key);
+        DataSourceFactory.getRequiredConnectionProperties(driverClassName).forEach((key, value) -> {
             log.info("Setting required database connection property {}={}", key, value);
             dataSource.addConnectionProperty(key, value);
-        }
+        });
         String[] initSqlStatements = splitInitSql(properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null));
         if (initSqlStatements.length > 0) {
             dataSource.setConnectionInitSqls(Arrays.asList(initSqlStatements));

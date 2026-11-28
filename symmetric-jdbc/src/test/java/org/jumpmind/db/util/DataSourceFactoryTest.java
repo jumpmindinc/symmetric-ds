@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Map;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -101,5 +103,16 @@ class DataSourceFactoryTest {
         properties.setProperty(DataSourceProperties.DB_POOL_USER, "sa");
         properties.setProperty(DataSourceProperties.DB_POOL_PASSWORD, "");
         return properties;
+    }
+
+    @Test
+    void getRequiredConnectionPropertiesForFirebirdDriver() {
+        assertEquals(Map.of("columnLabelForName", "true"), DataSourceFactory.getRequiredConnectionProperties("org.firebirdsql.jdbc.FBDriver"));
+    }
+
+    @Test
+    void getRequiredConnectionPropertiesForOtherDrivers() {
+        assertEquals(Map.of(), DataSourceFactory.getRequiredConnectionProperties("org.duckdb.DuckDBDriver"));
+        assertEquals(Map.of(), DataSourceFactory.getRequiredConnectionProperties(null));
     }
 }
