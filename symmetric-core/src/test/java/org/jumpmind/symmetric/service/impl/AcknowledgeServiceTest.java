@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -315,6 +316,51 @@ class AcknowledgeServiceTest {
         service.ack(batch);
         assertEquals(0L, ob.getFailedLineNumber());
         assertEquals(0L, ob.getFailedDataId());
+    }
+
+    @Test
+    void fkResolveDefinitiveClearsErrorTracking() {
+        BatchAck batch = fkViolationAck();
+        OutgoingBatch ob = fkViolationOutgoingBatch();
+        IDataService dataService = mockFkResolution(ob, true);
+        service.ack(batch);
+        verify(dataService).reloadMissingForeignKeyRows(NORMAL_BATCH_ID, NODE_ID, 55L, 1L);
+        assertEquals(0L, ob.getFailedLineNumber());
+        assertEquals(0L, ob.getFailedDataId());
+    }
+
+    @Test
+    void fkResolveDefinitiveIsResentWhenTheSameRowFailsAgain() {
+        OutgoingBatch ob = fkViolationOutgoingBatch();
+        IDataService dataService = mockFkResolution(ob, true);
+        service.ack(fkViolationAck());
+        service.ack(fkViolationAck());
+        verify(dataService, times(2)).reloadMissingForeignKeyRows(NORMAL_BATCH_ID, NODE_ID, 55L, 1L);
+    }
+
+    private BatchAck fkViolationAck() {
+        BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
+        batch.setErrorLine(1);
+        batch.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
+        return batch;
+    }
+
+    private OutgoingBatch fkViolationOutgoingBatch() {
+        OutgoingBatch ob = outgoingBatch(Status.SE);
+        ob.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
+        ob.setFailedLineNumber(0);
+        return ob;
+    }
+
+    private IDataService mockFkResolution(OutgoingBatch ob, boolean isDefinitive) {
+        List<Number> ids = Arrays.asList(55L);
+        when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
+        when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
+        when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION)).thenReturn(true);
+        IDataService dataService = mock(IDataService.class);
+        when(engine.getDataService()).thenReturn(dataService);
+        when(dataService.reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong())).thenReturn(isDefinitive);
+        return dataService;
     }
 
     @Test
