@@ -338,14 +338,8 @@ subprojects { subproject ->
         junitPlatformVersion = '1.12.2'
         spotBugsVersion = '4.8.5'
         logbackVersion = '1.5.38'
-<<<<<<< HEAD
-        slf4jVersion = '2.0.17'
-        mockitoVersion = '5.24.0'
-=======
         slf4jVersion = '2.0.20'
-        mockitoVersion = '5.11.0'
-        powerMockVersion = '2.0.9'
->>>>>>> 56c5412ccf (SYM-8365: Update Spring Framework to 7.0.11 (#1349))
+        mockitoVersion = '5.24.0'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
         springVersion = '7.0.11'
