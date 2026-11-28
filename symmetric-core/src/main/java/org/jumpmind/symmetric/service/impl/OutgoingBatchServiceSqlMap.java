@@ -206,6 +206,41 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("updateOutgoingFinalizeBatchStatusByStatus",
                 "update $(outgoing_batch) set status=?, last_update_time=?, last_update_hostname=? where node_id=? and load_id=? and status=? and batch_id > ?");
         putSql("selectReadyChannels", "select distinct node_id, channel_id, thread_id from $(outgoing_batch) where status in (?, ?, ?, ?, ?, ?, ?)");
+        /*
+         * Loose index scan over idx_ob_ready_queue (status, node_id, channel_id, thread_id): for each status, every step jumps to the next distinct tuple
+         * instead of reading every unsent batch. Each branch is one index probe for a candidate greater than the current tuple in index order (ascending, nulls
+         * last), and the smallest candidate is the next tuple. Status is cast to the column type so that it stays an index key.
+         */
+        putSql("selectReadyChannelsLooseScan",
+                "with recursive ready_queue (status, node_id, channel_id, thread_id) as ( "
+                        + "select s.status, f.node_id, f.channel_id, f.thread_id from (values (cast(? as char(2))), (cast(? as char(2))), "
+                        + "(cast(? as char(2))), (cast(? as char(2))), (cast(? as char(2))), (cast(? as char(2))), (cast(? as char(2)))) s (status) "
+                        + "cross join lateral (select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where b.status = s.status "
+                        + "order by b.node_id, b.channel_id, b.thread_id limit 1) f "
+                        + "union all "
+                        + "select q.status, n.node_id, n.channel_id, n.thread_id from ready_queue q cross join lateral (select c.node_id, c.channel_id, c.thread_id from ( "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where b.status = q.status and b.node_id = q.node_id "
+                        + "and b.channel_id = q.channel_id and b.thread_id > q.thread_id order by b.thread_id limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where q.channel_id is null and b.status = q.status "
+                        + "and b.node_id = q.node_id and b.channel_id is null and b.thread_id > q.thread_id order by b.thread_id limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where q.thread_id is not null and b.status = q.status "
+                        + "and b.node_id = q.node_id and b.channel_id = q.channel_id and b.thread_id is null limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where q.thread_id is not null and q.channel_id is null "
+                        + "and b.status = q.status and b.node_id = q.node_id and b.channel_id is null and b.thread_id is null limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where b.status = q.status and b.node_id = q.node_id "
+                        + "and b.channel_id > q.channel_id order by b.channel_id, b.thread_id limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where q.channel_id is not null and b.status = q.status "
+                        + "and b.node_id = q.node_id and b.channel_id is null order by b.thread_id limit 1) "
+                        + "union all "
+                        + "(select b.node_id, b.channel_id, b.thread_id from $(outgoing_batch) b where b.status = q.status and b.node_id > q.node_id "
+                        + "order by b.node_id, b.channel_id, b.thread_id limit 1) "
+                        + ") c order by c.node_id, c.channel_id, c.thread_id limit 1) n) "
+                        + "select distinct node_id, channel_id, thread_id from ready_queue");
         putSql("selectDataErrorCountByTargetNodeSql",
                 "select count(batch_id) from $(outgoing_batch) where error_flag = 1 and channel_id not in ('heartbeat', 'monitor', 'system', 'config') and node_id = ?");
     }
