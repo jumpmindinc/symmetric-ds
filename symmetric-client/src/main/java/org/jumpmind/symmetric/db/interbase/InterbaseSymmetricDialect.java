@@ -200,7 +200,7 @@ public class InterbaseSymmetricDialect extends AbstractSymmetricDialect implemen
 
     @Override
     public void truncateTable(String tableName) {
-        platform.getSqlTemplate().update("delete from " + tableName);
+        deleteAllRows(tableName);
     }
 
     @Override

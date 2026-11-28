@@ -222,7 +222,7 @@ public class DerbySymmetricDialect extends AbstractSymmetricDialect implements I
 
     @Override
     public void truncateTable(String tableName) {
-        platform.getSqlTemplate().update("delete from " + tableName);
+        deleteAllRows(tableName);
     }
 
     public boolean needsToSelectLobData() {

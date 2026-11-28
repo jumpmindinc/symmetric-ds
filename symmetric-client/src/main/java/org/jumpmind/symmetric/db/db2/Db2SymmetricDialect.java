@@ -191,7 +191,7 @@ public class Db2SymmetricDialect extends AbstractSymmetricDialect implements ISy
 
     @Override
     public void truncateTable(String tableName) {
-        platform.getSqlTemplate().update("delete from " + tableName);
+        deleteAllRows(tableName);
     }
 
     @Override

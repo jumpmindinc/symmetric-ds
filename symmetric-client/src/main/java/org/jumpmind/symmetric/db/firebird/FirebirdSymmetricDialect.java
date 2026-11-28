@@ -139,7 +139,7 @@ public class FirebirdSymmetricDialect extends AbstractSymmetricDialect implement
 
     @Override
     public void truncateTable(String tableName) {
-        platform.getSqlTemplate().update("delete from " + tableName);
+        deleteAllRows(tableName);
     }
 
     @Override

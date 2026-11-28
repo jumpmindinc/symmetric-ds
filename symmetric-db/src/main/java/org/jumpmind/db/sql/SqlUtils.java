@@ -116,6 +116,16 @@ abstract public class SqlUtils {
         return name;
     }
 
+    public static String sanitizeDelimitedIdentifier(String name) {
+        if (name != null) {
+            if (name.length() > MAX_IDENTIFIER_LENGTH) {
+                name = name.substring(0, MAX_IDENTIFIER_LENGTH);
+            }
+            name = name.replaceAll("['/;]", "");
+        }
+        return name;
+    }
+
     public static String sanitizeTablePrefix(String name) {
         if (name != null) {
             if (name.length() > MAX_TABLE_PREFIX_LENGTH) {

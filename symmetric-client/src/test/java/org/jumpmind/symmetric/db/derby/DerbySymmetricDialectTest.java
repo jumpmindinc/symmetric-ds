@@ -165,6 +165,12 @@ class DerbySymmetricDialectTest {
     }
 
     @Test
+    void testTruncateTable_stripsStatementCharacters() {
+        newDialect().truncateTable("item;drop table x'");
+        verify(sqlTemplate).update("delete from itemdrop table x");
+    }
+
+    @Test
     void testCreateRequiredDatabaseObjectsImpl_whenNothingInstalled() {
         when(sqlTemplate.queryForInt(anyString())).thenReturn(0);
         StringBuilder ddl = new StringBuilder();

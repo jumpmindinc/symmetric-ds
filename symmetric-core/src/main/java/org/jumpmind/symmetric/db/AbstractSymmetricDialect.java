@@ -51,6 +51,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.LogSqlResultsListener;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.Version;
@@ -907,6 +908,10 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     @Override
     public String preProcessTriggerSqlClause(String sqlClause) {
         return sqlClause;
+    }
+
+    protected void deleteAllRows(String tableName) {
+        platform.getSqlTemplate().update("delete from " + SqlUtils.sanitizeDelimitedIdentifier(tableName));
     }
 
     @Override
