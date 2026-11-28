@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.InputStreamReader;
 import java.sql.Types;
@@ -143,6 +144,23 @@ public class DatabasePlatformTest {
         platform.alterTables(false, table);
         Table tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
         assertEquals(DEFAULT_VALUE, tableFromDatabase.getColumnWithName("NOTES").getDefaultValue());
+    }
+
+    @Test
+    public void testTimestamptzWithoutSizeIsNotAlteredAgain() {
+        assumeTrue(platform.getName().startsWith(DatabaseNamesConstants.POSTGRESQL));
+        Table table = new Table("TEST_TIMESTAMPTZ_SIZE");
+        table.addColumn(new Column("ID1", true));
+        table.getColumnWithName("ID1").setTypeCode(Types.INTEGER);
+        table.getColumnWithName("ID1").setRequired(true);
+        Column createdAt = new Column("CREATED_AT");
+        createdAt.setTypeCode(ColumnTypes.TIMESTAMPTZ);
+        createdAt.setRequired(true);
+        createdAt.addPlatformColumn(new PlatformColumn(DatabaseNamesConstants.POSTGRESQL, "TIMESTAMPTZ", -1, -1, null));
+        table.addColumn(createdAt);
+        Table desiredTable = table.copy();
+        Table tableFromDatabase = dropCreateAndThenReadTable(table);
+        assertEquals("", platform.getDdlBuilder().alterTable(tableFromDatabase, desiredTable).trim());
     }
 
     @Test

@@ -75,6 +75,8 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
  * The SQL Builder for PostgresSql.
  */
 public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
+    private static final Pattern TIME_ZONE_TYPE_WITH_TRAILING_SIZE = Pattern.compile("(?i)^(TIMESTAMP|TIME)( WITH(?:OUT)? TIME ZONE)(\\(\\d+\\))$");
+
     public PostgreSqlDdlBuilder() {
         super(DatabaseNamesConstants.POSTGRESQL);
         // this is the default length though it might be changed when building
@@ -642,7 +644,7 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
 
     @Override
     public String getSqlType(Column column) {
-        String type = super.getSqlType(column);
+        String type = moveSizeBeforeTimeZoneClause(super.getSqlType(column));
         if (type.startsWith("CHAR") && column.getPlatformColumns() != null) {
             if (isMapCharToJson()) {
                 for (Map.Entry<String, PlatformColumn> platformColumn : column.getPlatformColumns().entrySet()) {
@@ -661,6 +663,11 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
             }
         }
         return type;
+    }
+
+    static String moveSizeBeforeTimeZoneClause(String sqlType) {
+        Matcher matcher = TIME_ZONE_TYPE_WITH_TRAILING_SIZE.matcher(sqlType);
+        return matcher.matches() ? matcher.group(1) + matcher.group(3) + matcher.group(2) : sqlType;
     }
 
     @Override
