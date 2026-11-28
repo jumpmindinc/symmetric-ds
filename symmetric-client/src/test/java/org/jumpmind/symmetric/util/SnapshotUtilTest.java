@@ -3,6 +3,7 @@ package org.jumpmind.symmetric.util;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -18,10 +19,13 @@ import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.AppUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -154,5 +158,25 @@ public class SnapshotUtilTest {
         IExtensionService extensionService = mock(IExtensionService.class);
         when(engine.getExtensionService()).thenReturn(extensionService);
         when(extensionService.getExtensionPointList(ISnapshotUtilListener.class)).thenReturn(Arrays.asList(listeners));
+    }
+
+    @Test
+    void packageSnapshot_includeHostnameParameter_prefixesZipName() throws IOException {
+        File snapshotDir = Files.createDirectory(tempDir.resolve("engine-snapshot")).toFile();
+        IParameterService parameterService = mock(IParameterService.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.getTempDirectory()).thenReturn(tempDir.toString());
+        when(parameterService.is(ParameterConstants.SNAPSHOT_FILE_INCLUDE_HOSTNAME)).thenReturn(true);
+        File zipFile = SnapshotUtil.packageSnapshot(engine, snapshotDir);
+        assertEquals(AppUtils.getHostName() + "_engine-snapshot.zip", zipFile.getName());
+    }
+
+    @Test
+    void packageSnapshot_missingDirectory_throwsIoException() {
+        File missingDir = tempDir.resolve("missing-snapshot").toFile();
+        IParameterService parameterService = mock(IParameterService.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(parameterService.getTempDirectory()).thenReturn(tempDir.toString());
+        assertThrows(IoException.class, () -> SnapshotUtil.packageSnapshot(engine, missingDir));
     }
 }
