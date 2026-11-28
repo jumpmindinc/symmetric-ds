@@ -152,15 +152,16 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                         if (!outgoingBatch.isLoadFlag() && outgoingBatch.getReloadRowCount() == 0 &&
                                 parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION)) {
                             try {
-                                boolean definitive = engine.getDataService().reloadMissingForeignKeyRows(outgoingBatch.getBatchId(), outgoingBatch.getNodeId(),
+                                engine.getDataService().reloadMissingForeignKeyRows(outgoingBatch.getBatchId(), outgoingBatch.getNodeId(),
                                         outgoingBatch.getFailedDataId(), outgoingBatch.getFailedLineNumber());
                                 suppressError = true;
-                                if (!definitive) {
-                                    // Reload was sent but may be undone by a competing delete in bidirectional sync.
-                                    // Reset error tracking to allow re-triggering FK resolution on next failure.
-                                    outgoingBatch.setFailedLineNumber(0);
-                                    outgoingBatch.setFailedDataId(0);
-                                }
+                                /*
+                                 * Reset error tracking so the next failure of this row triggers the resolution again. A reload can be undone by a competing
+                                 * delete in bidirectional sync, and an ignore can arrive before the target has written its incoming_error row (the first FK
+                                 * failure is suppressed there), in which case its update matches no row.
+                                 */
+                                outgoingBatch.setFailedLineNumber(0);
+                                outgoingBatch.setFailedDataId(0);
                             } catch (Exception e) {
                                 log.error("Failed to request a reload of missing foreign key rows for batch " + outgoingBatch.getNodeBatchId() +
                                         " data ID " + outgoingBatch.getFailedDataId(), e);
