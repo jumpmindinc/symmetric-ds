@@ -13,6 +13,8 @@ import java.sql.DriverManager;
 import java.util.List;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.JdbcDatabasePlatformFactory;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -98,6 +100,42 @@ public class DbCompareTest {
         this.config.setSourceTableNames(this.sourceTableNames);
         this.config.setTargetTableNames(this.targetTableNames);
         this.test = new DbCompare(sourceEngine, targetEngine, config);
+    }
+
+    @Test
+    void compareTableWithPrimaryKeyColumnsInDifferentOrderNoDifferences() {
+        String tableName = "PKORDERDIFFERENT";
+        sourcePlatform.getSqlTemplate().update("drop table if exists " + tableName);
+        targetPlatform.getSqlTemplate().update("drop table if exists " + tableName);
+        sourcePlatform.getSqlTemplate().update("create table " + tableName
+                + " (equipment varchar(10) not null, vehicle varchar(10) not null, seq integer, primary key (equipment, vehicle))");
+        targetPlatform.getSqlTemplate().update("create table " + tableName
+                + " (vehicle varchar(10) not null, equipment varchar(10) not null, seq integer, primary key (vehicle, equipment))");
+        for (IDatabasePlatform platform : new IDatabasePlatform[] { sourcePlatform, targetPlatform }) {
+            platform.getSqlTemplate().update("insert into " + tableName + " (equipment, vehicle, seq) values ('A', 'Z', 1)");
+            platform.getSqlTemplate().update("insert into " + tableName + " (equipment, vehicle, seq) values ('B', 'Y', 2)");
+            platform.getSqlTemplate().update("insert into " + tableName + " (equipment, vehicle, seq) values ('C', 'X', 3)");
+        }
+        changeTableBeingTested(tableName);
+        TableReport reportOutput = test.compare().getTableReports().get(0);
+        assertEquals(3, reportOutput.getSourceRows());
+        assertEquals(3, reportOutput.getTargetRows());
+        assertEquals(3, reportOutput.getMatchedRows());
+        assertEquals(0, reportOutput.getDifferentRows());
+        assertEquals(0, reportOutput.getMissingRows());
+        assertEquals(0, reportOutput.getExtraRows());
+    }
+
+    @Test
+    void targetComparisonSqlOrdersByTargetColumnsInSourcePrimaryKeyOrder() {
+        changeTableBeingTested(nonEmptyTableWithPKNoDifferences);
+        Table sourceTable = new Table("equipment", new Column("equipment", true), new Column("vehicle", true), new Column("seq"));
+        Table targetTable = new Table("equipment", new Column("vehicle", true), new Column("equipment", true), new Column("seq"));
+        DbCompareTables tables = new DbCompareTables(sourceTable, targetTable);
+        tables.applyColumnMappings();
+        String quote = targetPlatform.getDatabaseInfo().getDelimiterToken();
+        String targetSql = test.getTargetComparisonSQL(tables, targetPlatform);
+        assertTrue(targetSql.endsWith("ORDER BY " + quote + "equipment" + quote + "," + quote + "vehicle" + quote), targetSql);
     }
 
     @Test
