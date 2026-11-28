@@ -182,6 +182,29 @@ class SymmetricUtilsTest {
     }
 
     @Test
+    void testGetDeploymentSubTypeExtractOnlyAsync() {
+        Properties props = new Properties();
+        props.setProperty(ParameterConstants.NODE_LOAD_ONLY, "true");
+        props.setProperty("db.url", "jdbc:h2:async:./extract-only-20261127120000;AUTO_SERVER=TRUE");
+        assertEquals(Constants.DEPLOYMENT_SUB_TYPE_EXTRACT_ONLY,
+                SymmetricUtils.getDeploymentSubType(props));
+    }
+
+    @Test
+    void testIsH2FileUrlAcceptsFileAndAsync() {
+        assertEquals(true, SymmetricUtils.isH2FileUrl("jdbc:h2:file:./corp"));
+        assertEquals(true, SymmetricUtils.isH2FileUrl("jdbc:h2:async:./corp"));
+    }
+
+    @Test
+    void testIsH2FileUrlRejectsOtherUrls() {
+        assertEquals(false, SymmetricUtils.isH2FileUrl(null));
+        assertEquals(false, SymmetricUtils.isH2FileUrl("jdbc:h2:mem:corp"));
+        assertEquals(false, SymmetricUtils.isH2FileUrl("jdbc:h2:tcp://localhost/corp"));
+        assertEquals(false, SymmetricUtils.isH2FileUrl("jdbc:postgresql://localhost/corp"));
+    }
+
+    @Test
     void testGetDeploymentSubTypeLogBased() {
         Properties props = new Properties();
         props.setProperty(ParameterConstants.NODE_LOAD_ONLY, "true");

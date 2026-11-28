@@ -361,14 +361,18 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
-    private void interruptThreads(String nodeId) {
+    void interruptThreads(String nodeId) {
+        Thread callingThread = Thread.currentThread();
         for (ProcessInfo info : engine.getStatisticManager().getProcessInfos()) {
-            if ((info.getTargetNodeId() != null && info.getTargetNodeId().equals(nodeId)) ||
-                    (info.getSourceNodeId() != null && info.getSourceNodeId().equals(nodeId))) {
+            if (info.getThread() != callingThread && isProcessForNode(info, nodeId)) {
                 log.info("Sending interrupt to {},batchId={}", info.getKey(), info.getCurrentBatchId());
                 info.getThread().interrupt();
             }
         }
+    }
+
+    private static boolean isProcessForNode(ProcessInfo info, String nodeId) {
+        return nodeId.equals(info.getTargetNodeId()) || nodeId.equals(info.getSourceNodeId());
     }
 
     @Override

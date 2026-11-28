@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.util;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -80,6 +81,27 @@ class ConfigImportHelperTest {
             assertTrue(helper.containsNodeGroup("server"));
             assertTrue(helper.containsNodeGroup("client"));
             assertFalse(helper.containsNodeGroup("nonexistent"));
+        }
+    }
+
+    @Test
+    void loadCsvContentLeavesCallingThreadUninterrupted() throws IOException {
+        String csv = """
+                nodeid,source
+                channel,config
+                binary,BASE64
+                batch,-9999
+                table,sym_node_group
+                keys,node_group_id
+                columns,node_group_id,description
+                insert,"server","Server Group"
+                commit,-9999
+                """;
+        try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
+            helper.loadContent(csv, true);
+            boolean isInterrupted = Thread.interrupted();
+            assertEquals(false, isInterrupted);
+            assertTrue(helper.containsNodeGroup("server"));
         }
     }
 
