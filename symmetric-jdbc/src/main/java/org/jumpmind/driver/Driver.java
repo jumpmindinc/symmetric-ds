@@ -82,8 +82,8 @@ public class Driver implements java.sql.Driver {
     }
 
     private String getRealUrl(String url) {
-        // transform "jdbc:symds:jtds:" to just jdbc:jtds:
-        return url.replace("symds:", "");
+        // transform "jdbc:symds:jtds:" to just jdbc:jtds:, whatever the case of the already matched prefix
+        return "jdbc:" + url.substring(DRIVER_PREFIX.length());
     }
 
     @Override
