@@ -420,6 +420,14 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return false;
     }
 
+    protected void resetCachedRelationModels() {
+        platform.resetCachedRelationModel();
+        IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform();
+        if (targetPlatform != null && targetPlatform != platform) {
+            targetPlatform.resetCachedRelationModel();
+        }
+    }
+
     @Override
     public TriggerHistory findTriggerHistory(String catalogName, String schemaName, String tableName) {
         List<TriggerHistory> list = findTriggerHistories(catalogName, schemaName, tableName);
@@ -1731,8 +1739,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                         long ts = System.currentTimeMillis();
                         fixMultipleActiveTriggerHistories(context);
                         context.incrementFixMultipleActiveTriggerHistoriesTime(System.currentTimeMillis() - ts);
-                        // make sure all tables are freshly read in
-                        platform.resetCachedRelationModel();
+                        resetCachedRelationModels();
                         clearCache();
                         // make sure channels are read from the database
                         configurationService.clearCache();
