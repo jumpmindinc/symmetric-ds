@@ -511,22 +511,17 @@ public class SnapshotUtil {
         }
         log.info("Writing logging configuration");
         writeLoggingConfigFiles(tmpDir);
+        checkpoint(engine, listener, stepNumber++, totalSteps);
+        notifyAfterSnapshot(engine, tmpDir);
         log.info("Packaging ZIP file");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        File jarFile = null;
-        try {
-            String filename = tmpDir.getName() + ".zip";
-            if (parameterService.is(ParameterConstants.SNAPSHOT_FILE_INCLUDE_HOSTNAME)) {
-                filename = AppUtils.getHostName() + "_" + filename;
-            }
-            jarFile = new File(getSnapshotDirectory(engine), filename);
-            ZipBuilder builder = new ZipBuilder(tmpDir, jarFile, new File[] { tmpDir });
-            builder.build();
-            FileUtils.deleteDirectory(tmpDir);
-        } catch (Exception e) {
-            throw new IoException("Failed to package snapshot files into archive", e);
-        }
-        checkpoint(engine, listener, stepNumber++, totalSteps);
+        File jarFile = packageSnapshot(engine, tmpDir);
+        checkpoint(engine, listener, stepNumber, totalSteps);
+        log.info("Done creating snapshot file in {} steps", stepNumber);
+        return jarFile;
+    }
+
+    protected static void notifyAfterSnapshot(ISymmetricEngine engine, File tmpDir) {
         try {
             log.info("Calling afterSnapshot()");
             for (ISnapshotUtilListener snapshotListener : engine.getExtensionService().getExtensionPointList(ISnapshotUtilListener.class)) {
@@ -535,9 +530,22 @@ public class SnapshotUtil {
         } catch (Exception e) {
             log.info("Call to afterSnapshot() threw exception", e);
         }
-        checkpoint(engine, listener, stepNumber, totalSteps);
-        log.info("Done creating snapshot file in {} steps", stepNumber);
-        return jarFile;
+    }
+
+    protected static File packageSnapshot(ISymmetricEngine engine, File tmpDir) {
+        try {
+            String filename = tmpDir.getName() + ".zip";
+            if (engine.getParameterService().is(ParameterConstants.SNAPSHOT_FILE_INCLUDE_HOSTNAME)) {
+                filename = AppUtils.getHostName() + "_" + filename;
+            }
+            File jarFile = new File(getSnapshotDirectory(engine), filename);
+            ZipBuilder builder = new ZipBuilder(tmpDir, jarFile, new File[] { tmpDir });
+            builder.build();
+            FileUtils.deleteDirectory(tmpDir);
+            return jarFile;
+        } catch (Exception e) {
+            throw new IoException("Failed to package snapshot files into archive", e);
+        }
     }
 
     protected static void checkpoint(ISymmetricEngine engine, IProgressListener listener, int stepNumber, int totalSteps) {
