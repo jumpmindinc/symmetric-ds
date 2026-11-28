@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 import javax.naming.NamingException;
@@ -55,6 +57,7 @@ import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.DataSourceFactory;
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.extension.IProgressListener;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
@@ -98,6 +101,7 @@ import org.xml.sax.InputSource;
  */
 public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     private static final Logger log = LoggerFactory.getLogger(ClientSymmetricEngine.class);
+    private static final String POOL_PARAMETER_PREFIX = "db.pool.";
     public static final String DEPLOYMENT_TYPE_CLIENT = "client";
     protected File propertiesFile;
     protected Properties properties;
@@ -341,6 +345,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
             DataSource dataSource, boolean waitOnAvailableDatabase, boolean isLoadOnly, boolean isLogBased, Boolean delimitedIdentifierMode) {
         log.info("Initializing connection to database");
+        boolean isPoolCreatedHere = false;
         if (dataSource == null) {
             String jndiName = properties.getProperty(ParameterConstants.DB_JNDI_NAME);
             if (StringUtils.isNotBlank(jndiName)) {
@@ -367,7 +372,11 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             String dbUrl = properties.get(DataSourceProperties.DB_POOL_URL);
             if (dataSource == null && JdbcDatabasePlatformFactory.isJdbcUrl(dbUrl)) {
                 dataSource = DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+                isPoolCreatedHere = true;
             }
+        }
+        if (dataSource != null && !isPoolCreatedHere) {
+            warnAboutIgnoredPoolParameters(properties);
         }
         if (dataSource != null) {
             logConnectionPoolSize(dataSource, properties);
@@ -558,9 +567,37 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         }
     }
 
+    private static void warnAboutIgnoredPoolParameters(TypedProperties properties) {
+        List<String> ignoredParameters = findChangedPoolParameters(properties, ParameterConstants.getParameterMetaData());
+        if (!ignoredParameters.isEmpty()) {
+            log.warn("The datasource is supplied by the hosting application, so these connection pool parameters are ignored: {}. "
+                    + "Configure the connection pool in the hosting application instead.", String.join(", ", ignoredParameters));
+        }
+    }
+
+    static List<String> findChangedPoolParameters(TypedProperties properties, Map<String, ParameterMetaData> parameterMetaData) {
+        List<String> changedParameters = new ArrayList<>();
+        for (String key : properties.stringPropertyNames()) {
+            if (key.startsWith(POOL_PARAMETER_PREFIX)) {
+                ParameterMetaData metaData = parameterMetaData.get(key);
+                String defaultValue = metaData != null ? metaData.getDefaultValue() : null;
+                if (!Objects.equals(properties.getProperty(key), defaultValue)) {
+                    changedParameters.add(key);
+                }
+            }
+        }
+        Collections.sort(changedParameters);
+        return changedParameters;
+    }
+
     private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
+        IPooledDataSource pooledDataSource = IPooledDataSource.of(dataSource);
+        if (pooledDataSource == null) {
+            log.info("DB connection pool size is unknown for datasource type {}", dataSource.getClass().getName());
+            return;
+        }
         int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
-        int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
+        int effectivePoolSize = pooledDataSource.getMaxTotal();
         if ((concurrentWorkersMax * 2) > effectivePoolSize) {
             log.warn("Configured {} is {}, the effective connection pool size of the database is {}", ParameterConstants.CONCURRENT_WORKERS,
                     concurrentWorkersMax, effectivePoolSize);
