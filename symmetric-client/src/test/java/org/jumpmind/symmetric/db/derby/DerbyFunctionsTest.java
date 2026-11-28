@@ -250,4 +250,17 @@ class DerbyFunctionsTest {
             when(metaData.getColumnName(i + 1)).thenReturn(columnNames[i]);
         }
     }
+
+    @Test
+    void testBuildInsertDataSql_keepsQuotedSchemaAndPrefix() {
+        assertEquals("insert into \"APP\".sym_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id,"
+                + " transaction_id, source_node_id, external_data, create_time)  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)",
+                DerbyFunctions.buildInsertDataSql("\"APP\".", "sym"));
+    }
+
+    @Test
+    void testBuildInsertDataSql_stripsStatementCharactersFromSchemaAndPrefix() {
+        String sql = DerbyFunctions.buildInsertDataSql("APP;drop table x;'.", "sym;x");
+        assertEquals("insert into APPdrop table x.sym_x_data", sql.substring(0, sql.indexOf(" (")));
+    }
 }

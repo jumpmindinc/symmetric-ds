@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -81,6 +82,7 @@ public class NodeService extends AbstractService implements INodeService {
     private static final String NODE_ID = "node_id";
     private static final String TIMEZONE_OFFSET = "timezone_offset";
     private static final String HEARTBEAT_TIME = "heartbeat_time";
+    private static final Pattern COLUMN_NAME_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
 
     public NodeService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -652,13 +654,21 @@ public class NodeService extends AbstractService implements INodeService {
             }
             FilterOption option = criterion.getOption();
             String optionSql = option.toSql();
-            String prefix = criterion.getPropertyId().replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase() + " " + optionSql;
+            String prefix = toColumnName(criterion.getPropertyId()) + " " + optionSql;
             where.append(prefix).append(" :").append(id++);
         }
         if (!where.isEmpty()) {
             where.insert(0, " where ");
         }
         return where.toString();
+    }
+
+    protected static String toColumnName(String propertyId) {
+        String columnName = propertyId.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
+        if (!COLUMN_NAME_PATTERN.matcher(columnName).matches()) {
+            throw new IllegalArgumentException("Invalid node column name: " + propertyId);
+        }
+        return columnName;
     }
 
     protected Map<String, Object> buildParams(List<FilterCriterion> filter) {
@@ -682,7 +692,7 @@ public class NodeService extends AbstractService implements INodeService {
         if (orderColumn == null) {
             orderBy += "node_id desc";
         } else {
-            orderBy += orderColumn.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
+            orderBy += toColumnName(orderColumn);
             if (orderDirection.equals("DESCENDING")) {
                 orderBy += " desc";
             }

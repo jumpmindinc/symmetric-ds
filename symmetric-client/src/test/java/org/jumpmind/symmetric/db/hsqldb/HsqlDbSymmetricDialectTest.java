@@ -194,6 +194,12 @@ class HsqlDbSymmetricDialectTest {
     }
 
     @Test
+    void testTruncateTable_stripsStatementCharacters() {
+        newDialect().truncateTable("item;drop table x'");
+        verify(sqlTemplate).update("delete from itemdrop table x");
+    }
+
+    @Test
     void testRemoveTrigger_logsToBufferWithoutExecuting() {
         ISqlTransaction transaction = mock(ISqlTransaction.class);
         StringBuilder sqlBuffer = new StringBuilder();

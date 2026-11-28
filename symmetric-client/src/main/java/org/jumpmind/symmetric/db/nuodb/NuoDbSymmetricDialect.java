@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.db.nuodb;
 
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.PermissionType;
@@ -109,14 +111,11 @@ public class NuoDbSymmetricDialect extends AbstractSymmetricDialect implements I
         schema = schema == null ? (platform.getDefaultSchema() == null ? null
                 : platform
                         .getDefaultSchema()) : schema;
-        String checkSchemaSql = (schema != null && schema.length() > 0) ? " and schema='"
-                + schema + "'"
-                : "";
-        return platform
-                .getSqlTemplate()
-                .queryForInt(
-                        "select count(*) from system.triggers where triggername = ? and tablename = ?"
-                                + checkSchemaSql, new Object[] { triggerName, tableName }) > 0;
+        String sql = "select count(*) from system.triggers where triggername = ? and tablename = ?";
+        if (StringUtils.isNotEmpty(schema)) {
+            return platform.getSqlTemplate().queryForInt(sql + " and schema = ?", triggerName, tableName, schema) > 0;
+        }
+        return platform.getSqlTemplate().queryForInt(sql, triggerName, tableName) > 0;
     }
 
     @Override

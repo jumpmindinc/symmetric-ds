@@ -175,7 +175,7 @@ public class HsqlDb2SymmetricDialect extends AbstractSymmetricDialect implements
 
     @Override
     public void truncateTable(String tableName) {
-        platform.getSqlTemplate().update("delete from " + tableName);
+        deleteAllRows(tableName);
     }
 
     public void cleanDatabase() {

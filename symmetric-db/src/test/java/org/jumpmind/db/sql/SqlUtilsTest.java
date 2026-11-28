@@ -286,4 +286,19 @@ class SqlUtilsTest {
         String longName = "a".repeat(40);
         assertEquals(32, SqlUtils.sanitizeTablePrefix(longName).length());
     }
+
+    @Test
+    void testSanitizeDelimitedIdentifier_keepsDoubleQuotesAndSeparators() {
+        assertEquals("\"APP\".\"item\"", SqlUtils.sanitizeDelimitedIdentifier("\"APP\".\"item\""));
+    }
+
+    @Test
+    void testSanitizeDelimitedIdentifier_stripsQuoteSlashAndSemicolon() {
+        assertEquals("itemdrop table x--", SqlUtils.sanitizeDelimitedIdentifier("item;drop table x'/--"));
+    }
+
+    @Test
+    void testSanitizeDelimitedIdentifier_returnsNullForNull() {
+        assertNull(SqlUtils.sanitizeDelimitedIdentifier(null));
+    }
 }

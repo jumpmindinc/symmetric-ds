@@ -155,13 +155,7 @@ public class DerbyFunctions {
                 pkData = dataBuilder.substring(0, dataBuilder.length() - 1);
             }
             Connection conn = DriverManager.getConnection(CURRENT_CONNECTION_URL);
-            StringBuilder sql = new StringBuilder("insert into ");
-            sql.append(schemaName);
-            sql.append(prefixName);
-            sql.append(
-                    "_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time) ");
-            sql.append(" values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)");
-            PreparedStatement ps = conn.prepareStatement(sql.toString());
+            PreparedStatement ps = conn.prepareStatement(buildInsertDataSql(schemaName, prefixName));
             ps.setString(1, tableName);
             ps.setString(2, dmlType);
             ps.setLong(3, triggerHistId);
@@ -178,6 +172,12 @@ public class DerbyFunctions {
         }
     }
 
+    static String buildInsertDataSql(String schemaName, String prefixName) {
+        return "insert into " + SqlUtils.sanitizeDelimitedIdentifier(schemaName) + SqlUtils.sanitizeTablePrefix(prefixName)
+                + "_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time) "
+                + " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)";
+    }
+
     @Deprecated
     public static void insertData(String schemaName, String prefixName, String tableName, String channelName,
             String dmlType, int triggerHistId, String transactionId, String externalData,
@@ -185,13 +185,7 @@ public class DerbyFunctions {
         if (((dmlType.equals("I") || dmlType.equals("U")) && rowData != null)
                 || dmlType.equals("D")) {
             Connection conn = DriverManager.getConnection(CURRENT_CONNECTION_URL);
-            StringBuilder sql = new StringBuilder("insert into ");
-            sql.append(schemaName);
-            sql.append(prefixName);
-            sql.append(
-                    "_data (table_name, event_type, trigger_hist_id, pk_data, row_data, old_data, channel_id, transaction_id, source_node_id, external_data, create_time) ");
-            sql.append(" values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)");
-            PreparedStatement ps = conn.prepareStatement(sql.toString());
+            PreparedStatement ps = conn.prepareStatement(buildInsertDataSql(schemaName, prefixName));
             ps.setString(1, tableName);
             ps.setString(2, dmlType);
             ps.setLong(3, triggerHistId);
