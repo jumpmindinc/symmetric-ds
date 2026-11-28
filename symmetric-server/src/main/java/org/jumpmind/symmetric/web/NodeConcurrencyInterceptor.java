@@ -47,6 +47,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * An intercepter that controls access to this node for pushes and pulls. It is configured within symmetric-web.xml
  */
 public class NodeConcurrencyInterceptor implements IInterceptor {
+    private static final String FILE_SYNC_PATH_SEGMENT = "filesync";
     private static Logger log = LoggerFactory.getLogger(NodeConcurrencyInterceptor.class);
     private IConcurrentConnectionManager concurrentConnectionManager;
     private IConfigurationService configurationService;
@@ -83,8 +84,8 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         String method = req.getMethod();
         String threadChannel = req.getHeader(WebConstants.CHANNEL_QUEUE);
         String normalizedRequestUri = ServletUtils.normalizeRequestUri(req);
-        boolean isPush = normalizedRequestUri.contains("push");
-        boolean isFileSync = normalizedRequestUri.contains("filesync");
+        boolean isPush = hasPathSegment(normalizedRequestUri, WebConstants.URL_PUSH);
+        boolean isFileSync = hasPathSegment(normalizedRequestUri, FILE_SYNC_PATH_SEGMENT);
         if (method.equals(WebConstants.METHOD_HEAD) && isPush) {
             resp.setContentLength(0);
             ReservationResult result = concurrentConnectionManager.reserveConnectionWithResult(nodeId, threadChannel, poolId, ReservationType.SOFT, false);
@@ -218,5 +219,14 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         NodeChannels suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(sourceNodeId);
         httpResponse.setHeader(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString(targetNodeId));
         httpResponse.setHeader(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString(targetNodeId));
+    }
+
+    static boolean hasPathSegment(String requestUri, String segment) {
+        for (String pathSegment : requestUri.split("/")) {
+            if (pathSegment.equals(segment)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
