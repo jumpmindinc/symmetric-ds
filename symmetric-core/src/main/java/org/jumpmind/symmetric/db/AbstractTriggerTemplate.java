@@ -492,13 +492,13 @@ abstract public class AbstractTriggerTemplate {
                 : "(" + symmetricDialect.preProcessTriggerSqlClause(trigger.getExternalSelect())
                         + ")"), ddl);
         ddl = FormatUtils.replace("syncOnInsertCondition",
-                symmetricDialect.preProcessTriggerSqlClause(trigger.getSyncOnInsertCondition()),
+                resolveCurrentRow(symmetricDialect.preProcessTriggerSqlClause(trigger.getSyncOnInsertCondition()), newTriggerValue, newColumnPrefix),
                 ddl);
         ddl = FormatUtils.replace("syncOnUpdateCondition",
                 symmetricDialect.preProcessTriggerSqlClause(trigger.getSyncOnUpdateCondition()),
                 ddl);
         ddl = FormatUtils.replace("syncOnDeleteCondition",
-                symmetricDialect.preProcessTriggerSqlClause(trigger.getSyncOnDeleteCondition()),
+                resolveCurrentRow(symmetricDialect.preProcessTriggerSqlClause(trigger.getSyncOnDeleteCondition()), oldTriggerValue, oldColumnPrefix),
                 ddl);
         ddl = FormatUtils.replace("custom_before_insert_text",
                 StringUtils.isBlank(trigger.getCustomBeforeInsertText()) ? "" : trigger.getCustomBeforeInsertText(), ddl);
@@ -634,6 +634,15 @@ abstract public class AbstractTriggerTemplate {
                 break;
         }
         return ddl;
+    }
+
+    /*
+     * An insert condition always refers to the new row and a delete condition to the old row, also when a template uses them in a trigger for another DML type
+     * (for example the SQL Server update trigger that handles primary key updates as a delete and an insert).
+     */
+    private String resolveCurrentRow(String condition, String triggerValue, String columnPrefix) {
+        String resolved = FormatUtils.replace("curTriggerValue", triggerValue, condition);
+        return FormatUtils.replace("curColumnPrefix", columnPrefix, resolved);
     }
 
     private String convertExternalSelectToDelete(String externalSelect) {
