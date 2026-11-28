@@ -24,16 +24,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.TypeMap;
+import org.jumpmind.db.model.UniqueIndex;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.ColumnMapper;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.IndexColumnMapper;
 import org.jumpmind.db.platform.sqlite.SqliteDdlReader.IndexMapper;
+import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -204,5 +217,23 @@ class SqliteDdlReaderTest {
         IndexColumn column = new IndexColumnMapper().mapRow(row);
         assertEquals("ID", column.getName());
         assertEquals(3, column.getOrdinalPosition());
+    }
+
+    @Test
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    void testReadRelation_quotesIndexNameInIndexInfoPragma() {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseInfo databaseInfo = mock(DatabaseInfo.class);
+        when(databaseInfo.getDelimiterToken()).thenReturn("\"");
+        when(platform.getDatabaseInfo()).thenReturn(databaseInfo);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn((List) Collections.emptyList());
+        when(sqlTemplate.query(eq("pragma table_xinfo(\"t\")"), any(ISqlRowMapper.class)))
+                .thenReturn((List) Arrays.asList(new Column("a"), new Column("b")));
+        when(sqlTemplate.query(eq("pragma index_list(\"t\")"), any(ISqlRowMapper.class)))
+                .thenReturn((List) Arrays.asList(new UniqueIndex("A+B")));
+        new SqliteDdlReader(platform).readRelation(null, null, "t");
+        verify(sqlTemplate).query(eq("pragma index_info(\"A+B\")"), any(ISqlRowMapper.class));
     }
 }

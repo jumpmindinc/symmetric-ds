@@ -159,7 +159,7 @@ public class SqliteDdlReader implements IDdlReader {
     private void readIndexesIntoTable(Table table, String relationName) {
         List<IIndex> indexes = platform.getSqlTemplate().query("pragma index_list(" + quote(relationName) + ")", INDEX_MAPPER);
         for (IIndex index : indexes) {
-            List<IndexColumn> indexColumns = platform.getSqlTemplate().query("pragma index_info(" + index.getName() + ")",
+            List<IndexColumn> indexColumns = platform.getSqlTemplate().query("pragma index_info(" + quote(index.getName()) + ")",
                     INDEX_COLUMN_MAPPER);
             populateIndexColumns(index, indexColumns, table);
             applyIndexToTable(index, indexColumns, table);
